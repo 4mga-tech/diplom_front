@@ -199,7 +199,7 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.statsRow}>
-          <StatCard value={streak} label="Daily Streak" />{" "}
+          <StatCard value={streak} label="Daily Streak" />
           <StatCard value={lessons} label="lesson" />
           <StatCard value={xp} label="XP" />
         </View>
