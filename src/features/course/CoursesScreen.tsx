@@ -1,7 +1,10 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -14,7 +17,6 @@ import { LEVELS, UNITS } from "@/src/data/curriculum";
 import { useNotifications } from "@/src/store/notificationStore";
 import CourseCard from "@/src/ui/CourseCard";
 import { theme } from "@/src/ui/theme";
-import { Ionicons } from "@expo/vector-icons";
 
 function StatCard({ value, label }: { value: string; label: string }) {
   return (
@@ -49,6 +51,34 @@ export default function CoursesScreen() {
     setTimeout(() => setRefreshing(false), 700);
   };
 
+  const logout = async () => {
+    try {
+      await AsyncStorage.removeItem("registered");
+      await AsyncStorage.removeItem("onboardingDone");
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("user");
+
+      await AsyncStorage.setItem("fromLogout", "true");
+
+      router.replace("/welcome");
+    } catch (error) {
+      console.log("Logout error:", error);
+    }
+  };
+
+  const confirmLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: () => {
+          void logout();
+        },
+      },
+    ]);
+  };
+
   useEffect(() => {
     const interval = setInterval(() => {
       const fake = {
@@ -62,35 +92,38 @@ export default function CoursesScreen() {
     }, 10000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [addNotification]);
 
   return (
     <View style={styles.container}>
-      {/* HEADER */}
       <View style={styles.header}>
         <Text style={styles.title}>Monlanguage</Text>
 
-        <Pressable
-          onPress={() => router.push("/notification")}
-          style={styles.notifBtn}
-        >
-          <Ionicons name="notifications-outline" size={22} color="white" />
-          {unreadCount > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{unreadCount}</Text>
-            </View>
-          )}
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable onPress={confirmLogout} style={styles.iconBtn}>
+            <Ionicons name="log-out-outline" size={22} color="#FCA5A5" />
+          </Pressable>
+
+          <Pressable
+            onPress={() => router.push("/notification")}
+            style={styles.iconBtn}
+          >
+            <Ionicons name="notifications-outline" size={22} color="white" />
+            {unreadCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unreadCount}</Text>
+              </View>
+            )}
+          </Pressable>
+        </View>
       </View>
 
-      {/* STATS ROW */}
       <View style={styles.statsRow}>
         <StatCard value={stats.completed} label="Completed" />
         <StatCard value={stats.streak} label="Daily Streak" />
         <StatCard value={stats.xp} label="XP" />
       </View>
 
-      {/* COURSE LIST */}
       <FlatList
         data={LEVELS}
         keyExtractor={(item) => item.id}
@@ -111,15 +144,15 @@ export default function CoursesScreen() {
             completedLessons={0}
             gradient={item.gradient}
             onPress={() => {
-              const firstUnit = UNITS.find((u) => u.levelId === item.id);
-              if (!firstUnit) {
+              const hasUnits = UNITS.some((u) => u.levelId === item.id);
+              if (!hasUnits) {
                 alert("No units available for this level.");
                 return;
               }
 
               router.push({
-                pathname: "/units/[levelId]/[unitId]",
-                params: { levelId: item.id, unitId: firstUnit.id },
+                pathname: "/units/[levelId]",
+                params: { levelId: item.id },
               });
             }}
           />
@@ -131,8 +164,10 @@ export default function CoursesScreen() {
             style={styles.reviewCard}
           >
             <View style={{ flex: 1 }}>
-              <Text style={styles.reviewTitle}>Today's Review</Text>
-              <Text style={styles.reviewDesc}>5 words · 3 minutes</Text>
+              <Text style={styles.reviewTitle}>{"Today's Review"}</Text>
+              <Text style={styles.reviewDesc}>
+                6 mixed questions - vocab, meaning, and routine phrases
+              </Text>
             </View>
             <Pressable
               onPress={() => router.push("/review")}
@@ -154,14 +189,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.s(3),
     paddingTop: theme.s(6),
   },
-
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: theme.s(3),
   },
-  notifBtn: {
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.s(1),
+  },
+  iconBtn: {
     width: 50,
     height: 50,
     borderRadius: 14,
@@ -175,7 +214,6 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 6,
   },
-
   badge: {
     position: "absolute",
     top: 4,
@@ -188,19 +226,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 3,
   },
-
   badgeText: {
     color: "white",
     fontSize: 10,
     fontWeight: "800",
   },
-
   title: {
     color: theme.colors.text,
     fontSize: 22,
     fontWeight: "800",
   },
-
   statsRow: {
     flexDirection: "row",
     gap: theme.s(1.5),
@@ -225,11 +260,9 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginTop: 4,
   },
-
   list: {
     paddingBottom: theme.s(5),
   },
-
   reviewCard: {
     borderRadius: theme.r.xl,
     padding: theme.s(2.5),

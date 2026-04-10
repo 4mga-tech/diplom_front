@@ -6,6 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -15,10 +16,28 @@ import {
 } from "react-native";
 import { TextInput } from "react-native-gesture-handler";
 import { theme } from "../ui/theme";
+
+type StoredUser = {
+  name?: string;
+  email?: string;
+};
+
+type LearningStats = {
+  streak: number;
+  completedLessons: number;
+  totalXp: number;
+};
+
+const DEFAULT_STATS: LearningStats = {
+  streak: 0,
+  completedLessons: 0,
+  totalXp: 0,
+};
+
 function StatCard({ value, label }: { value: string; label: string }) {
   return (
     <LinearGradient
-      colors={["rgba(30,41,59,0.85)", "rgba(15,23,42,0.85)"]}
+      colors={["rgba(30,41,59,0.95)", "rgba(15,23,42,0.92)"]}
       style={styles.statCard}
     >
       <Text style={styles.statValue}>{value}</Text>
@@ -40,14 +59,14 @@ function InfoRow({
 }) {
   return (
     <LinearGradient
-      colors={["rgba(30,41,59,0.85)", "rgba(15,23,42,0.85)"]}
+      colors={["rgba(30,41,59,0.9)", "rgba(15,23,42,0.88)"]}
       style={styles.infoCard}
     >
       <View style={styles.infoRow}>
         <View style={styles.infoIconWrap}>
           <Ionicons name={icon} size={18} color={iconColor} />
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={styles.infoTextWrap}>
           <Text style={styles.infoLabel}>{label}</Text>
           <Text style={styles.infoValue}>{value}</Text>
         </View>
@@ -55,30 +74,51 @@ function InfoRow({
     </LinearGradient>
   );
 }
+
 export default function ProfileScreen() {
-  const [user, setUser] = useState<{ name?: string; email?: string } | null>(
-    null,
-  );
+  const [user, setUser] = useState<StoredUser | null>(null);
+  const [stats, setStats] = useState<LearningStats>(DEFAULT_STATS);
+
   useEffect(() => {
-    // console.log("USER:", user);
     const loadUser = async () => {
       const stored = await AsyncStorage.getItem("user");
       if (stored) {
-        setUser(JSON.parse(stored));
+        setUser(JSON.parse(stored) as StoredUser);
       }
     };
     loadUser();
   }, []);
+
   useEffect(() => {
     if (user?.name) {
       setName(user.name);
     }
   }, [user]);
-  const streak = "7";
-  const lessons = "21";
-  const xp = "420";
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const res = await api.get("/me/progress/summary");
+        const payload = res.data as any;
+        const data = payload?.data ?? payload;
+
+        setStats({
+          streak: Number(data?.streak ?? 0),
+          completedLessons: Number(data?.completedLessons ?? 0),
+          totalXp: Number(data?.totalXp ?? 0),
+        });
+      } catch (err) {
+        console.log("Error loading profile stats:", err);
+        setStats(DEFAULT_STATS);
+      }
+    };
+
+    loadStats();
+  }, []);
+
   const router = useRouter();
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
+
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images", "videos"],
@@ -99,14 +139,14 @@ export default function ProfileScreen() {
     };
     loadAvatar();
   }, []);
-  const [isEditing, setIsEditing] = useState(false);
 
+  const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user?.name || "");
 
   const handleSaveName = async () => {
     try {
       const res = await api.patch("/user/profile", { name });
-      const updatedUser = res.data;
+      const updatedUser = res.data as StoredUser;
 
       setUser(updatedUser);
       await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
@@ -115,6 +155,7 @@ export default function ProfileScreen() {
       console.log("Error updating name:", err);
     }
   };
+
   const logout = async () => {
     try {
       await AsyncStorage.removeItem("registered");
@@ -130,112 +171,208 @@ export default function ProfileScreen() {
     }
   };
 
+  const confirmLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: () => {
+          void logout();
+        },
+      },
+    ]);
+  };
+
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={{ width: 44, height: 44 }} />
-      </View>
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.avatarBlock}>
-          <View style={styles.avatarWrap}>
-            <LinearGradient
-              colors={["#2563EB", "#7C3AED"]}
-              style={styles.avatar}
-            >
-              {avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
-              ) : (
-                <Ionicons name="person" size={44} color="white" />
-              )}
-            </LinearGradient>
-
-            {/* Avatar дээр дарж зураг солих */}
-            <Pressable onPress={pickImage} style={styles.avatarPressable}>
-              <View style={styles.cameraIcon}>
-                <Ionicons name="camera" size={14} color="white" />
-              </View>
-            </Pressable>
+        <LinearGradient
+          colors={["#172554", "#111827", "#020617"]}
+          style={styles.heroCard}
+        >
+          <View style={styles.heroBadge}>
+            <Ionicons name="sparkles" size={14} color="#93C5FD" />
+            <Text style={styles.heroBadgeText}>Profile</Text>
           </View>
 
-          <View style={styles.nameRow}>
+          <View style={styles.avatarBlock}>
+            <View style={styles.avatarWrap}>
+              <LinearGradient
+                colors={["#2563EB", "#7C3AED"]}
+                style={styles.avatar}
+              >
+                {avatarUri ? (
+                  <Image
+                    source={{ uri: avatarUri }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <Ionicons name="person" size={48} color="white" />
+                )}
+              </LinearGradient>
+
+              <Pressable onPress={pickImage} style={styles.avatarPressable}>
+                <View style={styles.cameraIcon}>
+                  <Ionicons name="camera" size={15} color="white" />
+                </View>
+              </Pressable>
+            </View>
+
+            {/* <Text style={styles.profileEyebrow}>Mongol Hel Learner</Text> */}
+
             {isEditing ? (
-              <>
+              <View style={styles.editCard}>
+                <Text style={styles.editLabel}>Display name</Text>
                 <TextInput
                   value={name}
                   onChangeText={setName}
                   style={styles.nameInputInline}
                   autoFocus
                   onSubmitEditing={handleSaveName}
+                  placeholder="Enter your name"
+                  placeholderTextColor="#64748B"
                 />
-                <Pressable onPress={handleSaveName} style={styles.inlineBtn}>
-                  <Text style={styles.inlineBtnText}>Save</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => {
-                    setName(user?.name || "");
-                    setIsEditing(false);
-                  }}
-                  style={[styles.inlineBtn, { backgroundColor: "#6B7280" }]}
-                >
-                  <Text style={styles.inlineBtnText}>Cancel</Text>
-                </Pressable>
-              </>
+                <View style={styles.editActions}>
+                  <Pressable onPress={handleSaveName} style={styles.inlineBtn}>
+                    <Text style={styles.inlineBtnText}>Save</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      setName(user?.name || "");
+                      setIsEditing(false);
+                    }}
+                    style={[styles.inlineBtn, styles.secondaryInlineBtn]}
+                  >
+                    <Text style={styles.inlineBtnText}>Cancel</Text>
+                  </Pressable>
+                </View>
+              </View>
             ) : (
-              <>
+              <View style={styles.nameDisplay}>
                 <Text style={styles.nameText}>{user?.name || "No name"}</Text>
+                <Text style={styles.profileSubtext}>
+                  Keep your photo and display name updated for a polished
+                  profile.
+                </Text>
                 <Pressable
                   onPress={() => setIsEditing(true)}
-                  style={styles.inlineBtn}
+                  style={({ pressed }) => [
+                    styles.inlineBtn,
+                    pressed && styles.inlineBtnPressed,
+                  ]}
                 >
-                  <Text style={styles.inlineBtnText}>Edit Profile</Text>
+                  <Text style={styles.inlineBtnText}>Edit name</Text>
                 </Pressable>
-              </>
+              </View>
             )}
+          </View>
+        </LinearGradient>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Learning Progress</Text>
+          <Text style={styles.sectionSubtitle}>Your latest study momentum</Text>
+          <View style={styles.statsRow}>
+            <StatCard value={String(stats.streak)} label="Daily Streak" />
+            <StatCard value={String(stats.completedLessons)} label="Lessons" />
+            <StatCard value={String(stats.totalXp)} label="XP" />
           </View>
         </View>
 
-        <View style={styles.statsRow}>
-          <StatCard value={streak} label="Daily Streak" />
-          <StatCard value={lessons} label="lesson" />
-          <StatCard value={xp} label="XP" />
-        </View>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          <Text style={styles.sectionSubtitle}>Your saved profile details</Text>
+          <View style={styles.infoList}>
+            <InfoRow
+              icon="mail"
+              iconColor="#60A5FA"
+              label="E-mail"
+              value={user?.email || "-"}
+            />
 
-        <View style={styles.infoList}>
-          <InfoRow
-            icon="mail"
-            iconColor="#60A5FA"
-            label="e-mail"
-            value={user?.email || "-"}
-          />
-          <View style={{ marginTop: 20 }}>
-            <Text
-              style={{ color: "#94A3B8", marginBottom: 8, fontWeight: "700" }}
+            <LinearGradient
+              colors={["rgba(30,41,59,0.9)", "rgba(15,23,42,0.88)"]}
+              style={styles.achievementsCard}
             >
-              Achievements
-            </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {["🏆", "🎯", "💡"].map((badge, i) => (
-                <View key={i} style={styles.badgeCard}>
-                  <Text style={{ fontSize: 24 }}>{badge}</Text>
+              <View style={styles.achievementsHeader}>
+                <View>
+                  <Text style={styles.achievementsTitle}>Achievements</Text>
+                  <Text style={styles.achievementsSubtitle}>
+                    Small milestones from your journey
+                  </Text>
                 </View>
-              ))}
-            </ScrollView>
+                <View style={styles.achievementsHeaderIcon}>
+                  <Ionicons name="ribbon-outline" size={18} color="#FBBF24" />
+                </View>
+              </View>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.badgesRow}>
+                  <View style={styles.badgeCard}>
+                    <View
+                      style={[
+                        styles.badgeIconWrap,
+                        { backgroundColor: "rgba(250,204,21,0.18)" },
+                      ]}
+                    >
+                      <Ionicons
+                        name="trophy-outline"
+                        size={22}
+                        color="#FACC15"
+                      />
+                    </View>
+                    <Text style={styles.badgeTitle}>Champion</Text>
+                    <Text style={styles.badgeCaption}>Top effort</Text>
+                  </View>
+
+                  <View style={styles.badgeCard}>
+                    <View
+                      style={[
+                        styles.badgeIconWrap,
+                        { backgroundColor: "rgba(96,165,250,0.18)" },
+                      ]}
+                    >
+                      <Ionicons
+                        name="flash-outline"
+                        size={22}
+                        color="#60A5FA"
+                      />
+                    </View>
+                    <Text style={styles.badgeTitle}>Focused</Text>
+                    <Text style={styles.badgeCaption}>XP builder</Text>
+                  </View>
+
+                  <View style={styles.badgeCard}>
+                    <View
+                      style={[
+                        styles.badgeIconWrap,
+                        { backgroundColor: "rgba(167,139,250,0.18)" },
+                      ]}
+                    >
+                      <Ionicons name="bulb-outline" size={22} color="#A78BFA" />
+                    </View>
+                    <Text style={styles.badgeTitle}>Curious</Text>
+                    <Text style={styles.badgeCaption}>Keeps learning</Text>
+                  </View>
+                </View>
+              </ScrollView>
+            </LinearGradient>
           </View>
         </View>
 
         <Pressable
-          onPress={logout}
+          onPress={confirmLogout}
           style={({ pressed }) => [
             styles.logoutBtn,
-            pressed && { opacity: 0.9 },
+            pressed && styles.logoutBtnPressed,
           ]}
         >
           <Ionicons name="log-out-outline" size={18} color="#F87171" />
-          <Text style={styles.logoutText}>logout</Text>
+          <Text style={styles.logoutText}>Logout</Text>
         </Pressable>
       </ScrollView>
     </View>
@@ -245,89 +382,68 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.bg,
+    backgroundColor: "#020617",
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: theme.s(3),
     paddingTop: theme.s(6),
-    paddingBottom: theme.s(4),
+    paddingBottom: theme.s(5),
   },
-
-  header: {
+  heroCard: {
+    borderRadius: 30,
+    padding: theme.s(3),
+    marginBottom: theme.s(3),
+    borderWidth: 1,
+    borderColor: "rgba(96,165,250,0.12)",
+    shadowColor: "#000",
+    shadowOpacity: 0.28,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 10,
+  },
+  heroBadge: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: theme.s(3),
+    alignSelf: "flex-start",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: "rgba(59,130,246,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(147,197,253,0.2)",
+    marginBottom: theme.s(2),
   },
-  // backBtn: {
-  //   width: 44,
-  //   height: 44,
-  //   borderRadius: 14,
-  //   alignItems: "center",
-  //   justifyContent: "center",
-  //   backgroundColor: "rgba(30,41,59,0.35)",
-  //   borderWidth: 1,
-  //   borderColor: "rgba(51,65,85,0.55)",
-  // },
-  headerTitle: { color: "white", fontSize: 18, fontWeight: "800" },
-
-  avatarBlock: { alignItems: "center", marginBottom: theme.s(3) },
-  avatarWrap: { position: "relative", marginBottom: theme.s(1.5) },
+  heroBadgeText: {
+    color: "#BFDBFE",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  avatarBlock: {
+    alignItems: "center",
+  },
+  avatarWrap: {
+    position: "relative",
+    marginBottom: theme.s(1.5),
+  },
   avatar: {
-    width: 96,
-    height: 96,
+    width: 112,
+    height: 112,
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
-    shadowOpacity: 0.35,
-    shadowRadius: 18,
-    elevation: 10,
+    shadowOpacity: 0.38,
+    shadowRadius: 22,
+    elevation: 12,
   },
   avatarImage: {
-    width: 96,
-    height: 96,
+    width: 112,
+    height: 112,
     borderRadius: 999,
-  },
-  nameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 12,
-    width: "100%",
-    gap: 8,
-  },
-
-  nameText: {
-    color: "white",
-    fontSize: 22,
-    fontWeight: "700",
-    flex: 1,
-  },
-  nameInputInline: {
-    color: "white",
-    fontSize: 22,
-    fontWeight: "700",
-    borderBottomWidth: 1,
-    borderBottomColor: "#2563EB",
-    flex: 1,
-  },
-  inlineBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: "#2563EB",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  inlineBtnText: {
-    color: "white",
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  editProfileText: {
-    color: "#2563EB",
-    fontSize: 16,
-    fontWeight: "600",
-    marginLeft: 12,
   },
   avatarPressable: {
     ...StyleSheet.absoluteFillObject,
@@ -336,34 +452,109 @@ const styles = StyleSheet.create({
     padding: 4,
     borderRadius: 999,
   },
-
-  editNameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginTop: 8,
-  },
-
-  editNameBtn: {
-    marginTop: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+  cameraIcon: {
+    position: "absolute",
+    bottom: 4,
+    right: 4,
     backgroundColor: "#2563EB",
-    borderRadius: 8,
+    borderRadius: 999,
+    padding: 8,
+    borderWidth: 2,
+    borderColor: "#0F172A",
   },
-
-  name: { color: "white", fontSize: 22, fontWeight: "800" },
-  role: {
-    color: theme.colors.muted,
-    marginTop: 4,
-    fontSize: 13,
+  profileEyebrow: {
+    color: "#93C5FD",
+    fontSize: 12,
     fontWeight: "700",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    marginBottom: 10,
   },
-
+  nameDisplay: {
+    alignItems: "center",
+  },
+  nameText: {
+    color: "#F8FAFC",
+    fontSize: 28,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  profileSubtext: {
+    color: "#94A3B8",
+    fontSize: 14,
+    textAlign: "center",
+    marginTop: 8,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  editCard: {
+    width: "100%",
+    backgroundColor: "rgba(15,23,42,0.72)",
+    borderRadius: 22,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.12)",
+  },
+  editLabel: {
+    color: "#94A3B8",
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: 10,
+  },
+  nameInputInline: {
+    color: "#FFFFFF",
+    fontSize: 20,
+    fontWeight: "700",
+    borderWidth: 1,
+    borderColor: "rgba(96,165,250,0.35)",
+    backgroundColor: "rgba(2,6,23,0.6)",
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  editActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 14,
+  },
+  inlineBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: "#2563EB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  secondaryInlineBtn: {
+    backgroundColor: "#334155",
+  },
+  inlineBtnPressed: {
+    opacity: 0.88,
+  },
+  inlineBtnText: {
+    color: "white",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  section: {
+    marginBottom: theme.s(3),
+  },
+  sectionTitle: {
+    color: "#F8FAFC",
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  sectionSubtitle: {
+    color: "#94A3B8",
+    fontSize: 13,
+    marginTop: 4,
+    marginBottom: theme.s(1.5),
+  },
   statsRow: {
     flexDirection: "row",
     gap: theme.s(1.5),
-    marginBottom: theme.s(3),
   },
   statCard: {
     flex: 1,
@@ -371,42 +562,43 @@ const styles = StyleSheet.create({
     paddingVertical: theme.s(2),
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.55)",
+    borderColor: "rgba(51,65,85,0.65)",
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
   },
-  statValue: { color: "white", fontSize: 20, fontWeight: "900" },
+  statValue: {
+    color: "white",
+    fontSize: 20,
+    fontWeight: "900",
+  },
   statLabel: {
     color: theme.colors.muted,
     fontSize: 11,
     fontWeight: "800",
     marginTop: 4,
   },
-  nameInput: {
-    flex: 1,
-    color: "white",
-    fontSize: 22,
-    fontWeight: "800",
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.3)",
-    textAlign: "center",
-    paddingVertical: 4,
+  infoList: {
+    gap: theme.s(1.5),
   },
-  badgeCard: {
-    width: 80,
-    height: 80,
-    borderRadius: 16,
-    backgroundColor: "rgba(30,41,59,0.85)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  infoList: { gap: theme.s(1.5), marginBottom: theme.s(2) },
   infoCard: {
     borderRadius: theme.r.xl,
     borderWidth: 1,
     borderColor: "rgba(51,65,85,0.55)",
     padding: theme.s(2),
+    shadowColor: "#000",
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
   },
-  infoRow: { flexDirection: "row", alignItems: "center", gap: theme.s(1.5) },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.s(1.5),
+  },
   infoIconWrap: {
     width: 40,
     height: 40,
@@ -417,35 +609,86 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  infoTextWrap: {
+    flex: 1,
+  },
   infoLabel: {
     color: "rgba(148,163,184,0.7)",
     fontSize: 11,
     fontWeight: "800",
   },
-
-  saveBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "#2563EB",
+  infoValue: {
+    color: "white",
+    fontSize: 15,
+    fontWeight: "700",
+    marginTop: 2,
+  },
+  achievementsCard: {
+    borderRadius: theme.r.xl,
+    padding: theme.s(2),
+    borderWidth: 1,
+    borderColor: "rgba(51,65,85,0.55)",
+    shadowColor: "#000",
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
+  },
+  achievementsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  achievementsTitle: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  achievementsSubtitle: {
+    color: "#94A3B8",
+    fontSize: 12,
+    marginTop: 4,
+  },
+  achievementsHeaderIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "rgba(250,204,21,0.12)",
   },
-
-  saveText: { color: "white", fontWeight: "700" },
-  infoValue: { color: "white", fontSize: 15, fontWeight: "700", marginTop: 2 },
-  cameraIcon: {
-    position: "absolute",
-    bottom: 4,
-    right: 4,
-    backgroundColor: "#2563EB",
-    borderRadius: 999,
-    padding: 6,
-    borderWidth: 2,
-    borderColor: "#0F172A",
+  badgesRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  badgeCard: {
+    width: 124,
+    borderRadius: 18,
+    backgroundColor: "rgba(15,23,42,0.82)",
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.12)",
+    padding: 14,
+  },
+  badgeIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  badgeTitle: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  badgeCaption: {
+    color: "#94A3B8",
+    fontSize: 12,
+    marginTop: 4,
   },
   logoutBtn: {
-    marginTop: "auto",
     width: "100%",
     paddingVertical: theme.s(2),
     borderRadius: theme.r.xl,
@@ -457,5 +700,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(153,27,27,0.55)",
   },
-  logoutText: { color: "#F87171", fontWeight: "900", fontSize: 15 },
+  logoutBtnPressed: {
+    opacity: 0.88,
+  },
+  logoutText: {
+    color: "#F87171",
+    fontWeight: "900",
+    fontSize: 15,
+  },
 });

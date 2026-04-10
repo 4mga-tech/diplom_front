@@ -1,11 +1,11 @@
+import { fetchCourseProgress } from "@/lib/learning";
+import { LESSONS, getLevelById, LevelId, Unit, UNITS } from "@/src/data/curriculum";
+import { theme } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { router, useLocalSearchParams } from "expo-router";
-import React, { useMemo } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import React, { useCallback, useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-
-import { getLevelById, LevelId, Unit, UNITS } from "@/src/data/curriculum";
-import { theme } from "@/src/ui/theme";
 
 function UnitCard({ unit }: { unit: Unit }) {
   const locked = !!unit.locked;
@@ -41,7 +41,7 @@ function UnitCard({ unit }: { unit: Unit }) {
 
           <View style={styles.progressRow}>
             <Text style={styles.progressText}>{unit.progress}%</Text>
-            <Text style={styles.progressText}>{unit.lessonsCount} lesson</Text>
+            <Text style={styles.progressText}>{unit.lessonsCount} lessons</Text>
           </View>
 
           <View style={styles.track}>
@@ -77,10 +77,46 @@ export default function UnitsScreen() {
 
   const safeLevelId = (levelId ?? "B1") as LevelId;
   const levelMeta = getLevelById(safeLevelId);
+  const [completedLessonIds, setCompletedLessonIds] = useState<string[]>([]);
+  const [unlockedLessonIds, setUnlockedLessonIds] = useState<string[]>([]);
 
   const units = useMemo(() => {
-    return UNITS.filter((u) => u.levelId === safeLevelId);
+    return UNITS.filter((unit) => unit.levelId === safeLevelId).map((unit) => {
+      const unitLessons = LESSONS.filter((lesson) => lesson.unitId === unit.id);
+      const completedCount = unitLessons.filter((lesson) =>
+        completedLessonIds.includes(lesson.id),
+      ).length;
+      const hasUnlockedLesson =
+        unitLessons.length === 0 ||
+        unitLessons.some((lesson) => unlockedLessonIds.includes(lesson.id));
+
+      return {
+        ...unit,
+        progress:
+          unitLessons.length > 0
+            ? Math.round((completedCount / unitLessons.length) * 100)
+            : unit.progress,
+        lessonsCount: unitLessons.length || unit.lessonsCount,
+        locked: !hasUnlockedLesson,
+      };
+    });
+  }, [completedLessonIds, safeLevelId, unlockedLessonIds]);
+
+  const loadProgress = useCallback(async () => {
+    try {
+      const progress = await fetchCourseProgress(safeLevelId);
+      setCompletedLessonIds(progress.completedLessonIds);
+      setUnlockedLessonIds(progress.unlockedLessonIds);
+    } catch (error) {
+      console.log("Error loading course progress:", error);
+    }
   }, [safeLevelId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadProgress();
+    }, [loadProgress]),
+  );
 
   if (!levelMeta) {
     return (
@@ -118,38 +154,14 @@ export default function UnitsScreen() {
         <View style={styles.bannerTop}>
           <Ionicons name="sparkles" size={18} color="#A78BFA" />
           <Text style={styles.bannerText}>
-            Choose a package to start your lesson
+            Choose a package and continue with the lessons you have unlocked.
           </Text>
         </View>
-
-        {/* <Pressable
-          disabled={!levelMeta.vocabularyReady}
-          onPress={() =>
-            router.push({
-              pathname: "/vocabulary/[levelId]",
-              params: { levelId: levelMeta.id },
-            })
-          }
-          style={[
-            styles.vocabBtn,
-            !levelMeta.vocabularyReady && { opacity: 0.5 },
-          ]}
-        >
-          <Ionicons name="library-outline" size={18} color="white" />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.vocabBtnTitle}>View vocabulary</Text>
-            <Text style={styles.vocabBtnSub}>
-              {levelMeta.vocabularyReady
-                ? `Total ${levelMeta.vocabularyCount} words`
-                : "empty"}
-            </Text>
-          </View>
-        </Pressable> */}
       </LinearGradient>
 
       <FlatList
         data={units}
-        keyExtractor={(u) => u.id}
+        keyExtractor={(unit) => unit.id}
         contentContainerStyle={{ paddingBottom: theme.s(4) }}
         ItemSeparatorComponent={() => <View style={{ height: theme.s(2) }} />}
         renderItem={({ item }) => <UnitCard unit={item} />}
@@ -211,6 +223,7 @@ const styles = StyleSheet.create({
   bannerText: {
     color: "rgba(226,232,240,0.9)",
     fontWeight: "700",
+    flex: 1,
   },
   unitPress: { width: "100%" },
   unitCard: {
@@ -255,25 +268,4 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.8)",
   },
   rightIcon: { width: 28, alignItems: "flex-end" },
-  vocabBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.s(1.5),
-    padding: theme.s(2),
-    borderRadius: theme.r.xl,
-    backgroundColor: "rgba(124,58,237,0.18)",
-    borderWidth: 1,
-    borderColor: "rgba(124,58,237,0.35)",
-  },
-  vocabBtnTitle: {
-    color: "white",
-    fontWeight: "800",
-    fontSize: 14,
-  },
-  vocabBtnSub: {
-    color: theme.colors.muted,
-    fontSize: 12,
-    fontWeight: "700",
-    marginTop: 4,
-  },
 });

@@ -16,6 +16,11 @@ import { theme } from "../ui/theme";
 
 const emailRegex = /\S+@\S+\.\S+/;
 
+type RegisterResponse = {
+  token?: string;
+  user?: unknown;
+};
+
 export default function RegisterScreen() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -59,11 +64,11 @@ export default function RegisterScreen() {
     if (Object.keys(next).length > 0) return;
 
     try {
-      const { data } = await api.post("/auth/register", {
+      const { data } = (await api.post("/auth/register", {
         name,
         email,
         password,
-      });
+      })) as { data: RegisterResponse };
 
       if (data.token) await AsyncStorage.setItem("token", data.token);
       if (data.user)

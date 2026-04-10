@@ -26,8 +26,9 @@ export const api = axios.create({
   timeout: 10000,
 });
 
-api.interceptors.request.use(async (config) => {
+api.interceptors.request.use(async (config: any) => {
   const token = await AsyncStorage.getItem("token");
+  config.headers = config.headers ?? {};
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });

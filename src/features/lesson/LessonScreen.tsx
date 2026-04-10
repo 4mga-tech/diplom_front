@@ -1,31 +1,47 @@
+import {
+  completeLesson,
+  fetchLessonDetail,
+  LessonContentItem,
+  LessonDetail,
+} from "@/lib/learning";
 import { theme } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { router, useLocalSearchParams } from "expo-router";
-import React, { useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import Animated, {
-    FadeIn,
-    SlideInLeft,
-    SlideInRight,
-    SlideOutLeft,
-    SlideOutRight,
-    useAnimatedStyle,
-    withTiming,
-} from "react-native-reanimated";
-import { getVocabularyByLevel } from "../../data/vocabulary";
+import {
+  router,
+  useFocusEffect,
+  useLocalSearchParams,
+  useNavigation,
+} from "expo-router";
+import React, { useCallback, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
 
 function PrimaryButton({
   label,
   onPress,
+  disabled,
 }: {
   label: string;
   onPress: () => void;
+  disabled?: boolean;
 }) {
   return (
     <Pressable
+      disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.primaryBtn, pressed && { opacity: 0.92 }]}
+      style={({ pressed }) => [
+        styles.primaryBtn,
+        pressed && !disabled && { opacity: 0.92 },
+        disabled && { opacity: 0.55 },
+      ]}
     >
       <LinearGradient
         colors={["#2563EB", "#7C3AED"]}
@@ -60,66 +76,157 @@ function SecondaryButton({
 }
 
 export default function LessonScreen() {
-  const { levelId, letter } = useLocalSearchParams<{
+  const { lessonId, levelId, unitId } = useLocalSearchParams<{
+    lessonId?: string;
     levelId?: string;
-    letter?: string;
+    unitId?: string;
   }>();
-  const safeLevelId = levelId ?? "M1";
-  const raw = getVocabularyByLevel(levelId ?? "M1");
-  const group = raw.find((g: any) => g.letter === letter);
+  const navigation = useNavigation();
+  const [lesson, setLesson] = useState<LessonDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [completionMessage, setCompletionMessage] = useState<string | null>(
+    null,
+  );
 
-  const vocabulary = group?.words ?? [];
-  const LESSONS = useMemo(() => {
-    return vocabulary.map((w: any) => ({
-      mongolian: w.word,
-      transliteration: "",
-      english: w.translation,
-    }));
-  }, [vocabulary]);
-
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [direction, setDirection] = useState<1 | -1>(1);
-
-  const current = LESSONS[currentIndex];
-  const isLast = currentIndex === LESSONS.length - 1;
-
-  const progressPct =
-    LESSONS.length > 0 ? ((currentIndex + 1) / LESSONS.length) * 100 : 0;
-  const progressStyle = useAnimatedStyle(() => ({
-    width: withTiming(`${progressPct}%`, { duration: 280 }),
-  }));
-
-  const goNext = () => {
-    if (isLast) {
-      // router.push("/courses");
-      router.push("/");
+  const loadLesson = useCallback(async () => {
+    if (!lessonId) {
+      setLoading(false);
+      setError("Lesson not found.");
       return;
     }
-    setDirection(1);
-    setCurrentIndex((p) => p + 1);
+
+    setLoading(true);
+    try {
+      const data = await fetchLessonDetail(lessonId);
+      setLesson(data);
+      setError(data ? null : "Lesson not found.");
+    } catch (loadError) {
+      console.log("Error loading lesson:", loadError);
+      setError("We could not load this lesson right now.");
+    } finally {
+      setLoading(false);
+    }
+  }, [lessonId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadLesson();
+    }, [loadLesson]),
+  );
+
+  const goBackToLessons = () => {
+    if (navigation.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    if (levelId && unitId) {
+      router.replace({
+        pathname: "/units/[levelId]/[unitId]",
+        params: { levelId, unitId },
+      });
+      return;
+    }
+
+    router.replace("/");
   };
 
-  const goPrev = () => {
-    if (currentIndex <= 0) return;
-    setDirection(-1);
-    setCurrentIndex((p) => p - 1);
+  const handleCompleteLesson = async () => {
+    if (!lessonId || !lesson || lesson.isCompleted) return;
+
+    setSubmitting(true);
+    setCompletionMessage(null);
+
+    try {
+      const result = await completeLesson(lessonId);
+      const xpGained = Number(result?.xpGained ?? lesson.xpReward ?? 0);
+
+      setLesson((current) =>
+        current
+          ? {
+              ...current,
+              isCompleted: true,
+            }
+          : current,
+      );
+      setCompletionMessage(
+        xpGained > 0
+          ? `Lesson complete. You earned ${xpGained} XP.`
+          : "Lesson complete.",
+      );
+    } catch (submitError) {
+      console.log("Error completing lesson:", submitError);
+      setCompletionMessage("We could not complete the lesson right now.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const playAudio = () => {
-    console.log("Play audio:", current.mongolian);
+  const renderContent = (item: LessonContentItem) => {
+    if (item.type === "video") {
+      return (
+        <View key={item.id} style={styles.contentCard}>
+          <Text style={styles.contentLabel}>Video</Text>
+          <Text style={styles.contentTitle}>{item.title || "Lesson video"}</Text>
+          <Text style={styles.contentBody}>
+            {item.content.videoUrl || "Video URL will be provided by the backend."}
+          </Text>
+        </View>
+      );
+    }
+
+    if (item.type === "quiz") {
+      return (
+        <View key={item.id} style={styles.contentCard}>
+          <Text style={styles.contentLabel}>Quiz</Text>
+          <Text style={styles.contentTitle}>{item.title || "Lesson quiz"}</Text>
+          <Text style={styles.contentBody}>
+            Finish the lesson, then open the quiz flow once your backend quiz endpoint is ready.
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View key={item.id} style={styles.contentCard}>
+        <Text style={styles.contentLabel}>Reading</Text>
+        <Text style={styles.contentTitle}>{item.title || "Lesson notes"}</Text>
+        <Text style={styles.contentBody}>
+          {item.content.text || "Lesson text will appear here."}
+        </Text>
+      </View>
+    );
   };
 
-  const entering =
-    direction > 0 ? SlideInRight.duration(280) : SlideInLeft.duration(280);
-  const exiting =
-    direction > 0 ? SlideOutLeft.duration(220) : SlideOutRight.duration(220);
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.centerState}>
+          <ActivityIndicator color="white" />
+          <Text style={styles.stateText}>Loading lesson...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (!lesson) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.centerState}>
+          <Text style={styles.stateText}>{error || "Lesson not found."}</Text>
+          <SecondaryButton label="Back" onPress={goBackToLessons} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Pressable
-          // onPress={() => router.push("/courses")}
-          onPress={() => router.push("/")}
+          onPress={goBackToLessons}
           style={({ pressed }) => [
             styles.headerBtn,
             pressed && { opacity: 0.75 },
@@ -128,15 +235,10 @@ export default function LessonScreen() {
           <Ionicons name="chevron-back" size={22} color={theme.colors.muted} />
         </Pressable>
 
-        <View style={styles.progressWrap}>
-          <View style={styles.progressTrack}>
-            <Animated.View style={[styles.progressFill, progressStyle]} />
-          </View>
-        </View>
+        <View style={styles.progressWrap} />
 
         <Pressable
-          // onPress={() => router.push("/courses")}
-          onPress={() => router.push("/")}
+          onPress={goBackToLessons}
           style={({ pressed }) => [
             styles.headerBtn,
             pressed && { opacity: 0.75 },
@@ -148,17 +250,16 @@ export default function LessonScreen() {
 
       <Animated.View entering={FadeIn.duration(250)} style={styles.counter}>
         <Text style={styles.counterText}>
-          Lesson {currentIndex + 1} / {LESSONS.length}
+          {lesson.isCompleted ? "Completed lesson" : "Ready to learn"}
         </Text>
       </Animated.View>
 
-      <View style={styles.center}>
-        <Animated.View
-          key={currentIndex}
-          entering={entering}
-          exiting={exiting}
-          style={styles.card}
-        >
+      <ScrollView
+        style={styles.center}
+        contentContainerStyle={{ paddingBottom: theme.s(2) }}
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View entering={FadeIn.duration(280)} style={styles.card}>
           <LinearGradient
             colors={["rgba(37,99,235,0.25)", "rgba(124,58,237,0.22)"]}
             style={styles.glow}
@@ -166,47 +267,62 @@ export default function LessonScreen() {
 
           <View style={styles.cardInner}>
             <View style={styles.block}>
-              <Text style={styles.label}>mongolian</Text>
-              <Text style={styles.mn}>{current.mongolian}</Text>
+              <Text style={styles.label}>Lesson title</Text>
+              <Text style={styles.mn}>{lesson.title}</Text>
             </View>
 
             <View style={styles.block}>
-              <Text style={styles.label}>pronunciation</Text>
-              <Text style={styles.translit}>/{current.transliteration}/</Text>
+              <Text style={styles.label}>Lesson goal</Text>
+              <Text style={styles.translit}>
+                {lesson.subtitle || "Work through the lesson content below."}
+              </Text>
             </View>
 
-            <View style={styles.block}>
-              <Text style={styles.label}>tranlation</Text>
-              <Text style={styles.en}>{current.english}</Text>
+            <View style={styles.metaRow}>
+              <View style={styles.metaPill}>
+                <Ionicons name="flash" size={14} color="#FACC15" />
+                <Text style={styles.metaText}>{lesson.xpReward} XP</Text>
+              </View>
+              <View style={styles.metaPill}>
+                <Ionicons
+                  name={lesson.isCompleted ? "checkmark-circle" : "lock-open-outline"}
+                  size={14}
+                  color={lesson.isCompleted ? "#4ADE80" : "#93C5FD"}
+                />
+                <Text style={styles.metaText}>
+                  {lesson.isCompleted ? "Completed" : "Unlocked"}
+                </Text>
+              </View>
             </View>
-
-            {/* Audio  */}
-            <Pressable
-              onPress={playAudio}
-              style={({ pressed }) => [
-                styles.audioBtnWrap,
-                pressed && { transform: [{ scale: 0.97 }] },
-              ]}
-            >
-              <LinearGradient
-                colors={["#2563EB", "#7C3AED"]}
-                start={{ x: 0, y: 0.5 }}
-                end={{ x: 1, y: 0.5 }}
-                style={styles.audioBtn}
-              >
-                <Ionicons name="volume-high" size={28} color="white" />
-              </LinearGradient>
-            </Pressable>
           </View>
         </Animated.View>
-      </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Lesson content</Text>
+          {lesson.contents.map(renderContent)}
+        </View>
+
+        {completionMessage ? (
+          <View
+            style={[
+              styles.feedbackCard,
+              completionMessage.includes("could not")
+                ? styles.feedbackError
+                : styles.feedbackSuccess,
+            ]}
+          >
+            <Text style={styles.feedbackText}>{completionMessage}</Text>
+          </View>
+        ) : null}
+      </ScrollView>
 
       <Animated.View entering={FadeIn.duration(300)} style={styles.bottom}>
-        {currentIndex > 0 && (
-          <SecondaryButton label="Previous" onPress={goPrev} />
-        )}
-
-        <PrimaryButton label={isLast ? "End" : "Next"} onPress={goNext} />
+        <SecondaryButton label="Back to lessons" onPress={goBackToLessons} />
+        <PrimaryButton
+          label={lesson.isCompleted ? "Completed" : "Complete lesson"}
+          onPress={handleCompleteLesson}
+          disabled={submitting || lesson.isCompleted}
+        />
       </Animated.View>
     </View>
   );
@@ -220,7 +336,6 @@ const styles = StyleSheet.create({
     paddingTop: theme.s(6),
     paddingBottom: theme.s(4),
   },
-
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -235,23 +350,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   progressWrap: { flex: 1 },
-  progressTrack: {
-    height: 10,
-    borderRadius: 999,
-    backgroundColor: "rgba(30,41,59,0.75)",
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.85)",
-  },
-
   counter: { alignItems: "center", marginBottom: theme.s(2) },
   counterText: { color: theme.colors.muted, fontSize: 12, fontWeight: "700" },
-
-  center: { flex: 1, justifyContent: "center" },
-
+  centerState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: theme.s(1.5),
+  },
+  stateText: {
+    color: theme.colors.muted,
+    fontSize: 14,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  center: { flex: 1 },
   card: {
     borderRadius: 26,
     borderWidth: 1,
@@ -271,9 +384,9 @@ const styles = StyleSheet.create({
   cardInner: {
     padding: theme.s(4),
     gap: theme.s(3),
-    alignItems: "center",
+    alignItems: "flex-start",
   },
-  block: { alignItems: "center", gap: 8 },
+  block: { gap: 8, width: "100%" },
   label: {
     color: "rgba(148,163,184,0.65)",
     fontSize: 11,
@@ -281,35 +394,71 @@ const styles = StyleSheet.create({
     letterSpacing: 1.1,
     textTransform: "uppercase",
   },
-  mn: { color: "white", fontSize: 36, fontWeight: "800", textAlign: "center" },
+  mn: { color: "white", fontSize: 30, fontWeight: "800" },
   translit: {
-    color: "#60A5FA",
-    fontSize: 20,
-    fontStyle: "italic",
+    color: "rgba(226,232,240,0.9)",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  metaRow: {
+    flexDirection: "row",
+    gap: theme.s(1),
+    flexWrap: "wrap",
+  },
+  metaPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(15,23,42,0.55)",
+    borderWidth: 1,
+    borderColor: "rgba(51,65,85,0.55)",
+  },
+  metaText: { color: "white", fontSize: 12, fontWeight: "800" },
+  section: { marginTop: theme.s(3), gap: theme.s(1.5) },
+  sectionTitle: { color: "white", fontSize: 17, fontWeight: "900" },
+  contentCard: {
+    borderRadius: theme.r.xl,
+    borderWidth: 1,
+    borderColor: "rgba(51,65,85,0.55)",
+    backgroundColor: "rgba(15,23,42,0.65)",
+    padding: theme.s(2),
+    gap: 8,
+  },
+  contentLabel: {
+    color: "rgba(148,163,184,0.7)",
+    fontSize: 11,
+    fontWeight: "800",
+    textTransform: "uppercase",
+  },
+  contentTitle: { color: "white", fontSize: 15, fontWeight: "800" },
+  contentBody: {
+    color: "rgba(226,232,240,0.9)",
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  feedbackCard: {
+    marginTop: theme.s(2),
+    padding: theme.s(2),
+    borderRadius: theme.r.xl,
+    borderWidth: 1,
+  },
+  feedbackSuccess: {
+    backgroundColor: "rgba(20,83,45,0.25)",
+    borderColor: "rgba(34,197,94,0.35)",
+  },
+  feedbackError: {
+    backgroundColor: "rgba(127,29,29,0.2)",
+    borderColor: "rgba(248,113,113,0.28)",
+  },
+  feedbackText: {
+    color: "white",
+    fontSize: 13,
     fontWeight: "700",
   },
-  en: {
-    color: "rgba(226,232,240,0.9)",
-    fontSize: 18,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-
-  audioBtnWrap: { marginTop: theme.s(1) },
-  audioBtn: {
-    width: 76,
-    height: 76,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#2563EB",
-    shadowOpacity: 0.35,
-    shadowRadius: 18,
-    elevation: 10,
-  },
-
   bottom: { gap: theme.s(1.5), marginTop: theme.s(2) },
-
   primaryBtn: { borderRadius: theme.r.xl, overflow: "hidden" },
   primaryGrad: {
     paddingVertical: theme.s(2),
@@ -317,7 +466,6 @@ const styles = StyleSheet.create({
     borderRadius: theme.r.xl,
   },
   primaryText: { color: "white", fontSize: 16, fontWeight: "900" },
-
   secondaryBtn: {
     paddingVertical: theme.s(2),
     alignItems: "center",

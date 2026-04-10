@@ -17,6 +17,11 @@ import { theme } from "../ui/theme";
 
 const emailRegex = /\S+@\S+\.\S+/;
 
+type LoginResponse = {
+  token?: string;
+  user?: unknown;
+};
+
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,14 +49,15 @@ export default function LoginScreen() {
 
     if (Object.keys(next).length === 0) {
       try {
-        const { data } = await api.post("/auth/login", {
+        const { data } = (await api.post("/auth/login", {
           email,
           password,
-        });
+        })) as { data: LoginResponse };
 
         await AsyncStorage.setItem("registered", "true");
-        await AsyncStorage.setItem("token", data.token);
-        await AsyncStorage.setItem("user", JSON.stringify(data.user));
+        if (data.token) await AsyncStorage.setItem("token", data.token);
+        if (data.user)
+          await AsyncStorage.setItem("user", JSON.stringify(data.user));
 
         router.replace("/(tabs)");
       } catch (err: any) {

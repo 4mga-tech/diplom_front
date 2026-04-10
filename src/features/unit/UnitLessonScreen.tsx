@@ -1,21 +1,33 @@
+import { fetchUnitLessons, LessonListItem } from "@/lib/learning";
+import { getLevelById, LevelId, Unit, UNITS } from "@/src/data/curriculum";
+import { theme } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { router, useLocalSearchParams } from "expo-router";
-import React, { useMemo } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-
 import {
-    getLevelById,
-    Lesson,
-    LESSONS,
-    LevelId,
-    Unit,
-    UNITS,
-} from "@/src/data/curriculum";
-import { theme } from "@/src/ui/theme";
+  router,
+  useFocusEffect,
+  useLocalSearchParams,
+  useNavigation,
+} from "expo-router";
+import React, { useCallback, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-function LessonRow({ lesson, levelId }: { lesson: Lesson; levelId: string }) {
-  const locked = !!lesson.locked;
+function LessonRow({
+  lesson,
+  levelId,
+}: {
+  lesson: LessonListItem;
+  levelId: string;
+}) {
+  const locked = !lesson.isUnlocked;
 
   return (
     <Pressable
@@ -41,7 +53,7 @@ function LessonRow({ lesson, levelId }: { lesson: Lesson; levelId: string }) {
         style={styles.lessonCard}
       >
         <View style={styles.leftIcon}>
-          {lesson.done ? (
+          {lesson.isCompleted ? (
             <Ionicons name="checkmark-circle" size={20} color="#22C55E" />
           ) : locked ? (
             <Ionicons name="lock-closed" size={18} color={theme.colors.muted} />
@@ -57,7 +69,7 @@ function LessonRow({ lesson, levelId }: { lesson: Lesson; levelId: string }) {
 
         <View style={styles.xpPill}>
           <Ionicons name="flash" size={14} color="#FACC15" />
-          <Text style={styles.xpText}>{lesson.xp} XP</Text>
+          <Text style={styles.xpText}>{lesson.xpReward} XP</Text>
         </View>
       </LinearGradient>
     </Pressable>
@@ -69,6 +81,11 @@ export default function UnitLessonsScreen() {
     levelId?: string;
     unitId?: string;
   }>();
+  const navigation = useNavigation();
+  const [lessons, setLessons] = useState<LessonListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   if (!unitId || !levelId) {
     return (
@@ -89,27 +106,64 @@ export default function UnitLessonsScreen() {
       </View>
     );
   }
+
   const unitMeta = useMemo<Unit | undefined>(
     () => UNITS.find((u) => u.id === safeUnitId),
     [safeUnitId],
   );
 
-  const lessons = useMemo(
-    () => LESSONS.filter((l) => l.unitId === safeUnitId),
+  const loadLessons = useCallback(
+    async (isRefresh = false) => {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      try {
+        const nextLessons = await fetchUnitLessons(safeUnitId);
+        setLessons(nextLessons);
+        setLoadError(null);
+      } catch (error) {
+        console.log("Error loading unit lessons:", error);
+        setLoadError("We could not refresh lessons right now.");
+      } finally {
+        setRefreshing(false);
+        setLoading(false);
+      }
+    },
     [safeUnitId],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadLessons();
+    }, [loadLessons]),
   );
 
   const progress = useMemo(() => {
     if (!lessons.length) return 0;
-    const done = lessons.filter((l) => l.done).length;
-    return Math.round((done / lessons.length) * 100);
+    const completed = lessons.filter((lesson) => lesson.isCompleted).length;
+    return Math.round((completed / lessons.length) * 100);
   }, [lessons]);
+
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace({
+      pathname: "/units/[levelId]",
+      params: { levelId: safeLevelId },
+    });
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={handleBack}
           style={({ pressed }) => [
             styles.backBtn,
             pressed && { opacity: 0.75 },
@@ -121,7 +175,7 @@ export default function UnitLessonsScreen() {
         <View style={{ flex: 1 }}>
           <Text style={styles.h1}>{unitMeta?.title ?? "Course Package"}</Text>
           <Text style={styles.h2}>
-            {levelMeta.title} Â· {progress}% ended
+            {levelMeta.title} · {progress}% complete
           </Text>
         </View>
 
@@ -142,26 +196,52 @@ export default function UnitLessonsScreen() {
       >
         <Ionicons name="sparkles" size={18} color="#A78BFA" />
         <Text style={styles.bannerText}>
-          Begin with the simple one, then unlock it{" "}
+          Start with the first unlocked lesson and the backend will unlock the next one for you.
         </Text>
       </LinearGradient>
 
-      <FlatList
-        data={lessons}
-        keyExtractor={(l) => l.id}
-        contentContainerStyle={{ paddingBottom: theme.s(4) }}
-        ItemSeparatorComponent={() => <View style={{ height: theme.s(1.5) }} />}
-        renderItem={({ item }) => (
-          <LessonRow lesson={item} levelId={safeLevelId} />
-        )}
-        ListEmptyComponent={
-          <View style={{ marginTop: theme.s(4), alignItems: "center" }}>
-            <Text style={{ color: theme.colors.muted }}>
-              No lessons available in this package yet.{" "}
-            </Text>
-          </View>
-        }
-      />
+      {loading ? (
+        <View style={styles.stateWrap}>
+          <ActivityIndicator color="white" />
+          <Text style={styles.stateText}>Loading lessons...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={lessons}
+          keyExtractor={(lesson) => lesson.id}
+          contentContainerStyle={{ paddingBottom: theme.s(4) }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => void loadLessons(true)}
+              tintColor="white"
+            />
+          }
+          ItemSeparatorComponent={() => <View style={{ height: theme.s(1.5) }} />}
+          renderItem={({ item }) => (
+            <LessonRow lesson={item} levelId={safeLevelId} />
+          )}
+          ListHeaderComponent={
+            loadError ? (
+              <View style={styles.errorBanner}>
+                <Ionicons
+                  name="cloud-offline-outline"
+                  size={16}
+                  color="#FDE68A"
+                />
+                <Text style={styles.errorText}>{loadError}</Text>
+              </View>
+            ) : null
+          }
+          ListEmptyComponent={
+            <View style={{ marginTop: theme.s(4), alignItems: "center" }}>
+              <Text style={{ color: theme.colors.muted }}>
+                No lessons available in this package yet.
+              </Text>
+            </View>
+          }
+        />
+      )}
     </View>
   );
 }
@@ -173,7 +253,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.s(3),
     paddingTop: theme.s(6),
   },
-
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -207,7 +286,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginTop: 4,
   },
-
   banner: {
     flexDirection: "row",
     alignItems: "center",
@@ -219,7 +297,34 @@ const styles = StyleSheet.create({
     marginBottom: theme.s(2.5),
   },
   bannerText: { color: "rgba(226,232,240,0.9)", fontWeight: "700", flex: 1 },
-
+  stateWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: theme.s(1.5),
+  },
+  stateText: {
+    color: theme.colors.muted,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.s(1),
+    backgroundColor: "rgba(120,53,15,0.28)",
+    borderColor: "rgba(245,158,11,0.35)",
+    borderWidth: 1,
+    padding: theme.s(1.5),
+    borderRadius: theme.r.lg,
+    marginBottom: theme.s(2),
+  },
+  errorText: {
+    color: "#FDE68A",
+    fontSize: 12,
+    fontWeight: "700",
+    flex: 1,
+  },
   lessonPress: { width: "100%" },
   lessonCard: {
     borderRadius: theme.r.xl,
@@ -247,7 +352,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginTop: 4,
   },
-
   xpPill: {
     flexDirection: "row",
     alignItems: "center",

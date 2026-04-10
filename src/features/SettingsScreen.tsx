@@ -3,8 +3,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import React, { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, {
-    useAnimatedStyle,
-    withSpring,
+  useAnimatedStyle,
+  withSpring,
 } from "react-native-reanimated";
 import { theme } from "../ui/theme";
 
@@ -64,18 +64,25 @@ function SettingRow({
   title,
   subtitle,
   right,
+  accent,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   iconColor: string;
   title: string;
   subtitle?: string;
   right?: React.ReactNode;
+  accent?: string;
 }) {
   return (
     <Card>
       <View style={styles.row}>
         <View style={styles.left}>
-          <View style={styles.iconBox}>
+          <View
+            style={[
+              styles.iconBox,
+              accent ? { backgroundColor: accent, borderColor: accent } : null,
+            ]}
+          >
             <Ionicons name={icon} size={18} color={iconColor} />
           </View>
           <View style={{ flex: 1 }}>
@@ -89,22 +96,35 @@ function SettingRow({
   );
 }
 
+function Pill({
+  label,
+  active = false,
+}: {
+  label: string;
+  active?: boolean;
+}) {
+  return (
+    <View style={[styles.pill, active && styles.pillActive]}>
+      <Text style={[styles.pillText, active && styles.pillTextActive]}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 export default function SettingsScreen() {
-  // const [notifications, setNotifications] = useState(true);
   const [sound, setSound] = useState(true);
-  // const [darkMode, setDarkMode] = useState(true);
+  const [dailyReminder, setDailyReminder] = useState(true);
+  const [autoPlay, setAutoPlay] = useState(false);
+  const [downloadWifiOnly, setDownloadWifiOnly] = useState(true);
 
   return (
     <View style={styles.container}>
       <LinearGradient colors={["#2563EB", "#7C3AED"]} style={styles.header}>
-        {/* Centered title + optional icon */}
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Settings</Text>
-          {/* Хүсвэл icon нэмэх */}
-          {/* <Ionicons name="settings-outline" size={24} color="white" /> */}
         </View>
 
-        {/* Right placeholder for spacing */}
         <View style={{ width: 44, height: 44 }} />
       </LinearGradient>
       <ScrollView
@@ -112,98 +132,174 @@ export default function SettingsScreen() {
         contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 16 }}
         showsVerticalScrollIndicator={false}
       >
+        <LinearGradient
+          colors={["rgba(37,99,235,0.28)", "rgba(124,58,237,0.16)"]}
+          style={styles.heroCard}
+        >
+          <View style={styles.heroHeader}>
+            <View style={styles.heroIcon}>
+              <Ionicons name="sparkles-outline" size={18} color="#BFDBFE" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.heroTitle}>Make learning fit your day</Text>
+              <Text style={styles.heroSub}>
+                Tune reminders, audio, and study pace for a smoother routine.
+              </Text>
+            </View>
+          </View>
+          <View style={styles.heroPills}>
+            <Pill label="Daily goal: 5 lessons" active />
+            <Pill label="Voice practice" active={sound} />
+            <Pill label="Reminder at 8:00 PM" active={dailyReminder} />
+          </View>
+        </LinearGradient>
+
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Preferences</Text>
+          <Text style={styles.sectionCaption}>
+            Personalize lesson playback and reminders
+          </Text>
           <View style={styles.stack}>
-            {/* <SettingRow
+            <SettingRow
+              icon="volume-high"
+              iconColor="#A78BFA"
+              title="Voice guidance"
+              subtitle="Play pronunciation support during lessons"
+              right={
+                <ToggleSwitch
+                  enabled={sound}
+                  onChange={() => setSound((v) => !v)}
+                />
+              }
+              accent="rgba(167,139,250,0.14)"
+            />
+            <SettingRow
               icon="notifications"
               iconColor="#60A5FA"
-              title="notif"
-              subtitle="daily notification"
+              title="Daily reminder"
+              subtitle="Get a study nudge every evening"
               right={
                 <ToggleSwitch
-                  enabled={notifications}
-                  onChange={() => setNotifications((v) => !v)}
+                  enabled={dailyReminder}
+                  onChange={() => setDailyReminder((v) => !v)}
                 />
               }
-            /> */}
-            <SettingRow
-              icon="volume-high"
-              iconColor="#A78BFA"
-              title="voice"
-              subtitle="voice eff"
-              right={
-                <ToggleSwitch
-                  enabled={sound}
-                  onChange={() => setSound((v) => !v)}
-                />
-              }
+              accent="rgba(96,165,250,0.14)"
             />
             <SettingRow
-              icon="volume-high"
-              iconColor="#A78BFA"
-              title="voice"
-              subtitle="voice eff"
+              icon="play-circle"
+              iconColor="#34D399"
+              title="Auto-play examples"
+              subtitle="Play sentence examples right after each answer"
               right={
                 <ToggleSwitch
-                  enabled={sound}
-                  onChange={() => setSound((v) => !v)}
+                  enabled={autoPlay}
+                  onChange={() => setAutoPlay((v) => !v)}
                 />
               }
+              accent="rgba(52,211,153,0.14)"
             />
             <SettingRow
-              icon="volume-high"
-              iconColor="#A78BFA"
-              title="voice"
-              subtitle="voice eff"
+              icon="download"
+              iconColor="#FBBF24"
+              title="Download on Wi-Fi only"
+              subtitle="Save mobile data when caching lesson audio"
               right={
                 <ToggleSwitch
-                  enabled={sound}
-                  onChange={() => setSound((v) => !v)}
+                  enabled={downloadWifiOnly}
+                  onChange={() => setDownloadWifiOnly((v) => !v)}
                 />
               }
+              accent="rgba(251,191,36,0.14)"
             />
-            {/* <SettingRow
-              icon="moon"
-              iconColor="#818CF8"
-              title="dark mode"
-              subtitle={darkMode ? "on" : "off"}
-              right={
-                <ToggleSwitch
-                  enabled={darkMode}
-                  onChange={() => setDarkMode((v) => !v)}
-                />
-              }
-            /> */}
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Learn</Text>
+          <Text style={styles.sectionTitle}>Study plan</Text>
+          <Text style={styles.sectionCaption}>
+            Keep your goals visible and easy to adjust
+          </Text>
           <View style={styles.stack}>
+            <SettingRow
+              icon="flag"
+              iconColor="#4ADE80"
+              title="Daily goal"
+              subtitle="5 lessons per day"
+              right={<Pill label="On track" active />}
+              accent="rgba(74,222,128,0.14)"
+            />
+            <SettingRow
+              icon="repeat"
+              iconColor="#F97316"
+              title="Review mode"
+              subtitle="Mixed practice after each completed unit"
+              right={<Pill label="Smart review" active />}
+              accent="rgba(249,115,22,0.14)"
+            />
             <SettingRow
               icon="globe"
               iconColor="#4ADE80"
-              title="language"
-              subtitle="mongolia"
-              right={<Ionicons name="checkmark" size={18} color="#4ADE80" />}
+              title="Learning language"
+              subtitle="Mongolian basics"
+              right={
+                <Ionicons
+                  name="checkmark-circle"
+                  size={18}
+                  color="#4ADE80"
+                />
+              }
+              accent="rgba(74,222,128,0.14)"
             />
             <SettingRow
               icon="phone-portrait"
               iconColor="#FB923C"
-              title="daily goal"
-              subtitle="5 lesson / day"
+              title="Practice pace"
+              subtitle="Balanced for short daily sessions"
+              right={<Pill label="15 min" />}
+              accent="rgba(251,146,60,0.14)"
             />
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>information</Text>
-          <Card>
-            <View style={styles.about}>
-              <Text style={styles.aboutTitle}>Технологи</Text>
-              <Text style={styles.aboutSub}>Version 1.0.0</Text>
-            </View>
-          </Card>
+          <Text style={styles.sectionTitle}>Support & info</Text>
+          <Text style={styles.sectionCaption}>
+            A quick view of app details and your setup
+          </Text>
+          <View style={styles.stack}>
+            <Card>
+              <View style={styles.about}>
+                <View style={styles.aboutIcon}>
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={22}
+                    color="#93C5FD"
+                  />
+                </View>
+                <Text style={styles.aboutTitle}>Monlanguage mobile</Text>
+                <Text style={styles.aboutSub}>
+                  Version 1.0.0 • Personalized daily learning
+                </Text>
+              </View>
+            </Card>
+            <Card>
+              <View style={styles.quickFacts}>
+                <View style={styles.quickFact}>
+                  <Text style={styles.quickFactLabel}>Reminder time</Text>
+                  <Text style={styles.quickFactValue}>8:00 PM</Text>
+                </View>
+                <View style={styles.quickFact}>
+                  <Text style={styles.quickFactLabel}>Audio quality</Text>
+                  <Text style={styles.quickFactValue}>High</Text>
+                </View>
+                <View style={styles.quickFact}>
+                  <Text style={styles.quickFactLabel}>Offline lessons</Text>
+                  <Text style={styles.quickFactValue}>12 saved</Text>
+                </View>
+              </View>
+            </Card>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -239,8 +335,54 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
     marginBottom: theme.s(1.5),
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  sectionCaption: {
+    color: "#CBD5E1",
+    fontSize: 13,
+    marginBottom: theme.s(1.5),
   },
   stack: { gap: theme.s(1.5) },
+  heroCard: {
+    borderRadius: 26,
+    padding: theme.s(2.5),
+    marginVertical: theme.s(3),
+    borderWidth: 1,
+    borderColor: "rgba(96,165,250,0.18)",
+  },
+  heroHeader: {
+    flexDirection: "row",
+    gap: theme.s(1.5),
+    alignItems: "flex-start",
+  },
+  heroIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(148,163,184,0.16)",
+    borderWidth: 1,
+    borderColor: "rgba(191,219,254,0.18)",
+  },
+  heroTitle: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  heroSub: {
+    color: "#CBD5E1",
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 6,
+  },
+  heroPills: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: theme.s(2),
+  },
   card: {
     borderRadius: theme.r.xl,
     borderWidth: 1,
@@ -294,7 +436,36 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 6,
   },
+  pill: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(51,65,85,0.45)",
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.18)",
+  },
+  pillActive: {
+    backgroundColor: "rgba(37,99,235,0.18)",
+    borderColor: "rgba(96,165,250,0.28)",
+  },
+  pillText: {
+    color: "#CBD5E1",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  pillTextActive: {
+    color: "#DBEAFE",
+  },
   about: { alignItems: "center", paddingVertical: theme.s(1) },
+  aboutIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(37,99,235,0.14)",
+    marginBottom: 12,
+  },
   aboutTitle: {
     color: "white",
     fontSize: 14,
@@ -302,4 +473,23 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   aboutSub: { color: theme.colors.muted, fontSize: 12, fontWeight: "700" },
+  quickFacts: {
+    gap: theme.s(1.25),
+  },
+  quickFact: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 4,
+  },
+  quickFactLabel: {
+    color: "#94A3B8",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  quickFactValue: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "800",
+  },
 });

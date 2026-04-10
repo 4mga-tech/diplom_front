@@ -79,6 +79,16 @@ export const UNITS: Unit[] = [
     gradient: ["#7C3AED", "#EC4899"],
     locked: false,
   },
+  {
+    id: "m2-u1",
+    levelId: "M2",
+    title: "M2 Unit 1",
+    subtitle: "Travel, routines, and short dialogue practice",
+    lessonsCount: 3,
+    progress: 0,
+    gradient: ["#16A34A", "#14B8A6"],
+    locked: false,
+  },
 ];
 
 export const LESSONS: Lesson[] = [
@@ -102,6 +112,33 @@ export const LESSONS: Lesson[] = [
   },
   {
     id: "m2-u1-l1",
+    unitId: "m2-u1",
+    title: "Travel Vocabulary",
+    subtitle: "Useful words for stations, tickets, and directions",
+    xp: 30,
+    done: false,
+    locked: false,
+  },
+  {
+    id: "m2-u1-l2",
+    unitId: "m2-u1",
+    title: "Daily Routine Phrases",
+    subtitle: "Talk about what you do in the morning and evening",
+    xp: 35,
+    done: false,
+    locked: true,
+  },
+  {
+    id: "m2-u1-l3",
+    unitId: "m2-u1",
+    title: "Mini Conversation Drill",
+    subtitle: "Read and respond to a short real-life dialogue",
+    xp: 40,
+    done: false,
+    locked: true,
+  },
+  {
+    id: "m2-legacy-l1",
     unitId: "m1-u1",
     title: "Vocabulary Basics",
     subtitle: "M2 sentences",
@@ -110,7 +147,7 @@ export const LESSONS: Lesson[] = [
     locked: false,
   },
   {
-    id: "m3-u1-l1",
+    id: "m3-legacy-l1",
     unitId: "m1-u1",
     title: "Vocabulary Basics",
     subtitle: "M3 poetry",
