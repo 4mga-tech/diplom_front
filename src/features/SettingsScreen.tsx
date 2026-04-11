@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, {
@@ -7,7 +8,6 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { theme } from "../ui/theme";
-
 function Card({ children }: { children: React.ReactNode }) {
   return (
     <LinearGradient
@@ -96,13 +96,7 @@ function SettingRow({
   );
 }
 
-function Pill({
-  label,
-  active = false,
-}: {
-  label: string;
-  active?: boolean;
-}) {
+function Pill({ label, active = false }: { label: string; active?: boolean }) {
   return (
     <View style={[styles.pill, active && styles.pillActive]}>
       <Text style={[styles.pillText, active && styles.pillTextActive]}>
@@ -117,10 +111,13 @@ export default function SettingsScreen() {
   const [dailyReminder, setDailyReminder] = useState(true);
   const [autoPlay, setAutoPlay] = useState(false);
   const [downloadWifiOnly, setDownloadWifiOnly] = useState(true);
-
+  const router = useRouter();
   return (
     <View style={styles.container}>
       <LinearGradient colors={["#2563EB", "#7C3AED"]} style={styles.header}>
+        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={22} color="white" />
+        </Pressable>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Settings</Text>
         </View>
@@ -243,11 +240,7 @@ export default function SettingsScreen() {
               title="Learning language"
               subtitle="Mongolian basics"
               right={
-                <Ionicons
-                  name="checkmark-circle"
-                  size={18}
-                  color="#4ADE80"
-                />
+                <Ionicons name="checkmark-circle" size={18} color="#4ADE80" />
               }
               accent="rgba(74,222,128,0.14)"
             />
@@ -475,6 +468,16 @@ const styles = StyleSheet.create({
   aboutSub: { color: theme.colors.muted, fontSize: 12, fontWeight: "700" },
   quickFacts: {
     gap: theme.s(1.25),
+  },
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
   },
   quickFact: {
     flexDirection: "row",

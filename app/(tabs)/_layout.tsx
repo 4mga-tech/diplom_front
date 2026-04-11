@@ -28,6 +28,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="test"
+        options={{
+          title: "test",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="school" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: "profile",
@@ -37,7 +46,7 @@ export default function TabLayout() {
         }}
       />
 
-      <Tabs.Screen
+      {/* <Tabs.Screen
         name="settings"
         options={{
           title: "settings",
@@ -45,7 +54,7 @@ export default function TabLayout() {
             <Ionicons name="settings-outline" size={size} color={color} />
           ),
         }}
-      />
+      /> */}
     </Tabs>
   );
 }

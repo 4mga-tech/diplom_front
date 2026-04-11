@@ -3,8 +3,8 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useNavigation, useRouter } from "expo-router";
+import React, { useEffect, useLayoutEffect, useState } from "react";
 import {
   Alert,
   Image,
@@ -16,7 +16,6 @@ import {
 } from "react-native";
 import { TextInput } from "react-native-gesture-handler";
 import { theme } from "../ui/theme";
-
 type StoredUser = {
   name?: string;
   email?: string;
@@ -76,6 +75,21 @@ function InfoRow({
 }
 
 export default function ProfileScreen() {
+  const navigation = useNavigation();
+  const router = useRouter();
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable
+          onPress={() => router.push("/settings")}
+          style={{ marginRight: 10 }}
+        >
+          <Ionicons name="settings-outline" size={22} color="white" />
+        </Pressable>
+      ),
+    });
+  }, []);
   const [user, setUser] = useState<StoredUser | null>(null);
   const [stats, setStats] = useState<LearningStats>(DEFAULT_STATS);
 
@@ -116,7 +130,6 @@ export default function ProfileScreen() {
     loadStats();
   }, []);
 
-  const router = useRouter();
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
   const pickImage = async () => {
@@ -191,6 +204,19 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.heroTopRow}>
+          <View style={styles.heroBadge}>
+            <Ionicons name="sparkles" size={14} color="#93C5FD" />
+            <Text style={styles.heroBadgeText}>Profile</Text>
+          </View>
+
+          <Pressable
+            onPress={() => router.push("/settings")}
+            style={styles.settingsIcon}
+          >
+            <Ionicons name="settings-outline" size={20} color="white" />
+          </Pressable>
+        </View>
         <LinearGradient
           colors={["#172554", "#111827", "#020617"]}
           style={styles.heroCard}
@@ -421,6 +447,22 @@ const styles = StyleSheet.create({
     color: "#BFDBFE",
     fontSize: 12,
     fontWeight: "700",
+  },
+  heroTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  settingsIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(148,163,184,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.18)",
   },
   avatarBlock: {
     alignItems: "center",

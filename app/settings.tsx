@@ -1,4 +1,4 @@
 import SettingsScreen from "@/src/features/SettingsScreen";
-export default function SettingsRoute() {
+export default function Settings() {
   return <SettingsScreen />;
 }
