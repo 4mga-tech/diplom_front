@@ -1,4 +1,4 @@
-import { theme } from "@/src/ui/theme";
+import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -80,7 +80,8 @@ const REVIEW_SET: ReviewQuestion[] = [
     helper: "Think about common conversation starters.",
     options: ["True", "False"],
     correctAnswer: "True",
-    explanation: '"???? ????? ??" is a greeting similar to "Hello/How are you?"',
+    explanation:
+      '"???? ????? ??" is a greeting similar to "Hello/How are you?"',
     xpReward: 8,
   },
 ];
@@ -92,6 +93,7 @@ function OptionButton({
   disabled,
   isCorrect,
   isWrong,
+  styles,
 }: {
   label: string;
   onPress: () => void;
@@ -99,6 +101,7 @@ function OptionButton({
   disabled: boolean;
   isCorrect: boolean;
   isWrong: boolean;
+  styles: ReturnType<typeof createStyles>;
 }) {
   return (
     <Pressable
@@ -123,11 +126,18 @@ function OptionButton({
 }
 
 export default function ReviewScreen() {
+  const { theme } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const [index, setIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [answers, setAnswers] = useState<
-    { questionId: string; selected: string; correct: boolean; xpEarned: number }[]
+    {
+      questionId: string;
+      selected: string;
+      correct: boolean;
+      xpEarned: number;
+    }[]
   >([]);
 
   const current = REVIEW_SET[index];
@@ -202,7 +212,8 @@ export default function ReviewScreen() {
             <Text style={styles.resultEyebrow}>Today's Review Complete</Text>
             <Text style={styles.resultScore}>{percentage}%</Text>
             <Text style={styles.resultSummary}>
-              You got {score} out of {REVIEW_SET.length} correct and earned {totalXp} XP.
+              You got {score} out of {REVIEW_SET.length} correct and earned{" "}
+              {totalXp} XP.
             </Text>
 
             <View style={styles.resultStats}>
@@ -219,7 +230,10 @@ export default function ReviewScreen() {
 
           <ScrollView
             style={{ width: "100%" }}
-            contentContainerStyle={{ gap: theme.s(1.5), paddingBottom: theme.s(2) }}
+            contentContainerStyle={{
+              gap: theme.s(1.5),
+              paddingBottom: theme.s(2),
+            }}
             showsVerticalScrollIndicator={false}
           >
             {REVIEW_SET.map((question, questionIndex) => {
@@ -238,7 +252,9 @@ export default function ReviewScreen() {
                   <Text
                     style={[
                       styles.summaryBadge,
-                      result?.correct ? styles.summaryCorrect : styles.summaryWrong,
+                      result?.correct
+                        ? styles.summaryCorrect
+                        : styles.summaryWrong,
                     ]}
                   >
                     {result?.correct ? "Correct" : "Needs review"}
@@ -252,7 +268,10 @@ export default function ReviewScreen() {
             <Pressable style={styles.secondaryBtn} onPress={restart}>
               <Text style={styles.secondaryText}>Try Again</Text>
             </Pressable>
-            <Pressable style={styles.primaryBtn} onPress={() => router.push("/")}>
+            <Pressable
+              style={styles.primaryBtn}
+              onPress={() => router.push("/")}
+            >
               <Text style={styles.primaryText}>Finish</Text>
             </Pressable>
           </View>
@@ -303,9 +322,12 @@ export default function ReviewScreen() {
 
           <View style={styles.optionsList}>
             {current.options.map((option, optionIndex) => {
-              const isOptionCorrect = answered && option === current.correctAnswer;
+              const isOptionCorrect =
+                answered && option === current.correctAnswer;
               const isOptionWrong =
-                answered && option === selectedAnswer && option !== current.correctAnswer;
+                answered &&
+                option === selectedAnswer &&
+                option !== current.correctAnswer;
 
               return (
                 <OptionButton
@@ -316,6 +338,7 @@ export default function ReviewScreen() {
                   disabled={answered}
                   isCorrect={isOptionCorrect}
                   isWrong={isOptionWrong}
+                  styles={styles}
                 />
               );
             })}
@@ -357,273 +380,292 @@ export default function ReviewScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.bg,
-    paddingTop: theme.s(6),
-    paddingHorizontal: theme.s(3),
-    paddingBottom: theme.s(4),
-  },
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.bg,
+      paddingTop: theme.s(6),
+      paddingHorizontal: theme.s(3),
+      paddingBottom: theme.s(4),
+    },
 
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.s(2),
-  },
-  progressTrack: {
-    flex: 1,
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: "rgba(30,41,59,0.75)",
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "rgba(255,255,255,0.85)",
-  },
-  progressMeta: {
-    minWidth: 42,
-    alignItems: "flex-end",
-  },
-  progressText: {
-    color: theme.colors.muted,
-    fontSize: 12,
-    fontWeight: "800",
-  },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.s(2),
+    },
+    progressTrack: {
+      flex: 1,
+      height: 8,
+      borderRadius: 999,
+      backgroundColor: "rgba(30,41,59,0.75)",
+      overflow: "hidden",
+    },
+    progressFill: {
+      height: "100%",
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(255,255,255,0.85)" : "#4F46E5",
+    },
+    progressMeta: {
+      minWidth: 42,
+      alignItems: "flex-end",
+    },
+    progressText: {
+      color: theme.colors.muted,
+      fontSize: 12,
+      fontWeight: "800",
+    },
 
-  center: { flex: 1, justifyContent: "center" },
-  quizCard: {
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.55)",
-    padding: theme.s(3),
-    gap: theme.s(2),
-  },
-  quizHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: theme.s(2),
-  },
-  quizType: {
-    color: "rgba(191,219,254,0.95)",
-    fontSize: 12,
-    fontWeight: "900",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  },
-  xpPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "rgba(250,204,21,0.10)",
-    borderWidth: 1,
-    borderColor: "rgba(250,204,21,0.18)",
-  },
-  xpText: { color: "rgba(250,204,21,0.95)", fontWeight: "900", fontSize: 11 },
-  prompt: {
-    color: "white",
-    fontSize: 24,
-    fontWeight: "900",
-    lineHeight: 32,
-  },
-  helper: {
-    color: theme.colors.muted,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  optionsList: {
-    gap: theme.s(1.25),
-  },
-  optionBtn: {
-    borderRadius: theme.r.xl,
-    borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.55)",
-    backgroundColor: "rgba(15,23,42,0.72)",
-    paddingHorizontal: theme.s(2),
-    paddingVertical: theme.s(1.75),
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: theme.s(1.5),
-  },
-  optionBtnSelected: {
-    borderColor: "rgba(96,165,250,0.75)",
-    backgroundColor: "rgba(37,99,235,0.18)",
-  },
-  optionBtnCorrect: {
-    borderColor: "rgba(74,222,128,0.55)",
-    backgroundColor: "rgba(20,83,45,0.28)",
-  },
-  optionBtnWrong: {
-    borderColor: "rgba(248,113,113,0.45)",
-    backgroundColor: "rgba(127,29,29,0.25)",
-  },
-  optionText: {
-    color: "white",
-    fontSize: 15,
-    fontWeight: "700",
-    flex: 1,
-  },
-  feedbackCard: {
-    borderRadius: theme.r.xl,
-    borderWidth: 1,
-    padding: theme.s(2),
-    gap: 6,
-  },
-  feedbackCorrect: {
-    backgroundColor: "rgba(20,83,45,0.25)",
-    borderColor: "rgba(34,197,94,0.35)",
-  },
-  feedbackWrong: {
-    backgroundColor: "rgba(127,29,29,0.2)",
-    borderColor: "rgba(248,113,113,0.28)",
-  },
-  feedbackTitle: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "900",
-  },
-  feedbackBody: {
-    color: "rgba(226,232,240,0.9)",
-    fontSize: 13,
-    lineHeight: 20,
-  },
+    center: { flex: 1, justifyContent: "center" },
+    quizCard: {
+      borderRadius: 28,
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(51,65,85,0.55)"
+          : "rgba(148,163,184,0.18)",
+      padding: theme.s(3),
+      gap: theme.s(2),
+    },
+    quizHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: theme.s(2),
+    },
+    quizType: {
+      color: "rgba(191,219,254,0.95)",
+      fontSize: 12,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+    },
+    xpPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      backgroundColor: "rgba(250,204,21,0.10)",
+      borderWidth: 1,
+      borderColor: "rgba(250,204,21,0.18)",
+    },
+    xpText: { color: "rgba(250,204,21,0.95)", fontWeight: "900", fontSize: 11 },
+    prompt: {
+      color: theme.colors.text,
+      fontSize: 24,
+      fontWeight: "900",
+      lineHeight: 32,
+    },
+    helper: {
+      color: theme.colors.muted,
+      fontSize: 13,
+      fontWeight: "700",
+    },
+    optionsList: {
+      gap: theme.s(1.25),
+    },
+    optionBtn: {
+      borderRadius: theme.r.xl,
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(51,65,85,0.55)"
+          : "rgba(148,163,184,0.18)",
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(15,23,42,0.72)" : "#FFFFFF",
+      paddingHorizontal: theme.s(2),
+      paddingVertical: theme.s(1.75),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: theme.s(1.5),
+    },
+    optionBtnSelected: {
+      borderColor: "rgba(96,165,250,0.75)",
+      backgroundColor: "rgba(37,99,235,0.18)",
+    },
+    optionBtnCorrect: {
+      borderColor: "rgba(74,222,128,0.55)",
+      backgroundColor: "rgba(20,83,45,0.28)",
+    },
+    optionBtnWrong: {
+      borderColor: "rgba(248,113,113,0.45)",
+      backgroundColor: "rgba(127,29,29,0.25)",
+    },
+    optionText: {
+      color: theme.colors.text,
+      fontSize: 15,
+      fontWeight: "700",
+      flex: 1,
+    },
+    feedbackCard: {
+      borderRadius: theme.r.xl,
+      borderWidth: 1,
+      padding: theme.s(2),
+      gap: 6,
+    },
+    feedbackCorrect: {
+      backgroundColor: "rgba(20,83,45,0.25)",
+      borderColor: "rgba(34,197,94,0.35)",
+    },
+    feedbackWrong: {
+      backgroundColor: "rgba(127,29,29,0.2)",
+      borderColor: "rgba(248,113,113,0.28)",
+    },
+    feedbackTitle: {
+      color: theme.colors.text,
+      fontSize: 14,
+      fontWeight: "900",
+    },
+    feedbackBody: {
+      color: "rgba(226,232,240,0.9)",
+      fontSize: 13,
+      lineHeight: 20,
+    },
 
-  actions: {
-    gap: theme.s(1.5),
-  },
-  liveStats: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  liveText: {
-    color: theme.colors.muted,
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  primaryBtn: {
-    paddingVertical: theme.s(2),
-    borderRadius: theme.r.xl,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#2563EB",
-  },
-  primaryText: {
-    color: "white",
-    fontWeight: "900",
-    fontSize: 15,
-  },
-  secondaryBtn: {
-    paddingVertical: theme.s(2),
-    borderRadius: theme.r.xl,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.6)",
-    backgroundColor: "rgba(30,41,59,0.45)",
-    flex: 1,
-  },
-  secondaryText: {
-    color: theme.colors.text,
-    fontWeight: "800",
-    fontSize: 15,
-  },
+    actions: {
+      gap: theme.s(1.5),
+    },
+    liveStats: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    liveText: {
+      color: theme.colors.muted,
+      fontSize: 13,
+      fontWeight: "800",
+    },
+    primaryBtn: {
+      paddingVertical: theme.s(2),
+      borderRadius: theme.r.xl,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "#2563EB",
+    },
+    primaryText: {
+      color: theme.colors.text,
+      fontWeight: "900",
+      fontSize: 15,
+    },
+    secondaryBtn: {
+      paddingVertical: theme.s(2),
+      borderRadius: theme.r.xl,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: "rgba(51,65,85,0.6)",
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(30,41,59,0.45)" : "#FFFFFF",
+      flex: 1,
+    },
+    secondaryText: {
+      color: theme.colors.text,
+      fontWeight: "800",
+      fontSize: 15,
+    },
 
-  resultWrap: {
-    flex: 1,
-    paddingTop: theme.s(3),
-    gap: theme.s(2),
-  },
-  resultCard: {
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.55)",
-    padding: theme.s(3),
-    gap: theme.s(1.5),
-  },
-  resultEyebrow: {
-    color: "rgba(191,219,254,0.95)",
-    fontSize: 12,
-    fontWeight: "900",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  },
-  resultScore: {
-    color: "white",
-    fontSize: 42,
-    fontWeight: "900",
-  },
-  resultSummary: {
-    color: "rgba(226,232,240,0.9)",
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  resultStats: {
-    flexDirection: "row",
-    gap: theme.s(1),
-    flexWrap: "wrap",
-  },
-  resultPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: "rgba(15,23,42,0.55)",
-    borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.55)",
-  },
-  resultPillText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "800",
-  },
-  summaryCard: {
-    borderRadius: theme.r.xl,
-    borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.55)",
-    backgroundColor: "rgba(15,23,42,0.65)",
-    padding: theme.s(2),
-    gap: 6,
-  },
-  summaryTitle: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "800",
-    lineHeight: 20,
-  },
-  summaryLine: {
-    color: "rgba(226,232,240,0.9)",
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  summaryBadge: {
-    marginTop: 4,
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    overflow: "hidden",
-    fontSize: 11,
-    fontWeight: "900",
-  },
-  summaryCorrect: {
-    color: "#DCFCE7",
-    backgroundColor: "rgba(20,83,45,0.35)",
-  },
-  summaryWrong: {
-    color: "#FECACA",
-    backgroundColor: "rgba(127,29,29,0.3)",
-  },
-  resultActions: {
-    flexDirection: "row",
-    gap: theme.s(1.5),
-  },
-});
+    resultWrap: {
+      flex: 1,
+      paddingTop: theme.s(3),
+      gap: theme.s(2),
+    },
+    resultCard: {
+      borderRadius: 28,
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(51,65,85,0.55)"
+          : "rgba(148,163,184,0.18)",
+      padding: theme.s(3),
+      gap: theme.s(1.5),
+    },
+    resultEyebrow: {
+      color: "rgba(191,219,254,0.95)",
+      fontSize: 12,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+    },
+    resultScore: {
+      color: theme.colors.text,
+      fontSize: 42,
+      fontWeight: "900",
+    },
+    resultSummary: {
+      color: "rgba(226,232,240,0.9)",
+      fontSize: 15,
+      lineHeight: 22,
+    },
+    resultStats: {
+      flexDirection: "row",
+      gap: theme.s(1),
+      flexWrap: "wrap",
+    },
+    resultPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: "rgba(15,23,42,0.55)",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(51,65,85,0.55)"
+          : "rgba(148,163,184,0.18)",
+    },
+    resultPillText: {
+      color: theme.colors.text,
+      fontSize: 12,
+      fontWeight: "800",
+    },
+    summaryCard: {
+      borderRadius: theme.r.xl,
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(51,65,85,0.55)"
+          : "rgba(148,163,184,0.18)",
+      backgroundColor: "rgba(15,23,42,0.65)",
+      padding: theme.s(2),
+      gap: 6,
+    },
+    summaryTitle: {
+      color: theme.colors.text,
+      fontSize: 14,
+      fontWeight: "800",
+      lineHeight: 20,
+    },
+    summaryLine: {
+      color: "rgba(226,232,240,0.9)",
+      fontSize: 13,
+      lineHeight: 19,
+    },
+    summaryBadge: {
+      marginTop: 4,
+      alignSelf: "flex-start",
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      overflow: "hidden",
+      fontSize: 11,
+      fontWeight: "900",
+    },
+    summaryCorrect: {
+      color: "#DCFCE7",
+      backgroundColor: "rgba(20,83,45,0.35)",
+    },
+    summaryWrong: {
+      color: "#FECACA",
+      backgroundColor: "rgba(127,29,29,0.3)",
+    },
+    resultActions: {
+      flexDirection: "row",
+      gap: theme.s(1.5),
+    },
+  });

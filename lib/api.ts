@@ -25,7 +25,7 @@ export const api = axios.create({
   baseURL: process.env.EXPO_PUBLIC_API_URL,
   timeout: 10000,
 });
-
+// console.log("API URL:", process.env.EXPO_PUBLIC_API_URL);
 api.interceptors.request.use(async (config: any) => {
   const token = await AsyncStorage.getItem("token");
   config.headers = config.headers ?? {};

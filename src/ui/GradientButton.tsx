@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { Pressable, StyleSheet, Text, ViewStyle } from "react-native";
-import { theme } from "./theme";
+import { AppTheme, useAppTheme, useThemedStyles } from "./theme";
 
 export function GradientButton({
   title,
@@ -14,6 +14,9 @@ export function GradientButton({
   disabled?: boolean;
   style?: ViewStyle;
 }) {
+  const { theme } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
+
   return (
     <Pressable
       onPress={onPress}
@@ -25,7 +28,7 @@ export function GradientButton({
       ]}
     >
       <LinearGradient
-        colors={[theme.colors.blue, "#7C3AED"]}
+        colors={theme.colors.primaryGradient}
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}
         style={styles.btn}
@@ -36,7 +39,8 @@ export function GradientButton({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   wrap: { borderRadius: theme.r.xl, overflow: "hidden" },
   btn: {
     paddingVertical: theme.s(2),
@@ -44,4 +48,4 @@ const styles = StyleSheet.create({
     borderRadius: theme.r.xl,
   },
   text: { color: "white", fontSize: 16, fontWeight: "800" },
-});
+  });

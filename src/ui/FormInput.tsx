@@ -1,14 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    TextInputProps,
-    View,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  TextInputProps,
+  View,
 } from "react-native";
-import { theme } from "./theme";
+import { AppTheme, useAppTheme, useThemedStyles } from "./theme";
 
 type Props = TextInputProps & {
   error?: string;
@@ -22,6 +22,9 @@ export function FormInput({
   onRightIconPress,
   ...props
 }: Props) {
+  const { theme } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
+
   return (
     <View style={{ gap: 8 }}>
       <View style={[styles.inputWrap, !!error && styles.inputWrapError]}>
@@ -48,14 +51,15 @@ export function FormInput({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   inputWrap: {
     flexDirection: "row",
     alignItems: "center",
     borderRadius: theme.r.lg,
     paddingHorizontal: theme.s(2),
     paddingVertical: theme.s(1.5),
-    backgroundColor: "rgba(30,41,59,0.35)", // slate feel
+    backgroundColor: theme.colors.inputBg,
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
@@ -72,8 +76,8 @@ const styles = StyleSheet.create({
     paddingLeft: theme.s(1),
   },
   error: {
-    color: "rgba(239,68,68,0.95)",
+    color: theme.colors.danger,
     fontSize: 12,
     fontWeight: "600",
   },
-});
+  });

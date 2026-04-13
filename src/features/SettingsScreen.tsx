@@ -7,11 +7,14 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from "react-native-reanimated";
-import { theme } from "../ui/theme";
+import { AppTheme, useAppTheme, useThemedStyles } from "../ui/theme";
 function Card({ children }: { children: React.ReactNode }) {
+  const { theme } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
+
   return (
     <LinearGradient
-      colors={["rgba(30,41,59,0.85)", "rgba(15,23,42,0.85)"]}
+      colors={theme.colors.settingsCardGradient}
       style={styles.card}
     >
       {children}
@@ -26,6 +29,8 @@ function ToggleSwitch({
   enabled: boolean;
   onChange: () => void;
 }) {
+  const { theme } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const knobStyle = useAnimatedStyle(
     () => ({
       transform: [
@@ -45,8 +50,8 @@ function ToggleSwitch({
       <LinearGradient
         colors={
           enabled
-            ? ["#2563EB", "#7C3AED"]
-            : ["rgba(51,65,85,1)", "rgba(51,65,85,1)"]
+            ? theme.colors.primaryGradient
+            : theme.colors.toggleOff
         }
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}
@@ -73,6 +78,8 @@ function SettingRow({
   right?: React.ReactNode;
   accent?: string;
 }) {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <Card>
       <View style={styles.row}>
@@ -97,6 +104,8 @@ function SettingRow({
 }
 
 function Pill({ label, active = false }: { label: string; active?: boolean }) {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <View style={[styles.pill, active && styles.pillActive]}>
       <Text style={[styles.pillText, active && styles.pillTextActive]}>
@@ -107,6 +116,8 @@ function Pill({ label, active = false }: { label: string; active?: boolean }) {
 }
 
 export default function SettingsScreen() {
+  const { theme, isDark, toggleTheme } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const [sound, setSound] = useState(true);
   const [dailyReminder, setDailyReminder] = useState(true);
   const [autoPlay, setAutoPlay] = useState(false);
@@ -114,7 +125,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   return (
     <View style={styles.container}>
-      <LinearGradient colors={["#2563EB", "#7C3AED"]} style={styles.header}>
+      <LinearGradient colors={theme.colors.headerGradient} style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color="white" />
         </Pressable>
@@ -130,7 +141,7 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <LinearGradient
-          colors={["rgba(37,99,235,0.28)", "rgba(124,58,237,0.16)"]}
+          colors={theme.colors.settingsHeroGradient}
           style={styles.heroCard}
         >
           <View style={styles.heroHeader}>
@@ -157,6 +168,19 @@ export default function SettingsScreen() {
             Personalize lesson playback and reminders
           </Text>
           <View style={styles.stack}>
+            <SettingRow
+              icon="moon"
+              iconColor={theme.colors.primaryMuted}
+              title="Dark mode"
+              subtitle="Switch the app between light and dark themes"
+              right={
+                <ToggleSwitch
+                  enabled={isDark}
+                  onChange={() => void toggleTheme()}
+                />
+              }
+              accent="rgba(96,165,250,0.14)"
+            />
             <SettingRow
               icon="volume-high"
               iconColor="#A78BFA"
@@ -299,7 +323,8 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
   header: {
     paddingTop: 40,
@@ -332,7 +357,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   sectionCaption: {
-    color: "#CBD5E1",
+    color: theme.mode === "dark" ? "#CBD5E1" : theme.colors.muted,
     fontSize: 13,
     marginBottom: theme.s(1.5),
   },
@@ -342,7 +367,7 @@ const styles = StyleSheet.create({
     padding: theme.s(2.5),
     marginVertical: theme.s(3),
     borderWidth: 1,
-    borderColor: "rgba(96,165,250,0.18)",
+    borderColor: theme.colors.heroBorder,
   },
   heroHeader: {
     flexDirection: "row",
@@ -355,17 +380,23 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(148,163,184,0.16)",
+    backgroundColor:
+      theme.mode === "dark"
+        ? "rgba(148,163,184,0.16)"
+        : "rgba(255,255,255,0.72)",
     borderWidth: 1,
-    borderColor: "rgba(191,219,254,0.18)",
+    borderColor:
+      theme.mode === "dark"
+        ? "rgba(191,219,254,0.18)"
+        : "rgba(148,163,184,0.22)",
   },
   heroTitle: {
-    color: "white",
+    color: theme.colors.text,
     fontSize: 18,
     fontWeight: "900",
   },
   heroSub: {
-    color: "#CBD5E1",
+    color: theme.mode === "dark" ? "#CBD5E1" : theme.colors.muted,
     fontSize: 13,
     lineHeight: 20,
     marginTop: 6,
@@ -379,7 +410,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: theme.r.xl,
     borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.55)",
+    borderColor: theme.colors.border,
     padding: theme.s(2),
   },
   row: {
@@ -398,13 +429,16 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 14,
-    backgroundColor: "rgba(51,65,85,0.35)",
+    backgroundColor:
+      theme.mode === "dark"
+        ? "rgba(51,65,85,0.35)"
+        : "rgba(226,232,240,0.9)",
     borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.55)",
+    borderColor: theme.colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
-  rowTitle: { color: "white", fontSize: 15, fontWeight: "800" },
+  rowTitle: { color: theme.colors.text, fontSize: 15, fontWeight: "800" },
   rowSub: {
     color: theme.colors.muted,
     fontSize: 12,
@@ -423,8 +457,8 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 999,
-    backgroundColor: "white",
-    shadowColor: "#000",
+    backgroundColor: theme.colors.white,
+    shadowColor: theme.colors.shadow,
     shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 6,
@@ -433,21 +467,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: "rgba(51,65,85,0.45)",
+    backgroundColor: theme.colors.pillBg,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.18)",
+    borderColor: theme.colors.pillBorder,
   },
   pillActive: {
-    backgroundColor: "rgba(37,99,235,0.18)",
-    borderColor: "rgba(96,165,250,0.28)",
+    backgroundColor: theme.colors.pillActiveBg,
+    borderColor: theme.colors.pillActiveBorder,
   },
   pillText: {
-    color: "#CBD5E1",
+    color: theme.mode === "dark" ? "#CBD5E1" : theme.colors.chipText,
     fontSize: 12,
     fontWeight: "700",
   },
   pillTextActive: {
-    color: "#DBEAFE",
+    color: theme.mode === "dark" ? "#DBEAFE" : theme.colors.primary,
   },
   about: { alignItems: "center", paddingVertical: theme.s(1) },
   aboutIcon: {
@@ -456,11 +490,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(37,99,235,0.14)",
+    backgroundColor: theme.colors.aboutIconBg,
     marginBottom: 12,
   },
   aboutTitle: {
-    color: "white",
+    color: theme.colors.text,
     fontSize: 14,
     fontWeight: "900",
     marginBottom: 4,
@@ -475,9 +509,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: theme.colors.headerButton,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor:
+      theme.mode === "dark"
+        ? "rgba(255,255,255,0.2)"
+        : "rgba(255,255,255,0.35)",
   },
   quickFact: {
     flexDirection: "row",
@@ -486,13 +523,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   quickFactLabel: {
-    color: "#94A3B8",
+    color: theme.colors.muted,
     fontSize: 13,
     fontWeight: "700",
   },
   quickFactValue: {
-    color: "#FFFFFF",
+    color: theme.colors.text,
     fontSize: 13,
     fontWeight: "800",
   },
-});
+  });

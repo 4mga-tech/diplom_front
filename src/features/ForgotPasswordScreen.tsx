@@ -5,13 +5,14 @@ import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { BackButton } from "../ui/BackButton";
 import { FormInput } from "../ui/FormInput";
 import { GradientButton } from "../ui/GradientButton";
-import { theme } from "../ui/theme";
+import { AppTheme, useThemedStyles } from "../ui/theme";
 
 type Step = "email" | "otp" | "reset";
 
 const emailRegex = /\S+@\S+\.\S+/;
 
 export default function ForgotPasswordScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
 
   const [step, setStep] = useState<Step>("email");
@@ -165,12 +166,13 @@ export default function ForgotPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg, padding: 20 },
   header: { marginBottom: 20 },
   content: { gap: 16 },
 
-  title: { fontSize: 26, fontWeight: "800", color: "white" },
+  title: { fontSize: 26, fontWeight: "800", color: theme.colors.text },
   subtitle: { color: theme.colors.muted },
 
   backToLogin: {
@@ -179,4 +181,4 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontWeight: "600",
   },
-});
+  });

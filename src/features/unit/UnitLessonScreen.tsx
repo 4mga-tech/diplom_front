@@ -1,6 +1,6 @@
 import { fetchUnitLessons, LessonListItem } from "@/lib/learning";
 import { getLevelById, LevelId, Unit, UNITS } from "@/src/data/curriculum";
-import { theme } from "@/src/ui/theme";
+import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -23,9 +23,13 @@ import {
 function LessonRow({
   lesson,
   levelId,
+  styles,
+  theme,
 }: {
   lesson: LessonListItem;
   levelId: string;
+  styles: any;
+  theme: AppTheme;
 }) {
   const locked = !lesson.isUnlocked;
 
@@ -49,7 +53,11 @@ function LessonRow({
       ]}
     >
       <LinearGradient
-        colors={["rgba(30,41,59,0.85)", "rgba(15,23,42,0.85)"]}
+        colors={
+          theme.mode === "dark"
+            ? ["rgba(30,41,59,0.85)", "rgba(15,23,42,0.85)"]
+            : ["#FFFFFF", "#F8FAFC"]
+        }
         style={styles.lessonCard}
       >
         <View style={styles.leftIcon}>
@@ -58,7 +66,7 @@ function LessonRow({
           ) : locked ? (
             <Ionicons name="lock-closed" size={18} color={theme.colors.muted} />
           ) : (
-            <Ionicons name="play" size={18} color="white" />
+            <Ionicons name="play" size={18} color={theme.colors.text} />
           )}
         </View>
 
@@ -77,6 +85,8 @@ function LessonRow({
 }
 
 export default function UnitLessonsScreen() {
+  const { theme } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { levelId, unitId } = useLocalSearchParams<{
     levelId?: string;
     unitId?: string;
@@ -175,7 +185,7 @@ export default function UnitLessonsScreen() {
         <View style={{ flex: 1 }}>
           <Text style={styles.h1}>{unitMeta?.title ?? "Course Package"}</Text>
           <Text style={styles.h2}>
-            {levelMeta.title} · {progress}% complete
+            {levelMeta.title} ï¿½ {progress}% complete
           </Text>
         </View>
 
@@ -186,7 +196,7 @@ export default function UnitLessonsScreen() {
             pressed && { opacity: 0.85 },
           ]}
         >
-          <Ionicons name="refresh" size={18} color="white" />
+          <Ionicons name="refresh" size={18} color={theme.colors.text} />
         </Pressable>
       </View>
 
@@ -196,13 +206,14 @@ export default function UnitLessonsScreen() {
       >
         <Ionicons name="sparkles" size={18} color="#A78BFA" />
         <Text style={styles.bannerText}>
-          Start with the first unlocked lesson and the backend will unlock the next one for you.
+          Start with the first unlocked lesson and the backend will unlock the
+          next one for you.
         </Text>
       </LinearGradient>
 
       {loading ? (
         <View style={styles.stateWrap}>
-          <ActivityIndicator color="white" />
+          <ActivityIndicator color={theme.colors.text} />
           <Text style={styles.stateText}>Loading lessons...</Text>
         </View>
       ) : (
@@ -214,12 +225,19 @@ export default function UnitLessonsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => void loadLessons(true)}
-              tintColor="white"
+              tintColor={theme.colors.text}
             />
           }
-          ItemSeparatorComponent={() => <View style={{ height: theme.s(1.5) }} />}
+          ItemSeparatorComponent={() => (
+            <View style={{ height: theme.s(1.5) }} />
+          )}
           renderItem={({ item }) => (
-            <LessonRow lesson={item} levelId={safeLevelId} />
+            <LessonRow
+              lesson={item}
+              levelId={safeLevelId}
+              styles={styles}
+              theme={theme}
+            />
           )}
           ListHeaderComponent={
             loadError ? (
@@ -246,122 +264,137 @@ export default function UnitLessonsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.bg,
-    paddingHorizontal: theme.s(3),
-    paddingTop: theme.s(6),
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.s(2),
-    marginBottom: theme.s(2),
-  },
-  backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(30,41,59,0.35)",
-    borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.55)",
-  },
-  reviewBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(59,130,246,0.25)",
-    borderWidth: 1,
-    borderColor: "rgba(59,130,246,0.25)",
-  },
-  h1: { color: "white", fontSize: 18, fontWeight: "900" },
-  h2: {
-    color: theme.colors.muted,
-    fontSize: 12,
-    fontWeight: "700",
-    marginTop: 4,
-  },
-  banner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.s(1),
-    borderRadius: theme.r.xl,
-    borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.55)",
-    padding: theme.s(2),
-    marginBottom: theme.s(2.5),
-  },
-  bannerText: { color: "rgba(226,232,240,0.9)", fontWeight: "700", flex: 1 },
-  stateWrap: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: theme.s(1.5),
-  },
-  stateText: {
-    color: theme.colors.muted,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  errorBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.s(1),
-    backgroundColor: "rgba(120,53,15,0.28)",
-    borderColor: "rgba(245,158,11,0.35)",
-    borderWidth: 1,
-    padding: theme.s(1.5),
-    borderRadius: theme.r.lg,
-    marginBottom: theme.s(2),
-  },
-  errorText: {
-    color: "#FDE68A",
-    fontSize: 12,
-    fontWeight: "700",
-    flex: 1,
-  },
-  lessonPress: { width: "100%" },
-  lessonCard: {
-    borderRadius: theme.r.xl,
-    borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.55)",
-    padding: theme.s(2),
-    flexDirection: "row",
-    gap: theme.s(1.5),
-    alignItems: "center",
-  },
-  leftIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 14,
-    backgroundColor: "rgba(51,65,85,0.25)",
-    borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.45)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  lessonTitle: { color: "white", fontSize: 14, fontWeight: "900" },
-  lessonSub: {
-    color: theme.colors.muted,
-    fontSize: 12,
-    fontWeight: "700",
-    marginTop: 4,
-  },
-  xpPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "rgba(250,204,21,0.10)",
-    borderWidth: 1,
-    borderColor: "rgba(250,204,21,0.18)",
-  },
-  xpText: { color: "rgba(250,204,21,0.95)", fontWeight: "900", fontSize: 11 },
-});
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.bg,
+      paddingHorizontal: theme.s(3),
+      paddingTop: theme.s(6),
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.s(2),
+      marginBottom: theme.s(2),
+    },
+    backBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(30,41,59,0.35)" : "#FFFFFF",
+      borderWidth: 1,
+      borderColor: "rgba(51,65,85,0.55)",
+    },
+    reviewBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(59,130,246,0.25)",
+      borderWidth: 1,
+      borderColor: "rgba(59,130,246,0.25)",
+    },
+    h1: { color: theme.colors.text, fontSize: 18, fontWeight: "900" },
+    h2: {
+      color: theme.colors.muted,
+      fontSize: 12,
+      fontWeight: "700",
+      marginTop: 4,
+    },
+    banner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.s(1),
+      borderRadius: theme.r.xl,
+      borderWidth: 1,
+      borderColor: "rgba(51,65,85,0.55)",
+      padding: theme.s(2),
+      marginBottom: theme.s(2.5),
+    },
+    bannerText: {
+      color: theme.mode === "dark" ? "rgba(226,232,240,0.9)" : "#334155",
+      fontWeight: "700",
+      flex: 1,
+    },
+    stateWrap: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: theme.s(1.5),
+    },
+    stateText: {
+      color: theme.colors.muted,
+      fontSize: 13,
+      fontWeight: "700",
+    },
+    errorBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.s(1),
+      backgroundColor: "rgba(120,53,15,0.28)",
+      borderColor: "rgba(245,158,11,0.35)",
+      borderWidth: 1,
+      padding: theme.s(1.5),
+      borderRadius: theme.r.lg,
+      marginBottom: theme.s(2),
+    },
+    errorText: {
+      color: "#FDE68A",
+      fontSize: 12,
+      fontWeight: "700",
+      flex: 1,
+    },
+    lessonPress: { width: "100%" },
+    lessonCard: {
+      borderRadius: theme.r.xl,
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(51,65,85,0.55)"
+          : "rgba(148,163,184,0.18)",
+      padding: theme.s(2),
+      flexDirection: "row",
+      gap: theme.s(1.5),
+      alignItems: "center",
+    },
+    leftIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 14,
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(51,65,85,0.25)" : "#E2E8F0",
+      borderWidth: 1,
+      borderColor: "rgba(51,65,85,0.45)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    lessonTitle: {
+      color: theme.colors.text,
+      fontSize: 14,
+      fontWeight: "900",
+    },
+    lessonSub: {
+      color: theme.colors.muted,
+      fontSize: 12,
+      fontWeight: "700",
+      marginTop: 4,
+    },
+    xpPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(30,41,59,0.35)" : "#FFFFFF",
+      borderWidth: 1,
+      borderColor: "rgba(250,204,21,0.18)",
+    },
+    xpText: { color: "rgba(250,204,21,0.95)", fontWeight: "900", fontSize: 11 },
+  });

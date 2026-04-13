@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { theme } from "./theme";
+import { AppTheme, useThemedStyles } from "./theme";
 
 type Props = {
   title: string;
@@ -22,6 +22,8 @@ export default function CourseCard({
   gradient,
   onPress,
 }: Props) {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <Pressable
       onPress={onPress}
@@ -64,13 +66,14 @@ export default function CourseCard({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   card: {
     borderRadius: theme.r.xl,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.55)",
-    backgroundColor: "rgba(15,23,42,0.6)",
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.cardStrong,
   },
   hero: {
     padding: theme.s(2.5),
@@ -79,7 +82,7 @@ const styles = StyleSheet.create({
     gap: theme.s(2),
     minHeight: 96,
   },
-  title: { color: "white", fontSize: 18, fontWeight: "800" },
+  title: { color: theme.colors.white, fontSize: 18, fontWeight: "800" },
   desc: { color: "rgba(255,255,255,0.85)", marginTop: 4, fontSize: 13 },
   badge: {
     paddingHorizontal: 10,
@@ -102,6 +105,6 @@ const styles = StyleSheet.create({
   barFill: {
     height: "100%",
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.75)",
+    backgroundColor: theme.mode === "dark" ? "rgba(255,255,255,0.75)" : "rgba(37,99,235,0.75)",
   },
-});
+  });

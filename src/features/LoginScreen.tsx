@@ -13,7 +13,7 @@ import {
 import { BackButton } from "../ui/BackButton";
 import { FormInput } from "../ui/FormInput";
 import { GradientButton } from "../ui/GradientButton";
-import { theme } from "../ui/theme";
+import { AppTheme, useAppTheme, useThemedStyles } from "../ui/theme";
 
 const emailRegex = /\S+@\S+\.\S+/;
 
@@ -23,6 +23,8 @@ type LoginResponse = {
 };
 
 export default function LoginScreen() {
+  const { theme } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -142,7 +144,8 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
   inner: {
     flex: 1,
@@ -161,4 +164,4 @@ const styles = StyleSheet.create({
     marginTop: theme.s(1),
   },
   link: { color: "#60A5FA", fontWeight: "700" },
-});
+  });

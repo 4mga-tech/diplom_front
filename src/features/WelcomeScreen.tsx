@@ -3,10 +3,12 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { theme } from "../ui/theme";
+import { AppTheme, useAppTheme, useThemedStyles } from "../ui/theme";
 const FEATURES = ["cyrillic", "speak", "culture"];
 
 export default function WelcomeScreen() {
+  const { theme } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   // useEffect(() => {
   //   const checkStatus = async () => {
   //     const token = await AsyncStorage.getItem("token");
@@ -97,7 +99,8 @@ export default function WelcomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.bg,
@@ -208,4 +211,4 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
   },
-});
+  });

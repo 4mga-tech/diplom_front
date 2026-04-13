@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRouter } from "expo-router";
-import React, { useEffect, useLayoutEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Image,
@@ -15,7 +15,7 @@ import {
   View,
 } from "react-native";
 import { TextInput } from "react-native-gesture-handler";
-import { theme } from "../ui/theme";
+import { AppTheme, useAppTheme, useThemedStyles } from "../ui/theme";
 type StoredUser = {
   name?: string;
   email?: string;
@@ -33,12 +33,19 @@ const DEFAULT_STATS: LearningStats = {
   totalXp: 0,
 };
 
-function StatCard({ value, label }: { value: string; label: string }) {
+function StatCard({
+  value,
+  label,
+  styles,
+  theme,
+}: {
+  value: string;
+  label: string;
+  styles: ReturnType<typeof createStyles>;
+  theme: AppTheme;
+}) {
   return (
-    <LinearGradient
-      colors={["rgba(30,41,59,0.95)", "rgba(15,23,42,0.92)"]}
-      style={styles.statCard}
-    >
+    <LinearGradient colors={theme.colors.cardGradient} style={styles.statCard}>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </LinearGradient>
@@ -50,17 +57,18 @@ function InfoRow({
   iconColor,
   label,
   value,
+  styles,
+  theme,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   iconColor: string;
   label: string;
   value: string;
+  styles: ReturnType<typeof createStyles>;
+  theme: AppTheme;
 }) {
   return (
-    <LinearGradient
-      colors={["rgba(30,41,59,0.9)", "rgba(15,23,42,0.88)"]}
-      style={styles.infoCard}
-    >
+    <LinearGradient colors={theme.colors.cardGradient} style={styles.infoCard}>
       <View style={styles.infoRow}>
         <View style={styles.infoIconWrap}>
           <Ionicons name={icon} size={18} color={iconColor} />
@@ -77,19 +85,24 @@ function InfoRow({
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const router = useRouter();
-
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <Pressable
-          onPress={() => router.push("/settings")}
-          style={{ marginRight: 10 }}
-        >
-          <Ionicons name="settings-outline" size={22} color="white" />
-        </Pressable>
-      ),
-    });
-  }, []);
+  const { theme, isDark } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
+  // useLayoutEffect(() => {
+  //   navigation.setOptions({
+  //     headerRight: () => (
+  //       <Pressable
+  //         onPress={() => router.push("/settings")}
+  //         style={{ marginRight: 10 }}
+  //       >
+  //         <Ionicons
+  //           name="settings-outline"
+  //           size={20}
+  //           color={theme.colors.text}
+  //         />{" "}
+  //       </Pressable>
+  //     ),
+  //   });
+  // }, []);
   const [user, setUser] = useState<StoredUser | null>(null);
   const [stats, setStats] = useState<LearningStats>(DEFAULT_STATS);
 
@@ -206,19 +219,23 @@ export default function ProfileScreen() {
       >
         <View style={styles.heroTopRow}>
           <View style={styles.heroBadge}>
-            <Ionicons name="sparkles" size={14} color="#93C5FD" />
-            <Text style={styles.heroBadgeText}>Profile</Text>
+            <Ionicons name="infinite-outline" size={14} color="#93C5FD" />
+            {/* <Text style={styles.heroBadgeText}>Profile</Text> */}
           </View>
 
           <Pressable
             onPress={() => router.push("/settings")}
             style={styles.settingsIcon}
           >
-            <Ionicons name="settings-outline" size={20} color="white" />
+            <Ionicons
+              name="settings-outline"
+              size={20}
+              color={theme.colors.text}
+            />
           </Pressable>
         </View>
         <LinearGradient
-          colors={["#172554", "#111827", "#020617"]}
+          colors={theme.colors.profileHeroGradient}
           style={styles.heroCard}
         >
           <View style={styles.heroBadge}>
@@ -303,9 +320,24 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>Learning Progress</Text>
           <Text style={styles.sectionSubtitle}>Your latest study momentum</Text>
           <View style={styles.statsRow}>
-            <StatCard value={String(stats.streak)} label="Daily Streak" />
-            <StatCard value={String(stats.completedLessons)} label="Lessons" />
-            <StatCard value={String(stats.totalXp)} label="XP" />
+            <StatCard
+              value={String(stats.streak)}
+              label="Daily Streak"
+              styles={styles}
+              theme={theme}
+            />
+            <StatCard
+              value={String(stats.completedLessons)}
+              label="Lessons"
+              styles={styles}
+              theme={theme}
+            />
+            <StatCard
+              value={String(stats.totalXp)}
+              label="XP"
+              styles={styles}
+              theme={theme}
+            />
           </View>
         </View>
 
@@ -318,10 +350,12 @@ export default function ProfileScreen() {
               iconColor="#60A5FA"
               label="E-mail"
               value={user?.email || "-"}
+              styles={styles}
+              theme={theme}
             />
 
             <LinearGradient
-              colors={["rgba(30,41,59,0.9)", "rgba(15,23,42,0.88)"]}
+              colors={theme.colors.cardGradient}
               style={styles.achievementsCard}
             >
               <View style={styles.achievementsHeader}>
@@ -405,349 +439,361 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#020617",
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: theme.s(3),
-    paddingTop: theme.s(6),
-    paddingBottom: theme.s(5),
-  },
-  heroCard: {
-    borderRadius: 30,
-    padding: theme.s(3),
-    marginBottom: theme.s(3),
-    borderWidth: 1,
-    borderColor: "rgba(96,165,250,0.12)",
-    shadowColor: "#000",
-    shadowOpacity: 0.28,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 10,
-  },
-  heroBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 999,
-    backgroundColor: "rgba(59,130,246,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(147,197,253,0.2)",
-    marginBottom: theme.s(2),
-  },
-  heroBadgeText: {
-    color: "#BFDBFE",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  heroTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.bg,
+    },
+    scroll: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingHorizontal: theme.s(3),
+      paddingTop: theme.s(6),
+      paddingBottom: theme.s(5),
+    },
+    heroCard: {
+      borderRadius: 30,
+      padding: theme.s(3),
+      marginBottom: theme.s(3),
+      borderWidth: 1,
+      borderColor: "rgba(96,165,250,0.12)",
+      shadowColor: "#000",
+      shadowOpacity: 0.28,
+      shadowRadius: 24,
+      shadowOffset: { width: 0, height: 12 },
+      elevation: 10,
+    },
+    heroBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-start",
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 999,
+      backgroundColor: "rgba(59,130,246,0.12)",
+      borderWidth: 1,
+      borderColor: "rgba(147,197,253,0.2)",
+      marginBottom: theme.s(2),
+    },
+    heroBadgeText: {
+      color: theme.mode === "dark" ? "#BFDBFE" : "#1D4ED8",
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    heroTopRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
 
-  settingsIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(148,163,184,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.18)",
-  },
-  avatarBlock: {
-    alignItems: "center",
-  },
-  avatarWrap: {
-    position: "relative",
-    marginBottom: theme.s(1.5),
-  },
-  avatar: {
-    width: 112,
-    height: 112,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.38,
-    shadowRadius: 22,
-    elevation: 12,
-  },
-  avatarImage: {
-    width: 112,
-    height: 112,
-    borderRadius: 999,
-  },
-  avatarPressable: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "flex-end",
-    justifyContent: "flex-end",
-    padding: 4,
-    borderRadius: 999,
-  },
-  cameraIcon: {
-    position: "absolute",
-    bottom: 4,
-    right: 4,
-    backgroundColor: "#2563EB",
-    borderRadius: 999,
-    padding: 8,
-    borderWidth: 2,
-    borderColor: "#0F172A",
-  },
-  profileEyebrow: {
-    color: "#93C5FD",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    marginBottom: 10,
-  },
-  nameDisplay: {
-    alignItems: "center",
-  },
-  nameText: {
-    color: "#F8FAFC",
-    fontSize: 28,
-    fontWeight: "800",
-    textAlign: "center",
-  },
-  profileSubtext: {
-    color: "#94A3B8",
-    fontSize: 14,
-    textAlign: "center",
-    marginTop: 8,
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-  editCard: {
-    width: "100%",
-    backgroundColor: "rgba(15,23,42,0.72)",
-    borderRadius: 22,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.12)",
-  },
-  editLabel: {
-    color: "#94A3B8",
-    fontSize: 12,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    marginBottom: 10,
-  },
-  nameInputInline: {
-    color: "#FFFFFF",
-    fontSize: 20,
-    fontWeight: "700",
-    borderWidth: 1,
-    borderColor: "rgba(96,165,250,0.35)",
-    backgroundColor: "rgba(2,6,23,0.6)",
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  editActions: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 14,
-  },
-  inlineBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: "#2563EB",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  secondaryInlineBtn: {
-    backgroundColor: "#334155",
-  },
-  inlineBtnPressed: {
-    opacity: 0.88,
-  },
-  inlineBtnText: {
-    color: "white",
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  section: {
-    marginBottom: theme.s(3),
-  },
-  sectionTitle: {
-    color: "#F8FAFC",
-    fontSize: 18,
-    fontWeight: "800",
-  },
-  sectionSubtitle: {
-    color: "#94A3B8",
-    fontSize: 13,
-    marginTop: 4,
-    marginBottom: theme.s(1.5),
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: theme.s(1.5),
-  },
-  statCard: {
-    flex: 1,
-    borderRadius: theme.r.xl,
-    paddingVertical: theme.s(2),
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.65)",
-    shadowColor: "#000",
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 6,
-  },
-  statValue: {
-    color: "white",
-    fontSize: 20,
-    fontWeight: "900",
-  },
-  statLabel: {
-    color: theme.colors.muted,
-    fontSize: 11,
-    fontWeight: "800",
-    marginTop: 4,
-  },
-  infoList: {
-    gap: theme.s(1.5),
-  },
-  infoCard: {
-    borderRadius: theme.r.xl,
-    borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.55)",
-    padding: theme.s(2),
-    shadowColor: "#000",
-    shadowOpacity: 0.16,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 5,
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.s(1.5),
-  },
-  infoIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    backgroundColor: "rgba(51,65,85,0.35)",
-    borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.55)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  infoTextWrap: {
-    flex: 1,
-  },
-  infoLabel: {
-    color: "rgba(148,163,184,0.7)",
-    fontSize: 11,
-    fontWeight: "800",
-  },
-  infoValue: {
-    color: "white",
-    fontSize: 15,
-    fontWeight: "700",
-    marginTop: 2,
-  },
-  achievementsCard: {
-    borderRadius: theme.r.xl,
-    padding: theme.s(2),
-    borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.55)",
-    shadowColor: "#000",
-    shadowOpacity: 0.16,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 5,
-  },
-  achievementsHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 14,
-  },
-  achievementsTitle: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "800",
-  },
-  achievementsSubtitle: {
-    color: "#94A3B8",
-    fontSize: 12,
-    marginTop: 4,
-  },
-  achievementsHeaderIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(250,204,21,0.12)",
-  },
-  badgesRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  badgeCard: {
-    width: 124,
-    borderRadius: 18,
-    backgroundColor: "rgba(15,23,42,0.82)",
-    borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.12)",
-    padding: 14,
-  },
-  badgeIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-  badgeTitle: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  badgeCaption: {
-    color: "#94A3B8",
-    fontSize: 12,
-    marginTop: 4,
-  },
-  logoutBtn: {
-    width: "100%",
-    paddingVertical: theme.s(2),
-    borderRadius: theme.r.xl,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: theme.s(1),
-    backgroundColor: "rgba(127,29,29,0.22)",
-    borderWidth: 1,
-    borderColor: "rgba(153,27,27,0.55)",
-  },
-  logoutBtnPressed: {
-    opacity: 0.88,
-  },
-  logoutText: {
-    color: "#F87171",
-    fontWeight: "900",
-    fontSize: 15,
-  },
-});
+    settingsIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(15,23,42,0.72)" : "#F8FAFC",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(148,163,184,0.12)"
+          : "rgba(148,163,184,0.35)",
+      shadowColor: "#000",
+      shadowOpacity: theme.mode === "dark" ? 0 : 0.08,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: theme.mode === "dark" ? 0 : 3,
+    },
+    avatarBlock: {
+      alignItems: "center",
+    },
+    avatarWrap: {
+      position: "relative",
+      marginBottom: theme.s(1.5),
+    },
+    avatar: {
+      width: 112,
+      height: 112,
+      borderRadius: 999,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: "#000",
+      shadowOpacity: 0.38,
+      shadowRadius: 22,
+      elevation: 12,
+    },
+    avatarImage: {
+      width: 112,
+      height: 112,
+      borderRadius: 999,
+    },
+    avatarPressable: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "flex-end",
+      justifyContent: "flex-end",
+      padding: 4,
+      borderRadius: 999,
+    },
+    cameraIcon: {
+      position: "absolute",
+      bottom: 4,
+      right: 4,
+      backgroundColor: "#2563EB",
+      borderRadius: 999,
+      padding: 8,
+      borderWidth: 2,
+      borderColor: "#0F172A",
+    },
+    profileEyebrow: {
+      color: "#93C5FD",
+      fontSize: 12,
+      fontWeight: "700",
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      marginBottom: 10,
+    },
+    nameDisplay: {
+      alignItems: "center",
+    },
+    nameText: {
+      color: theme.colors.text,
+      fontSize: 28,
+      fontWeight: "800",
+    },
+    profileSubtext: {
+      color: theme.colors.muted,
+      fontSize: 14,
+      textAlign: "center",
+      marginTop: 8,
+      marginBottom: 16,
+      lineHeight: 20,
+    },
+    editCard: {
+      width: "100%",
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(15,23,42,0.72)" : "#FFFFFF",
+      borderRadius: 22,
+      padding: 16,
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(148,163,184,0.12)"
+          : "rgba(148,163,184,0.18)",
+    },
+    editLabel: {
+      color: theme.colors.muted,
+      fontSize: 12,
+      fontWeight: "700",
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+      marginBottom: 10,
+    },
+    nameInputInline: {
+      color: theme.colors.text,
+      fontSize: 20,
+      fontWeight: "700",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(96,165,250,0.35)"
+          : "rgba(148,163,184,0.35)",
+      backgroundColor: theme.mode === "dark" ? "rgba(2,6,23,0.6)" : "#FFFFFF",
+      borderRadius: 16,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    editActions: {
+      flexDirection: "row",
+      gap: 10,
+      marginTop: 14,
+    },
+    inlineBtn: {
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 14,
+      backgroundColor: "#2563EB",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    secondaryInlineBtn: {
+      backgroundColor: "#334155",
+    },
+    inlineBtnPressed: {
+      opacity: 0.88,
+    },
+    inlineBtnText: {
+      color: "white",
+      fontWeight: "700",
+      fontSize: 14,
+    },
+    section: {
+      marginBottom: theme.s(3),
+    },
+    sectionTitle: {
+      color: theme.colors.text,
+    },
+    sectionSubtitle: {
+      color: theme.colors.muted,
+      marginBottom: theme.s(2),
+    },
+    statsRow: {
+      flexDirection: "row",
+      gap: theme.s(1.5),
+    },
+    statCard: {
+      flex: 1,
+      borderRadius: theme.r.xl,
+      paddingVertical: theme.s(2),
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: "rgba(51,65,85,0.65)",
+      shadowColor: "#000",
+      shadowOpacity: 0.18,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 6,
+    },
+    statValue: {
+      color: theme.colors.text,
+      fontSize: 20,
+      fontWeight: "900",
+    },
+    statLabel: {
+      color: theme.colors.muted,
+      fontSize: 11,
+      fontWeight: "800",
+      marginTop: 4,
+    },
+    infoList: {
+      gap: theme.s(1.5),
+    },
+    infoCard: {
+      borderRadius: theme.r.xl,
+      borderWidth: 1,
+      borderColor: "rgba(51,65,85,0.55)",
+      padding: theme.s(2),
+      shadowColor: "#000",
+      shadowOpacity: 0.16,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 5,
+    },
+    infoRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.s(1.5),
+    },
+    infoIconWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: 14,
+      backgroundColor: "rgba(51,65,85,0.35)",
+      borderWidth: 1,
+      borderColor: "rgba(51,65,85,0.55)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    infoTextWrap: {
+      flex: 1,
+    },
+    infoLabel: {
+      color: "rgba(148,163,184,0.7)",
+      fontSize: 11,
+      fontWeight: "800",
+    },
+    infoValue: {
+      color: theme.colors.text,
+      fontSize: 15,
+      fontWeight: "700",
+      marginTop: 2,
+    },
+    achievementsCard: {
+      borderRadius: theme.r.xl,
+      padding: theme.s(2),
+      borderWidth: 1,
+      borderColor: "rgba(51,65,85,0.55)",
+      shadowColor: "#000",
+      shadowOpacity: 0.16,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 5,
+    },
+    achievementsHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 14,
+    },
+    achievementsTitle: {
+      color: theme.colors.text,
+      fontSize: 16,
+      fontWeight: "800",
+    },
+    achievementsSubtitle: {
+      color: theme.colors.muted,
+      fontSize: 12,
+      marginTop: 4,
+    },
+    achievementsHeaderIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(250,204,21,0.12)",
+    },
+    badgesRow: {
+      flexDirection: "row",
+      gap: 12,
+    },
+    badgeCard: {
+      width: 124,
+      borderRadius: 18,
+      backgroundColor: "rgba(15,23,42,0.82)",
+      borderWidth: 1,
+      borderColor: "rgba(148,163,184,0.12)",
+      padding: 14,
+    },
+    badgeIconWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 12,
+    },
+    badgeTitle: {
+      color: theme.colors.text,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    badgeCaption: {
+      color: theme.colors.muted,
+      fontSize: 12,
+      marginTop: 4,
+    },
+    logoutBtn: {
+      width: "100%",
+      paddingVertical: theme.s(2),
+      borderRadius: theme.r.xl,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: theme.s(1),
+      backgroundColor: "rgba(127,29,29,0.22)",
+      borderWidth: 1,
+      borderColor: "rgba(153,27,27,0.55)",
+    },
+    logoutBtnPressed: {
+      opacity: 0.88,
+    },
+    logoutText: {
+      color: "#F87171",
+      fontWeight: "900",
+      fontSize: 15,
+    },
+  });

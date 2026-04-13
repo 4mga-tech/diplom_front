@@ -1,7 +1,5 @@
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { AppThemeProvider, useAppTheme } from "@/src/ui/theme";
 import {
-  DarkTheme,
-  DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
 import { Stack } from "expo-router";
@@ -13,19 +11,33 @@ import "react-native-reanimated";
 
 void SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+function RootNavigator() {
+  const { navigationTheme, isDark, isHydrated } = useAppTheme();
 
   useEffect(() => {
-    void SplashScreen.hideAsync();
-  }, []);
+    if (isHydrated) {
+      void SplashScreen.hideAsync();
+    }
+  }, [isHydrated]);
+
+  if (!isHydrated) {
+    return null;
+  }
 
   return (
+    <ThemeProvider value={navigationTheme}>
+      <Stack screenOptions={{ headerShown: false }} />
+      <StatusBar style={isDark ? "light" : "dark"} />
+    </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Stack screenOptions={{ headerShown: false }} />
-        <StatusBar style="auto" />
-      </ThemeProvider>
+      <AppThemeProvider>
+        <RootNavigator />
+      </AppThemeProvider>
     </GestureHandlerRootView>
   );
 }

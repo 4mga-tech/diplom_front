@@ -4,7 +4,7 @@ import {
   LessonContentItem,
   LessonDetail,
 } from "@/lib/learning";
-import { theme } from "@/src/ui/theme";
+import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -28,10 +28,14 @@ function PrimaryButton({
   label,
   onPress,
   disabled,
+  styles,
+  theme,
 }: {
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  styles: ReturnType<typeof createStyles>;
+  theme: AppTheme;
 }) {
   return (
     <Pressable
@@ -58,9 +62,13 @@ function PrimaryButton({
 function SecondaryButton({
   label,
   onPress,
+  styles,
+  theme,
 }: {
   label: string;
   onPress: () => void;
+  styles: ReturnType<typeof createStyles>;
+  theme: AppTheme;
 }) {
   return (
     <Pressable
@@ -76,6 +84,8 @@ function SecondaryButton({
 }
 
 export default function LessonScreen() {
+  const { theme } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { lessonId, levelId, unitId } = useLocalSearchParams<{
     lessonId?: string;
     levelId?: string;
@@ -169,9 +179,12 @@ export default function LessonScreen() {
       return (
         <View key={item.id} style={styles.contentCard}>
           <Text style={styles.contentLabel}>Video</Text>
-          <Text style={styles.contentTitle}>{item.title || "Lesson video"}</Text>
+          <Text style={styles.contentTitle}>
+            {item.title || "Lesson video"}
+          </Text>
           <Text style={styles.contentBody}>
-            {item.content.videoUrl || "Video URL will be provided by the backend."}
+            {item.content.videoUrl ||
+              "Video URL will be provided by the backend."}
           </Text>
         </View>
       );
@@ -183,7 +196,8 @@ export default function LessonScreen() {
           <Text style={styles.contentLabel}>Quiz</Text>
           <Text style={styles.contentTitle}>{item.title || "Lesson quiz"}</Text>
           <Text style={styles.contentBody}>
-            Finish the lesson, then open the quiz flow once your backend quiz endpoint is ready.
+            Finish the lesson, then open the quiz flow once your backend quiz
+            endpoint is ready.
           </Text>
         </View>
       );
@@ -204,7 +218,7 @@ export default function LessonScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.centerState}>
-          <ActivityIndicator color="white" />
+          <ActivityIndicator color={theme.colors.text} />
           <Text style={styles.stateText}>Loading lesson...</Text>
         </View>
       </View>
@@ -216,7 +230,12 @@ export default function LessonScreen() {
       <View style={styles.container}>
         <View style={styles.centerState}>
           <Text style={styles.stateText}>{error || "Lesson not found."}</Text>
-          <SecondaryButton label="Back" onPress={goBackToLessons} />
+          <SecondaryButton
+            label="Back"
+            onPress={goBackToLessons}
+            styles={styles}
+            theme={theme}
+          />
         </View>
       </View>
     );
@@ -285,7 +304,11 @@ export default function LessonScreen() {
               </View>
               <View style={styles.metaPill}>
                 <Ionicons
-                  name={lesson.isCompleted ? "checkmark-circle" : "lock-open-outline"}
+                  name={
+                    lesson.isCompleted
+                      ? "checkmark-circle"
+                      : "lock-open-outline"
+                  }
                   size={14}
                   color={lesson.isCompleted ? "#4ADE80" : "#93C5FD"}
                 />
@@ -317,162 +340,185 @@ export default function LessonScreen() {
       </ScrollView>
 
       <Animated.View entering={FadeIn.duration(300)} style={styles.bottom}>
-        <SecondaryButton label="Back to lessons" onPress={goBackToLessons} />
+        <SecondaryButton
+          label="Back to lessons"
+          onPress={goBackToLessons}
+          styles={styles}
+          theme={theme}
+        />
         <PrimaryButton
           label={lesson.isCompleted ? "Completed" : "Complete lesson"}
           onPress={handleCompleteLesson}
           disabled={submitting || lesson.isCompleted}
+          styles={styles}
+          theme={theme}
         />
       </Animated.View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.bg,
-    paddingHorizontal: theme.s(3),
-    paddingTop: theme.s(6),
-    paddingBottom: theme.s(4),
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.s(1.5),
-    marginBottom: theme.s(2),
-  },
-  headerBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  progressWrap: { flex: 1 },
-  counter: { alignItems: "center", marginBottom: theme.s(2) },
-  counterText: { color: theme.colors.muted, fontSize: 12, fontWeight: "700" },
-  centerState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: theme.s(1.5),
-  },
-  stateText: {
-    color: theme.colors.muted,
-    fontSize: 14,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  center: { flex: 1 },
-  card: {
-    borderRadius: 26,
-    borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.55)",
-    backgroundColor: "rgba(15,23,42,0.65)",
-    overflow: "hidden",
-  },
-  glow: {
-    position: "absolute",
-    top: -30,
-    right: -30,
-    width: 220,
-    height: 220,
-    borderRadius: 999,
-    transform: [{ rotate: "12deg" }],
-  },
-  cardInner: {
-    padding: theme.s(4),
-    gap: theme.s(3),
-    alignItems: "flex-start",
-  },
-  block: { gap: 8, width: "100%" },
-  label: {
-    color: "rgba(148,163,184,0.65)",
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.1,
-    textTransform: "uppercase",
-  },
-  mn: { color: "white", fontSize: 30, fontWeight: "800" },
-  translit: {
-    color: "rgba(226,232,240,0.9)",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  metaRow: {
-    flexDirection: "row",
-    gap: theme.s(1),
-    flexWrap: "wrap",
-  },
-  metaPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: "rgba(15,23,42,0.55)",
-    borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.55)",
-  },
-  metaText: { color: "white", fontSize: 12, fontWeight: "800" },
-  section: { marginTop: theme.s(3), gap: theme.s(1.5) },
-  sectionTitle: { color: "white", fontSize: 17, fontWeight: "900" },
-  contentCard: {
-    borderRadius: theme.r.xl,
-    borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.55)",
-    backgroundColor: "rgba(15,23,42,0.65)",
-    padding: theme.s(2),
-    gap: 8,
-  },
-  contentLabel: {
-    color: "rgba(148,163,184,0.7)",
-    fontSize: 11,
-    fontWeight: "800",
-    textTransform: "uppercase",
-  },
-  contentTitle: { color: "white", fontSize: 15, fontWeight: "800" },
-  contentBody: {
-    color: "rgba(226,232,240,0.9)",
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  feedbackCard: {
-    marginTop: theme.s(2),
-    padding: theme.s(2),
-    borderRadius: theme.r.xl,
-    borderWidth: 1,
-  },
-  feedbackSuccess: {
-    backgroundColor: "rgba(20,83,45,0.25)",
-    borderColor: "rgba(34,197,94,0.35)",
-  },
-  feedbackError: {
-    backgroundColor: "rgba(127,29,29,0.2)",
-    borderColor: "rgba(248,113,113,0.28)",
-  },
-  feedbackText: {
-    color: "white",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  bottom: { gap: theme.s(1.5), marginTop: theme.s(2) },
-  primaryBtn: { borderRadius: theme.r.xl, overflow: "hidden" },
-  primaryGrad: {
-    paddingVertical: theme.s(2),
-    alignItems: "center",
-    borderRadius: theme.r.xl,
-  },
-  primaryText: { color: "white", fontSize: 16, fontWeight: "900" },
-  secondaryBtn: {
-    paddingVertical: theme.s(2),
-    alignItems: "center",
-    borderRadius: theme.r.xl,
-    borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.6)",
-    backgroundColor: "rgba(30,41,59,0.45)",
-  },
-  secondaryText: { color: theme.colors.text, fontSize: 15, fontWeight: "800" },
-});
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.bg,
+      paddingHorizontal: theme.s(3),
+      paddingTop: theme.s(6),
+      paddingBottom: theme.s(4),
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.s(1.5),
+      marginBottom: theme.s(2),
+    },
+    headerBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    progressWrap: { flex: 1 },
+    counter: { alignItems: "center", marginBottom: theme.s(2) },
+    counterText: { color: theme.colors.muted, fontSize: 12, fontWeight: "700" },
+    centerState: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: theme.s(1.5),
+    },
+    stateText: {
+      color: theme.colors.muted,
+      fontSize: 14,
+      fontWeight: "700",
+      textAlign: "center",
+    },
+    center: { flex: 1 },
+    card: {
+      borderRadius: 26,
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(51,65,85,0.55)"
+          : "rgba(148,163,184,0.18)",
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(15,23,42,0.65)" : "#FFFFFF",
+      overflow: "hidden",
+    },
+    glow: {
+      position: "absolute",
+      top: -30,
+      right: -30,
+      width: 220,
+      height: 220,
+      borderRadius: 999,
+      transform: [{ rotate: "12deg" }],
+    },
+    cardInner: {
+      padding: theme.s(4),
+      gap: theme.s(3),
+      alignItems: "flex-start",
+    },
+    block: { gap: 8, width: "100%" },
+    label: {
+      color: "rgba(148,163,184,0.65)",
+      fontSize: 11,
+      fontWeight: "800",
+      letterSpacing: 1.1,
+      textTransform: "uppercase",
+    },
+    mn: { color: theme.colors.text, fontSize: 30, fontWeight: "800" },
+    translit: {
+      color: "rgba(226,232,240,0.9)",
+      fontSize: 16,
+      fontWeight: "600",
+    },
+    metaRow: {
+      flexDirection: "row",
+      gap: theme.s(1),
+      flexWrap: "wrap",
+    },
+    metaPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: "rgba(15,23,42,0.55)",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(51,65,85,0.55)"
+          : "rgba(148,163,184,0.18)",
+    },
+    metaText: { color: theme.colors.text, fontSize: 12, fontWeight: "800" },
+    section: { marginTop: theme.s(3), gap: theme.s(1.5) },
+    sectionTitle: { color: theme.colors.text, fontSize: 17, fontWeight: "900" },
+    contentCard: {
+      borderRadius: theme.r.xl,
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(51,65,85,0.55)"
+          : "rgba(148,163,184,0.18)",
+      backgroundColor: "rgba(15,23,42,0.65)",
+      padding: theme.s(2),
+      gap: 8,
+    },
+    contentLabel: {
+      color: "rgba(148,163,184,0.7)",
+      fontSize: 11,
+      fontWeight: "800",
+      textTransform: "uppercase",
+    },
+    contentTitle: { color: theme.colors.text, fontSize: 15, fontWeight: "800" },
+    contentBody: {
+      color: "rgba(226,232,240,0.9)",
+      fontSize: 14,
+      lineHeight: 21,
+    },
+    feedbackCard: {
+      marginTop: theme.s(2),
+      padding: theme.s(2),
+      borderRadius: theme.r.xl,
+      borderWidth: 1,
+    },
+    feedbackSuccess: {
+      backgroundColor: "rgba(20,83,45,0.25)",
+      borderColor: "rgba(34,197,94,0.35)",
+    },
+    feedbackError: {
+      backgroundColor: "rgba(127,29,29,0.2)",
+      borderColor: "rgba(248,113,113,0.28)",
+    },
+    feedbackText: {
+      color: theme.colors.text,
+      fontSize: 13,
+      fontWeight: "700",
+    },
+    bottom: { gap: theme.s(1.5), marginTop: theme.s(2) },
+    primaryBtn: { borderRadius: theme.r.xl, overflow: "hidden" },
+    primaryGrad: {
+      paddingVertical: theme.s(2),
+      alignItems: "center",
+      borderRadius: theme.r.xl,
+    },
+    primaryText: { color: theme.colors.text, fontSize: 16, fontWeight: "900" },
+    secondaryBtn: {
+      paddingVertical: theme.s(2),
+      alignItems: "center",
+      borderRadius: theme.r.xl,
+      borderWidth: 1,
+      borderColor: "rgba(51,65,85,0.6)",
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(30,41,59,0.45)" : "#FFFFFF",
+    },
+    secondaryText: {
+      color: theme.colors.text,
+      fontSize: 15,
+      fontWeight: "800",
+    },
+  });
