@@ -175,9 +175,13 @@ export default function LessonScreen() {
           ? `Lesson complete. You earned ${xpGained} XP.`
           : "Lesson complete.",
       );
-    } catch (submitError) {
+    } catch (submitError: any) {
       console.log("Error completing lesson:", submitError);
-      setCompletionMessage("We could not complete the lesson right now.");
+      console.log("COMPLETE LESSON API ERROR:", submitError?.response?.data);
+      setCompletionMessage(
+        submitError?.response?.data?.message ||
+          "We could not complete the lesson right now.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -239,18 +243,20 @@ export default function LessonScreen() {
                   </View>
 
                   {!!letter?.nameMn ? (
-                    <Text style={styles.contentBody}>Нэр: {letter.nameMn}</Text>
-                  ) : null}
-
-                  {!!letter?.transcription ? (
-                    <Text style={styles.translitText}>
-                      Galig: {letter.transcription}
+                    <Text style={styles.contentBody}>
+                      Call: {letter.nameMn}
                     </Text>
                   ) : null}
 
+                  {/* {!!letter?.transcription ? (
+                    <Text style={styles.translitText}>
+                      Galig: {letter.transcription}
+                    </Text>
+                  ) : null} */}
+
                   {!!letter?.pronunciation ? (
                     <Text style={styles.contentBody}>
-                      Дуудлага: {letter.pronunciation}
+                      pronunciation: {letter.pronunciation}
                     </Text>
                   ) : null}
                 </View>

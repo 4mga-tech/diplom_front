@@ -25,6 +25,39 @@ type UnitCardItem = {
   locked?: boolean;
 };
 
+type UnitSeedMeta = {
+  id: string;
+  title: string;
+  subtitle: string;
+  gradient: [string, string];
+};
+
+const LEVEL_UNIT_CATALOG: Record<string, UnitSeedMeta[]> = {
+  B1: [
+    {
+      id: "b1-u1",
+      title: "Unit 1: Cyrillic Basics",
+      subtitle: "Learn the first Cyrillic letters",
+      gradient: ["#2563EB", "#06B6D4"],
+    },
+    {
+      id: "b1-u2",
+      title: "Unit 2: Vowels",
+      subtitle: "Learn vowel groups and pronunciation",
+      gradient: ["#2563EB", "#06B6D4"],
+    },
+    // {
+    //   id: "b1-u3",
+    //   title: "Unit 3: Coming Soon",
+    //   subtitle: "This unit will be added next",
+    //   gradient: ["#2563EB", "#06B6D4"],
+    // },
+  ],
+  M1: [],
+  M2: [],
+  M3: [],
+};
+
 function UnitCard({
   unit,
   styles,
@@ -114,34 +147,56 @@ export default function UnitsScreen() {
   const [loading, setLoading] = useState(true);
 
   const buildUnitsForLevel = useCallback(async (): Promise<UnitCardItem[]> => {
-    if (safeLevelId === "B1") {
-      const lessons = await fetchUnitLessons("b1-u1");
+    const catalog = LEVEL_UNIT_CATALOG[safeLevelId] ?? [];
+    if (!catalog.length) return [];
 
-      const completedCount = lessons.filter(
-        (lesson) => lesson.isCompleted,
-      ).length;
+    const lessonResults = await Promise.all(
+      catalog.map(async (unitMeta, index) => {
+        try {
+          const lessons = await fetchUnitLessons(unitMeta.id);
 
-      const hasUnlockedLesson =
-        lessons.length === 0 || lessons.some((lesson) => lesson.isUnlocked);
+          const completedCount = lessons.filter(
+            (lesson) => lesson.isCompleted,
+          ).length;
 
-      return [
-        {
-          id: "b1-u1",
-          levelId: safeLevelId,
-          title: "Unit 1: Cyrillic Basics",
-          subtitle: "Learn the first Cyrillic letters",
-          lessonsCount: lessons.length,
-          progress:
-            lessons.length > 0
-              ? Math.round((completedCount / lessons.length) * 100)
-              : 0,
-          gradient: ["#2563EB", "#06B6D4"],
-          locked: !hasUnlockedLesson,
-        },
-      ];
-    }
+          const unlocked =
+            index === 0
+              ? true
+              : lessons.length === 0
+                ? false
+                : lessons.some((lesson) => lesson.isUnlocked);
 
-    return [];
+          return {
+            id: unitMeta.id,
+            levelId: safeLevelId,
+            title: unitMeta.title,
+            subtitle: unitMeta.subtitle,
+            lessonsCount: lessons.length,
+            progress:
+              lessons.length > 0
+                ? Math.round((completedCount / lessons.length) * 100)
+                : 0,
+            gradient: unitMeta.gradient,
+            locked: !unlocked,
+          } satisfies UnitCardItem;
+        } catch (error) {
+          console.log(`Error loading unit ${unitMeta.id}:`, error);
+
+          return {
+            id: unitMeta.id,
+            levelId: safeLevelId,
+            title: unitMeta.title,
+            subtitle: unitMeta.subtitle,
+            lessonsCount: 0,
+            progress: 0,
+            gradient: unitMeta.gradient,
+            locked: index !== 0,
+          } satisfies UnitCardItem;
+        }
+      }),
+    );
+
+    return lessonResults;
   }, [safeLevelId]);
 
   const loadUnits = useCallback(async () => {
