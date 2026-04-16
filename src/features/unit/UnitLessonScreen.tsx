@@ -93,8 +93,8 @@ export default function UnitLessonsScreen() {
     unitId?: string;
   }>();
 
-  console.log("UnitLessonsScreen levelId:", levelId);
-  console.log("UnitLessonsScreen unitId:", unitId);
+  // console.log("UnitLessonsScreen levelId:", levelId);
+  // console.log("UnitLessonsScreen unitId:", unitId);
 
   const navigation = useNavigation();
   const [lessons, setLessons] = useState<LessonListItem[]>([]);

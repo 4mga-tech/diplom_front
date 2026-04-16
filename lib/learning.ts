@@ -6,21 +6,48 @@ export type LessonContentType =
   | "quiz"
   | "audio"
   | "pronunciation"
-  | "image";
+  | "image"
+  | "alphabet_table"
+  | "classification"
+  | "grammar_note"
+  | "vocab_list"
+  | "exercise_repeat"
+  | "exercise_write"
+  | "exercise_fill"
+  | "exercise_word_build"
+  | "quiz_link";
 
 export type LessonContentPayload = {
   text?: string;
+  textMn?: string;
+  textEn?: string;
   videoUrl?: string;
   quizId?: string;
   url?: string;
+
   letter?: string;
   transliteration?: string;
   pronunciationTip?: string;
   exampleWord?: string;
   exampleMeaning?: string;
   audioUrl?: string;
+
   imageUrl?: string;
   caption?: string;
+
+  letters?: any[];
+  groups?: any[];
+  notes?: string[];
+  items?: any[];
+  rows?: any[];
+  questions?: any[];
+  example?: any;
+  instructionMn?: string;
+  instructionEn?: string;
+  summary?: string;
+  columns?: string[];
+  patternLetters?: string[];
+  lines?: string[];
 };
 
 export type LessonContentItem = {
@@ -117,7 +144,7 @@ export type LevelItem = {
 export async function fetchLevels(): Promise<LevelItem[]> {
   try {
     const res = await api.get("/content/levels");
-    console.log("LEVELS API RAW:", JSON.stringify(res.data, null, 2));
+    // console.log("LEVELS API RAW:", JSON.stringify(res.data, null, 2));
     const data = extractData<any[]>(res.data);
 
     return Array.isArray(data)
@@ -147,14 +174,14 @@ export async function fetchUnitLessons(
   unitId: string,
 ): Promise<LessonListItem[]> {
   try {
-    console.log("REQUEST UNIT ID:", unitId);
+    // console.log("REQUEST UNIT ID:", unitId);
     const res = await api.get(`/units/${unitId}/lessons`);
-    console.log("UNIT LESSONS API RAW:", JSON.stringify(res.data, null, 2));
+    // console.log("UNIT LESSONS API RAW:", JSON.stringify(res.data, null, 2));
 
     const data = extractData<any[]>(res.data);
 
     if (!Array.isArray(data)) {
-      console.log("UNIT LESSONS -> fallback because data is not array");
+      // console.log("UNIT LESSONS -> fallback because data is not array");
       return [];
     }
 
@@ -172,7 +199,7 @@ export async function fetchLessonDetail(
 ): Promise<LessonDetail | null> {
   try {
     const res = await api.get(`/lessons/${lessonId}`);
-    console.log("LESSON DETAIL API RAW:", JSON.stringify(res.data, null, 2));
+    // console.log("LESSON DETAIL API RAW:", JSON.stringify(res.data, null, 2));
 
     const data = extractData<any>(res.data);
 
@@ -186,17 +213,35 @@ export async function fetchLessonDetail(
           title: item?.title,
           content: {
             text: item?.content?.text,
+            textMn: item?.content?.textMn,
+            textEn: item?.content?.textEn,
             videoUrl: item?.content?.videoUrl,
             quizId: item?.content?.quizId,
             url: item?.content?.url,
+
             letter: item?.content?.letter,
             transliteration: item?.content?.transliteration,
             pronunciationTip: item?.content?.pronunciationTip,
             exampleWord: item?.content?.exampleWord,
             exampleMeaning: item?.content?.exampleMeaning,
             audioUrl: item?.content?.audioUrl,
+
             imageUrl: item?.content?.imageUrl,
             caption: item?.content?.caption,
+
+            letters: item?.content?.letters,
+            groups: item?.content?.groups,
+            notes: item?.content?.notes,
+            items: item?.content?.items,
+            rows: item?.content?.rows,
+            questions: item?.content?.questions,
+            example: item?.content?.example,
+            instructionMn: item?.content?.instructionMn,
+            instructionEn: item?.content?.instructionEn,
+            summary: item?.content?.summary,
+            columns: item?.content?.columns,
+            patternLetters: item?.content?.patternLetters,
+            lines: item?.content?.lines,
           },
         }))
       : [];

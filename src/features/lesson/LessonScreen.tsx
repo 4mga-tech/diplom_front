@@ -14,7 +14,7 @@ import {
   useLocalSearchParams,
   useNavigation,
 } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -24,7 +24,6 @@ import {
   View,
 } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
-
 function PrimaryButton({
   label,
   onPress,
@@ -89,6 +88,7 @@ export default function LessonScreen() {
     unitId?: string;
   }>();
   const navigation = useNavigation();
+
   const [lesson, setLesson] = useState<LessonDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -96,7 +96,18 @@ export default function LessonScreen() {
   const [completionMessage, setCompletionMessage] = useState<string | null>(
     null,
   );
+  const [openContentId, setOpenContentId] = useState<string | null>(null);
+  const toggleContent = (id: string) => {
+    setOpenContentId((current) => (current === id ? null : id));
+  };
+  useEffect(() => {
+    if (lesson?.contents?.length) {
+      const firstId = [...lesson.contents].sort((a, b) => a.order - b.order)[0]
+        ?.id;
 
+      setOpenContentId(firstId ?? null);
+    }
+  }, [lesson]);
   const loadLesson = useCallback(async () => {
     if (!lessonId) {
       setLoading(false);
@@ -158,6 +169,7 @@ export default function LessonScreen() {
             }
           : current,
       );
+
       setCompletionMessage(
         xpGained > 0
           ? `Lesson complete. You earned ${xpGained} XP.`
@@ -180,110 +192,714 @@ export default function LessonScreen() {
     }
   };
 
-  const renderContent = (item: LessonContentItem) => {
-    const content = item.content ?? {};
+  const sortedContents = useMemo(() => {
+    return [...(lesson?.contents ?? [])].sort((a, b) => a.order - b.order);
+  }, [lesson?.contents]);
 
-    if (item.type === "pronunciation") {
-      return (
-        <View key={item.id} style={styles.contentCard}>
-          <Text style={styles.contentLabel}>Pronunciation</Text>
-          <Text style={styles.contentTitle}>{item.title}</Text>
+  const renderAlphabetTable = (item: LessonContentItem) => {
+    const letters = Array.isArray((item.content as any)?.letters)
+      ? (item.content as any).letters
+      : [];
 
-          {!!content.letter ? (
-            <Text style={styles.letterText}>{content.letter}</Text>
-          ) : null}
+    const isOpen = openContentId === item.id;
 
-          {!!content.transliteration ? (
-            <Text style={styles.translitText}>
-              Sound: {content.transliteration}
-            </Text>
-          ) : null}
-
-          {!!content.pronunciationTip ? (
-            <Text style={styles.contentBody}>{content.pronunciationTip}</Text>
-          ) : null}
-
-          {!!content.exampleWord ? (
-            <Text style={styles.exampleWord}>
-              Example: {content.exampleWord}
-              {content.exampleMeaning ? ` — ${content.exampleMeaning}` : ""}
-            </Text>
-          ) : null}
-
-          {!!content.audioUrl ? (
-            <SecondaryButton
-              label="Play audio"
-              onPress={() => void openAudio(content.audioUrl)}
-              styles={styles}
-            />
-          ) : null}
+    return (
+      <Pressable
+        key={item.id}
+        onPress={() => toggleContent(item.id)}
+        style={styles.contentCard}
+      >
+        <View style={styles.rowBetween}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.contentLabel}>Alphabet</Text>
+            <Text style={styles.contentTitle}>{item.title}</Text>
+          </View>
+          <Ionicons
+            name={isOpen ? "chevron-up" : "chevron-down"}
+            size={18}
+            color="#94A3B8"
+          />
         </View>
-      );
-    }
 
-    if (item.type === "audio") {
-      return (
-        <View key={item.id} style={styles.contentCard}>
-          <Text style={styles.contentLabel}>Audio</Text>
-          <Text style={styles.contentTitle}>
-            {item.title || "Lesson audio"}
-          </Text>
-
-          {!!content.text ? (
-            <Text style={styles.contentBody}>{content.text}</Text>
-          ) : null}
-
-          {!!content.audioUrl ? (
-            <SecondaryButton
-              label="Play audio"
-              onPress={() => void openAudio(content.audioUrl)}
-              styles={styles}
-            />
+        {isOpen ? (
+          letters.length === 0 ? (
+            <Text style={styles.contentBody}>No letters available yet.</Text>
           ) : (
-            <Text style={styles.contentBody}>Audio URL not available.</Text>
-          )}
-        </View>
-      );
-    }
+            <View style={styles.stack}>
+              {letters.map((letter: any, idx: number) => (
+                <View key={`${item.id}-letter-${idx}`} style={styles.innerCard}>
+                  <View style={styles.rowBetween}>
+                    <Text style={styles.letterText}>
+                      {letter?.printUpper ?? letter?.upper ?? ""}{" "}
+                      {letter?.printLower ?? letter?.lower ?? ""}
+                    </Text>
+                    {letter?.group ? (
+                      <Text style={styles.groupBadge}>{letter.group}</Text>
+                    ) : null}
+                  </View>
 
-    if (item.type === "video") {
-      return (
-        <View key={item.id} style={styles.contentCard}>
-          <Text style={styles.contentLabel}>Video</Text>
-          <Text style={styles.contentTitle}>
-            {item.title || "Lesson video"}
-          </Text>
+                  {!!letter?.nameMn ? (
+                    <Text style={styles.contentBody}>Нэр: {letter.nameMn}</Text>
+                  ) : null}
+
+                  {!!letter?.transcription ? (
+                    <Text style={styles.translitText}>
+                      Galig: {letter.transcription}
+                    </Text>
+                  ) : null}
+
+                  {!!letter?.pronunciation ? (
+                    <Text style={styles.contentBody}>
+                      Дуудлага: {letter.pronunciation}
+                    </Text>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          )
+        ) : null}
+      </Pressable>
+    );
+  };
+
+  const renderClassification = (item: LessonContentItem) => {
+    const groups = Array.isArray((item.content as any)?.groups)
+      ? (item.content as any).groups
+      : [];
+
+    const isOpen = openContentId === item.id;
+
+    return (
+      <Pressable
+        key={item.id}
+        onPress={() => toggleContent(item.id)}
+        style={styles.contentCard}
+      >
+        <View style={styles.rowBetween}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.contentLabel}>Classification</Text>
+            <Text style={styles.contentTitle}>{item.title}</Text>
+          </View>
+
+          <Ionicons
+            name={isOpen ? "chevron-up" : "chevron-down"}
+            size={18}
+            color="#94A3B8"
+          />
+        </View>
+
+        {isOpen ? (
+          <>
+            {!!(item.content as any)?.summary ? (
+              <Text style={styles.contentBody}>
+                {(item.content as any).summary}
+              </Text>
+            ) : null}
+
+            <View style={styles.stack}>
+              {groups.map((group: any, idx: number) => (
+                <View key={`${item.id}-group-${idx}`} style={styles.innerCard}>
+                  <Text style={styles.innerTitle}>{group?.title}</Text>
+                  <Text style={styles.contentBody}>
+                    {Array.isArray(group?.items) ? group.items.join(", ") : ""}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </>
+        ) : null}
+      </Pressable>
+    );
+  };
+
+  const renderGrammarNote = (item: LessonContentItem) => {
+    const notes = Array.isArray((item.content as any)?.notes)
+      ? (item.content as any).notes
+      : [];
+
+    const isOpen = openContentId === item.id;
+
+    return (
+      <Pressable
+        key={item.id}
+        onPress={() => toggleContent(item.id)}
+        style={styles.contentCard}
+      >
+        <View style={styles.rowBetween}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.contentLabel}>Grammar Notes</Text>
+            <Text style={styles.contentTitle}>{item.title}</Text>
+          </View>
+
+          <Ionicons
+            name={isOpen ? "chevron-up" : "chevron-down"}
+            size={18}
+            color="#94A3B8"
+          />
+        </View>
+
+        {isOpen ? (
+          <View style={styles.stack}>
+            {notes.map((note: string, idx: number) => (
+              <View key={`${item.id}-note-${idx}`} style={styles.noteRow}>
+                <Text style={styles.noteBullet}>•</Text>
+                <Text style={styles.noteText}>{note}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+      </Pressable>
+    );
+  };
+
+  const renderVocabList = (item: LessonContentItem) => {
+    const items = Array.isArray((item.content as any)?.items)
+      ? (item.content as any).items
+      : [];
+
+    const isOpen = openContentId === item.id;
+
+    return (
+      <Pressable
+        key={item.id}
+        onPress={() => toggleContent(item.id)}
+        style={styles.contentCard}
+      >
+        <View style={styles.rowBetween}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.contentLabel}>Vocabulary</Text>
+            <Text style={styles.contentTitle}>{item.title}</Text>
+          </View>
+          <Ionicons
+            name={isOpen ? "chevron-up" : "chevron-down"}
+            size={18}
+            color="#94A3B8"
+          />
+        </View>
+
+        {isOpen ? (
+          <View style={styles.stack}>
+            {items.map((v: any, idx: number) => (
+              <View key={`${item.id}-vocab-${idx}`} style={styles.innerCard}>
+                <Text style={styles.innerTitle}>{v?.word ?? ""}</Text>
+                <Text style={styles.contentBody}>{v?.meaning ?? ""}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+      </Pressable>
+    );
+  };
+
+  const renderExerciseRepeat = (item: LessonContentItem) => {
+    const rows = Array.isArray((item.content as any)?.rows)
+      ? (item.content as any).rows
+      : [];
+
+    const isOpen = openContentId === item.id;
+
+    return (
+      <Pressable
+        key={item.id}
+        onPress={() => toggleContent(item.id)}
+        style={styles.contentCard}
+      >
+        <View style={styles.rowBetween}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.contentLabel}>Repeat Exercise</Text>
+            <Text style={styles.contentTitle}>{item.title}</Text>
+          </View>
+
+          <Ionicons
+            name={isOpen ? "chevron-up" : "chevron-down"}
+            size={18}
+            color="#94A3B8"
+          />
+        </View>
+
+        {isOpen ? (
+          <>
+            {!!(item.content as any)?.instructionMn ? (
+              <Text style={styles.contentBody}>
+                {(item.content as any).instructionMn}
+              </Text>
+            ) : null}
+
+            <View style={styles.stack}>
+              {rows.map((row: any, idx: number) => (
+                <View key={`${item.id}-row-${idx}`} style={styles.innerCard}>
+                  {!!row?.prompt ? (
+                    <Text style={styles.innerTitle}>{row.prompt}</Text>
+                  ) : null}
+
+                  {!!row?.line ? (
+                    <Text style={styles.contentBody}>{row.line}</Text>
+                  ) : null}
+
+                  {!!row?.text ? (
+                    <Text style={styles.contentBody}>{row.text}</Text>
+                  ) : null}
+
+                  {!!row?.audioUrl ? (
+                    <SecondaryButton
+                      label="Play practice audio"
+                      onPress={() => void openAudio(row.audioUrl)}
+                      styles={styles}
+                    />
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          </>
+        ) : null}
+      </Pressable>
+    );
+  };
+
+  const renderExerciseWrite = (item: LessonContentItem) => {
+    const letters = Array.isArray((item.content as any)?.letters)
+      ? (item.content as any).letters
+      : [];
+
+    const isOpen = openContentId === item.id;
+
+    return (
+      <Pressable
+        key={item.id}
+        onPress={() => toggleContent(item.id)}
+        style={styles.contentCard}
+      >
+        <View style={styles.rowBetween}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.contentLabel}>Writing Exercise</Text>
+            <Text style={styles.contentTitle}>{item.title}</Text>
+          </View>
+
+          <Ionicons
+            name={isOpen ? "chevron-up" : "chevron-down"}
+            size={18}
+            color="#94A3B8"
+          />
+        </View>
+
+        {isOpen ? (
+          <>
+            {!!(item.content as any)?.instructionMn ? (
+              <Text style={styles.contentBody}>
+                {(item.content as any).instructionMn}
+              </Text>
+            ) : null}
+
+            <View style={styles.chipsWrap}>
+              {letters.map((letter: string, idx: number) => (
+                <View key={`${item.id}-write-${idx}`} style={styles.chip}>
+                  <Text style={styles.chipText}>{letter}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        ) : null}
+      </Pressable>
+    );
+  };
+
+  const renderExerciseFill = (item: LessonContentItem) => {
+    const questions = Array.isArray((item.content as any)?.questions)
+      ? (item.content as any).questions
+      : [];
+    const groups = Array.isArray((item.content as any)?.groups)
+      ? (item.content as any).groups
+      : [];
+
+    const isOpen = openContentId === item.id;
+
+    return (
+      <Pressable
+        key={item.id}
+        onPress={() => toggleContent(item.id)}
+        style={styles.contentCard}
+      >
+        <View style={styles.rowBetween}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.contentLabel}>Fill Exercise</Text>
+            <Text style={styles.contentTitle}>{item.title}</Text>
+          </View>
+
+          <Ionicons
+            name={isOpen ? "chevron-up" : "chevron-down"}
+            size={18}
+            color="#94A3B8"
+          />
+        </View>
+
+        {isOpen ? (
+          <>
+            {!!(item.content as any)?.instructionMn ? (
+              <Text style={styles.contentBody}>
+                {(item.content as any).instructionMn}
+              </Text>
+            ) : null}
+
+            {questions.length > 0 ? (
+              <View style={styles.stack}>
+                {questions.map((q: any, idx: number) => (
+                  <View key={`${item.id}-q-${idx}`} style={styles.innerCard}>
+                    <Text style={styles.contentBody}>{q?.prompt ?? ""}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {groups.length > 0 ? (
+              <View style={styles.stack}>
+                {groups.map((g: any, idx: number) => (
+                  <View
+                    key={`${item.id}-groupfill-${idx}`}
+                    style={styles.innerCard}
+                  >
+                    {Array.isArray(g?.patternLetters) ? (
+                      <Text style={styles.innerTitle}>
+                        {g.patternLetters.join(" ")}
+                      </Text>
+                    ) : null}
+
+                    {Array.isArray(g?.lines)
+                      ? g.lines.map((line: string, lineIdx: number) => (
+                          <Text
+                            key={`${item.id}-line-${lineIdx}`}
+                            style={styles.contentBody}
+                          >
+                            {line}
+                          </Text>
+                        ))
+                      : null}
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </>
+        ) : null}
+      </Pressable>
+    );
+  };
+
+  const renderExerciseWordBuild = (item: LessonContentItem) => {
+    const questions = Array.isArray((item.content as any)?.questions)
+      ? (item.content as any).questions
+      : [];
+    const example = (item.content as any)?.example;
+
+    const isOpen = openContentId === item.id;
+
+    return (
+      <Pressable
+        key={item.id}
+        onPress={() => toggleContent(item.id)}
+        style={styles.contentCard}
+      >
+        <View style={styles.rowBetween}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.contentLabel}>Word Build</Text>
+            <Text style={styles.contentTitle}>{item.title}</Text>
+          </View>
+
+          <Ionicons
+            name={isOpen ? "chevron-up" : "chevron-down"}
+            size={18}
+            color="#94A3B8"
+          />
+        </View>
+
+        {isOpen ? (
+          <>
+            {!!(item.content as any)?.instructionMn ? (
+              <Text style={styles.contentBody}>
+                {(item.content as any).instructionMn}
+              </Text>
+            ) : null}
+
+            {example ? (
+              <View style={styles.innerCard}>
+                <Text style={styles.innerTitle}>Example</Text>
+                <Text style={styles.contentBody}>
+                  {Array.isArray(example?.numbers)
+                    ? example.numbers.join(" ")
+                    : ""}
+                </Text>
+                <Text style={styles.exampleWord}>
+                  Answer: {example?.answer ?? ""}
+                </Text>
+              </View>
+            ) : null}
+
+            <View style={styles.stack}>
+              {questions.map((q: any, idx: number) => (
+                <View key={`${item.id}-wb-${idx}`} style={styles.innerCard}>
+                  <Text style={styles.innerTitle}>
+                    Question {q?.index ?? idx + 1}
+                  </Text>
+                  <Text style={styles.contentBody}>
+                    {Array.isArray(q?.numbers) ? q.numbers.join(" ") : ""}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </>
+        ) : null}
+      </Pressable>
+    );
+  };
+
+  const renderPronunciation = (item: LessonContentItem) => {
+    const content = item.content ?? {};
+    const isOpen = openContentId === item.id;
+
+    return (
+      <Pressable
+        key={item.id}
+        onPress={() => toggleContent(item.id)}
+        style={styles.contentCard}
+      >
+        <View style={styles.rowBetween}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.contentLabel}>Pronunciation</Text>
+            <Text style={styles.contentTitle}>{item.title}</Text>
+          </View>
+
+          <Ionicons
+            name={isOpen ? "chevron-up" : "chevron-down"}
+            size={18}
+            color="#94A3B8"
+          />
+        </View>
+
+        {isOpen ? (
+          <>
+            {!!content.letter ? (
+              <Text style={styles.letterText}>{content.letter}</Text>
+            ) : null}
+
+            {!!content.transliteration ? (
+              <Text style={styles.translitText}>
+                Sound: {content.transliteration}
+              </Text>
+            ) : null}
+
+            {!!content.pronunciationTip ? (
+              <Text style={styles.contentBody}>{content.pronunciationTip}</Text>
+            ) : null}
+
+            {!!content.exampleWord ? (
+              <Text style={styles.exampleWord}>
+                Example: {content.exampleWord}
+                {content.exampleMeaning ? ` — ${content.exampleMeaning}` : ""}
+              </Text>
+            ) : null}
+
+            {!!content.audioUrl ? (
+              <SecondaryButton
+                label="Play audio"
+                onPress={() => void openAudio(content.audioUrl)}
+                styles={styles}
+              />
+            ) : null}
+          </>
+        ) : null}
+      </Pressable>
+    );
+  };
+
+  const renderAudio = (item: LessonContentItem) => {
+    const content = item.content ?? {};
+    const isOpen = openContentId === item.id;
+
+    return (
+      <Pressable
+        key={item.id}
+        onPress={() => toggleContent(item.id)}
+        style={styles.contentCard}
+      >
+        <View style={styles.rowBetween}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.contentLabel}>Audio</Text>
+            <Text style={styles.contentTitle}>
+              {item.title || "Lesson audio"}
+            </Text>
+          </View>
+
+          <Ionicons
+            name={isOpen ? "chevron-up" : "chevron-down"}
+            size={18}
+            color="#94A3B8"
+          />
+        </View>
+
+        {isOpen ? (
+          <>
+            {!!content.text ? (
+              <Text style={styles.contentBody}>{content.text}</Text>
+            ) : null}
+
+            {!!content.audioUrl ? (
+              <SecondaryButton
+                label="Play audio"
+                onPress={() => void openAudio(content.audioUrl)}
+                styles={styles}
+              />
+            ) : (
+              <Text style={styles.contentBody}>Audio URL not available.</Text>
+            )}
+          </>
+        ) : null}
+      </Pressable>
+    );
+  };
+
+  const renderVideo = (item: LessonContentItem) => {
+    const content = item.content ?? {};
+    const isOpen = openContentId === item.id;
+
+    return (
+      <Pressable
+        key={item.id}
+        onPress={() => toggleContent(item.id)}
+        style={styles.contentCard}
+      >
+        <View style={styles.rowBetween}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.contentLabel}>Video</Text>
+            <Text style={styles.contentTitle}>
+              {item.title || "Lesson video"}
+            </Text>
+          </View>
+
+          <Ionicons
+            name={isOpen ? "chevron-up" : "chevron-down"}
+            size={18}
+            color="#94A3B8"
+          />
+        </View>
+
+        {isOpen ? (
           <Text style={styles.contentBody}>
             {content.videoUrl ||
               content.url ||
               "Video URL will be provided by the backend."}
           </Text>
-        </View>
-      );
-    }
+        ) : null}
+      </Pressable>
+    );
+  };
 
-    if (item.type === "quiz") {
-      return (
-        <View key={item.id} style={styles.contentCard}>
-          <Text style={styles.contentLabel}>Quiz</Text>
-          <Text style={styles.contentTitle}>{item.title || "Lesson quiz"}</Text>
-          <Text style={styles.contentBody}>
-            Finish the lesson, then open the quiz flow once your backend quiz
-            endpoint is ready.
-          </Text>
-        </View>
-      );
-    }
+  const renderQuizLink = (item: LessonContentItem) => {
+    const quizId = (item.content as any)?.quizId;
 
     return (
       <View key={item.id} style={styles.contentCard}>
-        <Text style={styles.contentLabel}>Reading</Text>
-        <Text style={styles.contentTitle}>{item.title || "Lesson notes"}</Text>
+        <View style={styles.rowBetween}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.contentLabel}>Quiz</Text>
+            <Text style={styles.contentTitle}>
+              {item.title || "Lesson quiz"}
+            </Text>
+          </View>
+
+          <Ionicons name="help-circle-outline" size={20} color="#A78BFA" />
+        </View>
+
         <Text style={styles.contentBody}>
-          {content.text || "Lesson text will appear here."}
+          Complete the lesson and open the quiz.
         </Text>
+
+        <SecondaryButton
+          label="Open quiz"
+          onPress={() => {
+            if (!quizId) return;
+
+            router.push({
+              pathname: "/quiz/[lessonId]",
+              params: { lessonId: lesson?.id ?? "" },
+            });
+          }}
+          styles={styles}
+        />
       </View>
     );
+  };
+
+  const renderText = (item: LessonContentItem) => {
+    const content = item.content as any;
+    const isOpen = openContentId === item.id;
+
+    return (
+      <Pressable
+        key={item.id}
+        onPress={() => toggleContent(item.id)}
+        style={styles.contentCard}
+      >
+        <View style={styles.rowBetween}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.contentLabel}>Reading</Text>
+            <Text style={styles.contentTitle}>
+              {item.title || "Lesson notes"}
+            </Text>
+          </View>
+
+          <Ionicons
+            name={isOpen ? "chevron-up" : "chevron-down"}
+            size={18}
+            color="#94A3B8"
+          />
+        </View>
+
+        {isOpen ? (
+          <>
+            <Text style={styles.contentBody}>
+              {content?.textMn ||
+                content?.text ||
+                "Lesson text will appear here."}
+            </Text>
+
+            {content?.textEn ? (
+              <Text style={styles.translationText}>{content.textEn}</Text>
+            ) : null}
+          </>
+        ) : null}
+      </Pressable>
+    );
+  };
+
+  const renderContent = (item: LessonContentItem) => {
+    switch (item.type) {
+      case "pronunciation":
+        return renderPronunciation(item);
+      case "audio":
+        return renderAudio(item);
+      case "video":
+        return renderVideo(item);
+      case "alphabet_table":
+        return renderAlphabetTable(item);
+      case "classification":
+        return renderClassification(item);
+      case "grammar_note":
+        return renderGrammarNote(item);
+      case "vocab_list":
+        return renderVocabList(item);
+      case "exercise_repeat":
+        return renderExerciseRepeat(item);
+      case "exercise_write":
+        return renderExerciseWrite(item);
+      case "exercise_fill":
+        return renderExerciseFill(item);
+      case "exercise_word_build":
+        return renderExerciseWordBuild(item);
+      case "quiz_link":
+      case "quiz":
+        return renderQuizLink(item);
+      case "text":
+      default:
+        return renderText(item);
+    }
   };
 
   if (loading) {
@@ -317,24 +933,10 @@ export default function LessonScreen() {
       <View style={styles.header}>
         <Pressable
           onPress={goBackToLessons}
-          style={({ pressed }) => [
-            styles.headerBtn,
-            pressed && { opacity: 0.75 },
-          ]}
+          style={({ pressed }) => [styles.backRow, pressed && { opacity: 0.7 }]}
         >
-          <Ionicons name="chevron-back" size={22} color={theme.colors.muted} />
-        </Pressable>
-
-        <View style={styles.progressWrap} />
-
-        <Pressable
-          onPress={goBackToLessons}
-          style={({ pressed }) => [
-            styles.headerBtn,
-            pressed && { opacity: 0.75 },
-          ]}
-        >
-          <Ionicons name="close" size={22} color={theme.colors.muted} />
+          <Ionicons name="chevron-back" size={20} color={theme.colors.text} />
+          <Text style={styles.backText}>Back</Text>
         </Pressable>
       </View>
 
@@ -393,7 +995,7 @@ export default function LessonScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Lesson content</Text>
-          {lesson.contents.map(renderContent)}
+          {sortedContents.map(renderContent)}
         </View>
 
         {completionMessage ? (
@@ -433,24 +1035,27 @@ const createStyles = (theme: AppTheme) =>
       flex: 1,
       backgroundColor: theme.colors.bg,
       paddingHorizontal: theme.s(3),
-      paddingTop: theme.s(6),
+      paddingTop: theme.s(5.5),
       paddingBottom: theme.s(4),
     },
     header: {
       flexDirection: "row",
       alignItems: "center",
-      gap: theme.s(1.5),
-      marginBottom: theme.s(2),
+      paddingTop: theme.s(1),
+      marginBottom: theme.s(1.5),
     },
     headerBtn: {
-      width: 44,
-      height: 44,
-      borderRadius: 14,
+      flexDirection: "row",
       alignItems: "center",
+      paddingHorizontal: 10,
+      gap: 6,
+      width: 40,
+      height: 40,
+      borderRadius: 12,
       justifyContent: "center",
     },
     progressWrap: { flex: 1 },
-    counter: { alignItems: "center", marginBottom: theme.s(2) },
+    counter: { alignItems: "center", marginBottom: theme.s(1) },
     counterText: { color: theme.colors.muted, fontSize: 12, fontWeight: "700" },
     centerState: {
       flex: 1,
@@ -466,7 +1071,7 @@ const createStyles = (theme: AppTheme) =>
     },
     center: { flex: 1 },
     card: {
-      borderRadius: 26,
+      borderRadius: 20,
       borderWidth: 1,
       borderColor:
         theme.mode === "dark"
@@ -486,28 +1091,30 @@ const createStyles = (theme: AppTheme) =>
       transform: [{ rotate: "12deg" }],
     },
     cardInner: {
-      padding: theme.s(4),
-      gap: theme.s(3),
+      paddingVertical: theme.s(2),
+      paddingHorizontal: theme.s(2.5),
+      gap: theme.s(1.5),
       alignItems: "flex-start",
     },
-    block: { gap: 8, width: "100%" },
+    block: { gap: 4, width: "100%" },
     label: {
       color: "rgba(148,163,184,0.65)",
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: "800",
-      letterSpacing: 1.1,
+      letterSpacing: 0.8,
       textTransform: "uppercase",
     },
-    mn: { color: theme.colors.text, fontSize: 30, fontWeight: "800" },
-    translit: {
-      color: "rgba(226,232,240,0.9)",
-      fontSize: 16,
-      fontWeight: "600",
+    mn: {
+      color: theme.colors.text,
+      fontSize: 22,
+      fontWeight: "800",
+      lineHeight: 28,
     },
     metaRow: {
       flexDirection: "row",
       gap: theme.s(1),
       flexWrap: "wrap",
+      marginTop: 2,
     },
     metaPill: {
       flexDirection: "row",
@@ -537,6 +1144,79 @@ const createStyles = (theme: AppTheme) =>
       padding: theme.s(2),
       gap: 8,
     },
+    innerCard: {
+      borderRadius: theme.r.lg,
+      padding: theme.s(1.5),
+      backgroundColor: "rgba(30,41,59,0.45)",
+      borderWidth: 1,
+      borderColor: "rgba(51,65,85,0.35)",
+      gap: 6,
+    },
+    stack: { gap: 10 },
+    rowBetween: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 10,
+    },
+    groupBadge: {
+      color: "#C4B5FD",
+      fontSize: 11,
+      fontWeight: "800",
+      textTransform: "uppercase",
+    },
+    noteRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 8,
+    },
+    noteBullet: {
+      color: "#A78BFA",
+      fontSize: 16,
+      fontWeight: "900",
+      lineHeight: 20,
+    },
+    backRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingVertical: 4,
+    },
+
+    backText: {
+      color: theme.colors.text,
+      fontSize: 15,
+      fontWeight: "600",
+    },
+    noteText: {
+      flex: 1,
+      color: "rgba(226,232,240,0.92)",
+      fontSize: 14,
+      lineHeight: 21,
+    },
+    chipsWrap: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+    chip: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: "rgba(59,130,246,0.18)",
+      borderWidth: 1,
+      borderColor: "rgba(59,130,246,0.25)",
+    },
+    chipText: {
+      color: theme.colors.text,
+      fontSize: 14,
+      fontWeight: "800",
+    },
+    innerTitle: {
+      color: theme.colors.text,
+      fontSize: 14,
+      fontWeight: "800",
+    },
     contentLabel: {
       color: "rgba(148,163,184,0.7)",
       fontSize: 11,
@@ -549,10 +1229,21 @@ const createStyles = (theme: AppTheme) =>
       fontSize: 14,
       lineHeight: 21,
     },
+    translationText: {
+      color: "#93C5FD",
+      fontSize: 13,
+      lineHeight: 20,
+    },
     letterText: {
       color: theme.colors.text,
       fontSize: 28,
       fontWeight: "900",
+    },
+    translit: {
+      color: "rgba(226,232,240,0.9)",
+      fontSize: 14,
+      fontWeight: "600",
+      lineHeight: 20,
     },
     translitText: {
       color: "#93C5FD",

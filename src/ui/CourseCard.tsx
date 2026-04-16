@@ -68,43 +68,47 @@ export default function CourseCard({
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
-  card: {
-    borderRadius: theme.r.xl,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.cardStrong,
-  },
-  hero: {
-    padding: theme.s(2.5),
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.s(2),
-    minHeight: 96,
-  },
-  title: { color: theme.colors.white, fontSize: 18, fontWeight: "800" },
-  desc: { color: "rgba(255,255,255,0.85)", marginTop: 4, fontSize: 13 },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "rgba(0,0,0,0.25)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.18)",
-  },
-  badgeText: { color: "white", fontWeight: "800", fontSize: 12 },
-  body: { padding: theme.s(2.5), gap: theme.s(1.5) },
-  progressRow: { flexDirection: "row", justifyContent: "space-between" },
-  smallMuted: { color: theme.colors.muted, fontSize: 12, fontWeight: "600" },
-  barTrack: {
-    height: 10,
-    borderRadius: 999,
-    backgroundColor: "rgba(148,163,184,0.15)",
-    overflow: "hidden",
-  },
-  barFill: {
-    height: "100%",
-    borderRadius: 999,
-    backgroundColor: theme.mode === "dark" ? "rgba(255,255,255,0.75)" : "rgba(37,99,235,0.75)",
-  },
+    card: {
+      borderRadius: theme.r.xl,
+      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.cardStrong,
+      marginBottom: theme.s(2),
+    },
+    hero: {
+      padding: theme.s(2.5),
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.s(2),
+      minHeight: 96,
+    },
+    title: { color: theme.colors.white, fontSize: 18, fontWeight: "800" },
+    desc: { color: "rgba(255,255,255,0.85)", marginTop: 4, fontSize: 13 },
+    badge: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      backgroundColor: "rgba(0,0,0,0.25)",
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.18)",
+    },
+    badgeText: { color: "white", fontWeight: "800", fontSize: 12 },
+    body: { padding: theme.s(2.5), gap: theme.s(1.5) },
+    progressRow: { flexDirection: "row", justifyContent: "space-between" },
+    smallMuted: { color: theme.colors.muted, fontSize: 12, fontWeight: "600" },
+    barTrack: {
+      height: 10,
+      borderRadius: 999,
+      backgroundColor: "rgba(148,163,184,0.15)",
+      overflow: "hidden",
+    },
+    barFill: {
+      height: "100%",
+      borderRadius: 999,
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(255,255,255,0.75)"
+          : "rgba(37,99,235,0.75)",
+    },
   });
