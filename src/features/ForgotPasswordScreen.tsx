@@ -7,8 +7,7 @@ import { FormInput } from "../ui/FormInput";
 import { GradientButton } from "../ui/GradientButton";
 import { AppTheme, useThemedStyles } from "../ui/theme";
 
-type Step = "email" | "otp" | "reset";
-
+type Step = "email" | "reset";
 const emailRegex = /\S+@\S+\.\S+/;
 
 export default function ForgotPasswordScreen() {
@@ -19,11 +18,12 @@ export default function ForgotPasswordScreen() {
 
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
-  const [serverOtp] = useState("123456"); // mock
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  // ✅ SEND OTP
+  const [loadingSendOtp, setLoadingSendOtp] = useState(false);
+  const [loadingReset, setLoadingReset] = useState(false);
+
   const handleSendOtp = async () => {
     if (!email) {
       Alert.alert("Error", "Email required");
@@ -35,26 +35,31 @@ export default function ForgotPasswordScreen() {
       return;
     }
 
-    Alert.alert("OTP sent", "Use 123456 (demo)");
-    setStep("otp");
+    try {
+      setLoadingSendOtp(true);
+
+      await api.post("/auth/reset/request-otp", {
+        email: email.trim().toLowerCase(),
+      });
+
+      Alert.alert("Success", "OTP sent to your email");
+      setStep("reset");
+    } catch (err: any) {
+      Alert.alert(
+        "Error",
+        err?.response?.data?.message || "Failed to send OTP",
+      );
+    } finally {
+      setLoadingSendOtp(false);
+    }
   };
 
-  // ✅ VERIFY OTP
-  const handleVerifyOtp = () => {
-    if (otp.length !== 6) {
+  const handleResetPassword = async () => {
+    if (otp.trim().length !== 6) {
       Alert.alert("Error", "Enter 6-digit OTP");
       return;
     }
 
-    if (otp.trim() === serverOtp) {
-      setStep("reset");
-    } else {
-      Alert.alert("Error", "Wrong OTP");
-    }
-  };
-
-  // ✅ RESET PASSWORD (backend)
-  const handleResetPassword = async () => {
     if (!newPassword || !confirmPassword) {
       Alert.alert("Error", "All fields required");
       return;
@@ -71,16 +76,20 @@ export default function ForgotPasswordScreen() {
     }
 
     try {
-      await api.post("/auth/reset-password", {
-        email,
-        password: newPassword,
+      setLoadingReset(true);
+
+      await api.post("/auth/reset/verify-otp", {
+        email: email.trim().toLowerCase(),
+        code: otp.trim(),
+        newPassword,
       });
 
       Alert.alert("Success", "Password updated");
-
       router.replace("/auth/login");
     } catch (err: any) {
-      Alert.alert("Error", err.response?.data?.message || "Reset failed");
+      Alert.alert("Error", err?.response?.data?.message || "Reset failed");
+    } finally {
+      setLoadingReset(false);
     }
   };
 
@@ -89,15 +98,13 @@ export default function ForgotPasswordScreen() {
       <View style={styles.header}>
         <BackButton
           onPress={() => {
-            if (step === "otp") setStep("email");
-            else if (step === "reset") setStep("otp");
+            if (step === "reset") setStep("email");
             else router.back();
           }}
         />
       </View>
 
       <View style={styles.content}>
-        {/* EMAIL */}
         {step === "email" && (
           <>
             <Text style={styles.title}>Forgot Password</Text>
@@ -108,31 +115,54 @@ export default function ForgotPasswordScreen() {
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
+              autoCapitalize="none"
             />
 
-            <GradientButton title="Send OTP" onPress={handleSendOtp} />
+            <GradientButton
+              title={loadingSendOtp ? "Sending..." : "Send OTP"}
+              onPress={handleSendOtp}
+            />
           </>
         )}
 
-        {/* OTP */}
-        {step === "otp" && (
+        {step === "reset" && (
           <>
-            <Text style={styles.title}>Enter OTP</Text>
-            <Text style={styles.subtitle}>Use 123456</Text>
+            <Text style={styles.title}>Reset Password</Text>
+            <Text style={styles.subtitle}>Enter OTP and new password</Text>
 
             <FormInput
-              placeholder="123456"
+              placeholder="OTP (123456)"
               value={otp}
-              onChangeText={setOtp}
+              onChangeText={(t) => setOtp(t.replace(/\D/g, "").slice(0, 6))}
               keyboardType="number-pad"
               maxLength={6}
             />
 
-            <GradientButton title="Verify OTP" onPress={handleVerifyOtp} />
+            <FormInput
+              placeholder="New password"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
+            />
+
+            <FormInput
+              placeholder="Confirm password"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+            />
+
+            <GradientButton
+              title={loadingReset ? "Updating..." : "Update Password"}
+              onPress={handleResetPassword}
+            />
+
+            <Pressable onPress={handleSendOtp}>
+              <Text style={styles.backToLogin}>Resend OTP</Text>
+            </Pressable>
           </>
         )}
 
-        {/* RESET */}
         {step === "reset" && (
           <>
             <Text style={styles.title}>New Password</Text>
@@ -152,7 +182,7 @@ export default function ForgotPasswordScreen() {
             />
 
             <GradientButton
-              title="Update Password"
+              title={loadingReset ? "Updating..." : "Update Password"}
               onPress={handleResetPassword}
             />
           </>
@@ -168,17 +198,17 @@ export default function ForgotPasswordScreen() {
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.bg, padding: 20 },
-  header: { marginBottom: 20 },
-  content: { gap: 16 },
+    container: { flex: 1, backgroundColor: theme.colors.bg, padding: 20 },
+    header: { marginBottom: 20 },
+    content: { gap: 16 },
 
-  title: { fontSize: 26, fontWeight: "800", color: theme.colors.text },
-  subtitle: { color: theme.colors.muted },
+    title: { fontSize: 26, fontWeight: "800", color: theme.colors.text },
+    subtitle: { color: theme.colors.muted },
 
-  backToLogin: {
-    marginTop: 10,
-    color: "#60A5FA",
-    textAlign: "center",
-    fontWeight: "600",
-  },
+    backToLogin: {
+      marginTop: 10,
+      color: "#60A5FA",
+      textAlign: "center",
+      fontWeight: "600",
+    },
   });
