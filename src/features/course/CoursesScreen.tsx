@@ -7,17 +7,15 @@ import {
   Alert,
   FlatList,
   Pressable,
-  RefreshControl,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 
-import { LEVELS, UNITS } from "@/src/data/curriculum";
+import { fetchLevels, LevelItem } from "@/lib/learning";
 import { useNotifications } from "@/src/store/notificationStore";
 import CourseCard from "@/src/ui/CourseCard";
 import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
-
 function StatCard({ value, label }: { value: string; label: string }) {
   const { theme } = useAppTheme();
   const styles = useThemedStyles(createStyles);
@@ -85,7 +83,7 @@ export default function CoursesScreen() {
     const interval = setInterval(() => {
       const fake = {
         id: Date.now().toString(),
-        message: "New lesson unlocked ",
+        message: "New lesson unlocked",
         type: "lesson",
         createdAt: Date.now(),
         read: false,
@@ -95,7 +93,23 @@ export default function CoursesScreen() {
 
     return () => clearInterval(interval);
   }, [addNotification]);
+  const [levels, setLevels] = useState<LevelItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetchLevels();
+        setLevels(res);
+      } catch (e) {
+        console.log("Error loading levels", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -127,16 +141,8 @@ export default function CoursesScreen() {
       </View>
 
       <FlatList
-        data={LEVELS}
+        data={levels}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={theme.colors.text}
-          />
-        }
         renderItem={({ item }) => (
           <CourseCard
             title={item.title}
@@ -146,12 +152,6 @@ export default function CoursesScreen() {
             completedLessons={0}
             gradient={item.gradient}
             onPress={() => {
-              const hasUnits = UNITS.some((u) => u.levelId === item.id);
-              if (!hasUnits) {
-                alert("No units available for this level.");
-                return;
-              }
-
               router.push({
                 pathname: "/units/[levelId]",
                 params: { levelId: item.id },
@@ -159,26 +159,6 @@ export default function CoursesScreen() {
             }}
           />
         )}
-        ItemSeparatorComponent={() => <View style={{ height: theme.s(2) }} />}
-        ListHeaderComponent={
-          <LinearGradient
-            colors={[theme.colors.reviewSurface, "rgba(37,99,235,0.12)"]}
-            style={styles.reviewCard}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.reviewTitle}>{"Today's Review"}</Text>
-              <Text style={styles.reviewDesc}>
-                6 mixed questions - vocab, meaning, and routine phrases
-              </Text>
-            </View>
-            <Pressable
-              onPress={() => router.push("/review")}
-              style={styles.reviewBtn}
-            >
-              <Text style={styles.reviewBtnText}>Start</Text>
-            </Pressable>
-          </LinearGradient>
-        }
       />
     </View>
   );

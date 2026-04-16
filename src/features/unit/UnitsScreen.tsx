@@ -1,24 +1,36 @@
-import { fetchCourseProgress } from "@/lib/learning";
-import {
-  getLevelById,
-  LESSONS,
-  LevelId,
-  Unit,
-  UNITS,
-} from "@/src/data/curriculum";
+import { fetchUnitLessons } from "@/lib/learning";
+import { getLevelById, LevelId } from "@/src/data/curriculum";
 import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+
+type UnitCardItem = {
+  id: string;
+  levelId: string;
+  title: string;
+  subtitle: string;
+  lessonsCount: number;
+  progress: number;
+  gradient: [string, string];
+  locked?: boolean;
+};
 
 function UnitCard({
   unit,
   styles,
   theme,
 }: {
-  unit: Unit;
+  unit: UnitCardItem;
   styles: ReturnType<typeof createStyles>;
   theme: AppTheme;
 }) {
@@ -97,51 +109,71 @@ export default function UnitsScreen() {
 
   const safeLevelId = (levelId ?? "B1") as LevelId;
   const levelMeta = getLevelById(safeLevelId);
-  const [completedLessonIds, setCompletedLessonIds] = useState<string[]>([]);
-  const [unlockedLessonIds, setUnlockedLessonIds] = useState<string[]>([]);
 
-  const units = useMemo(() => {
-    return UNITS.filter((unit) => unit.levelId === safeLevelId).map((unit) => {
-      const unitLessons = LESSONS.filter((lesson) => lesson.unitId === unit.id);
-      const completedCount = unitLessons.filter((lesson) =>
-        completedLessonIds.includes(lesson.id),
+  const [units, setUnits] = useState<UnitCardItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const buildUnitsForLevel = useCallback(async (): Promise<UnitCardItem[]> => {
+    if (safeLevelId === "B1") {
+      const lessons = await fetchUnitLessons("b1-u1");
+
+      const completedCount = lessons.filter(
+        (lesson) => lesson.isCompleted,
       ).length;
+
       const hasUnlockedLesson =
-        unitLessons.length === 0 ||
-        unitLessons.some((lesson) => unlockedLessonIds.includes(lesson.id));
+        lessons.length === 0 || lessons.some((lesson) => lesson.isUnlocked);
 
-      return {
-        ...unit,
-        progress:
-          unitLessons.length > 0
-            ? Math.round((completedCount / unitLessons.length) * 100)
-            : unit.progress,
-        lessonsCount: unitLessons.length || unit.lessonsCount,
-        locked: !hasUnlockedLesson,
-      };
-    });
-  }, [completedLessonIds, safeLevelId, unlockedLessonIds]);
-
-  const loadProgress = useCallback(async () => {
-    try {
-      const progress = await fetchCourseProgress(safeLevelId);
-      setCompletedLessonIds(progress.completedLessonIds);
-      setUnlockedLessonIds(progress.unlockedLessonIds);
-    } catch (error) {
-      console.log("Error loading course progress:", error);
+      return [
+        {
+          id: "b1-u1",
+          levelId: safeLevelId,
+          title: "Unit 1: Cyrillic Basics",
+          subtitle: "Learn the first Cyrillic letters",
+          lessonsCount: lessons.length,
+          progress:
+            lessons.length > 0
+              ? Math.round((completedCount / lessons.length) * 100)
+              : 0,
+          gradient: ["#2563EB", "#06B6D4"],
+          locked: !hasUnlockedLesson,
+        },
+      ];
     }
+
+    return [];
   }, [safeLevelId]);
+
+  const loadUnits = useCallback(async () => {
+    setLoading(true);
+    try {
+      const nextUnits = await buildUnitsForLevel();
+      setUnits(nextUnits);
+    } catch (error) {
+      console.log("Error loading units:", error);
+      setUnits([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [buildUnitsForLevel]);
 
   useFocusEffect(
     useCallback(() => {
-      void loadProgress();
-    }, [loadProgress]),
+      void loadUnits();
+    }, [loadUnits]),
   );
+
+  const totalProgress = useMemo(() => {
+    if (!units.length) return 0;
+    return Math.round(
+      units.reduce((sum, unit) => sum + unit.progress, 0) / units.length,
+    );
+  }, [units]);
 
   if (!levelMeta) {
     return (
       <View style={styles.container}>
-        <Text style={{ color: theme.colors.text }}>Level not found</Text>{" "}
+        <Text style={{ color: theme.colors.text }}>Level not found</Text>
       </View>
     );
   }
@@ -177,24 +209,32 @@ export default function UnitsScreen() {
             Choose a package and continue with the lessons you have unlocked.
           </Text>
         </View>
+        <Text style={styles.bannerSub}>{totalProgress}% overall complete</Text>
       </LinearGradient>
 
-      <FlatList
-        data={units}
-        keyExtractor={(unit) => unit.id}
-        contentContainerStyle={{ paddingBottom: theme.s(4) }}
-        ItemSeparatorComponent={() => <View style={{ height: theme.s(2) }} />}
-        renderItem={({ item }) => (
-          <UnitCard unit={item} styles={styles} theme={theme} />
-        )}
-        ListEmptyComponent={
-          <View style={{ marginTop: theme.s(4), alignItems: "center" }}>
-            <Text style={{ color: theme.colors.muted }}>
-              No packages available for this level yet
-            </Text>
-          </View>
-        }
-      />
+      {loading ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator color={theme.colors.text} />
+          <Text style={styles.loadingText}>Loading units...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={units}
+          keyExtractor={(unit) => unit.id}
+          contentContainerStyle={{ paddingBottom: theme.s(4) }}
+          ItemSeparatorComponent={() => <View style={{ height: theme.s(2) }} />}
+          renderItem={({ item }) => (
+            <UnitCard unit={item} styles={styles} theme={theme} />
+          )}
+          ListEmptyComponent={
+            <View style={{ marginTop: theme.s(4), alignItems: "center" }}>
+              <Text style={{ color: theme.colors.muted }}>
+                No packages available for this level yet
+              </Text>
+            </View>
+          }
+        />
+      )}
     </View>
   );
 }
@@ -255,6 +295,22 @@ const createStyles = (theme: AppTheme) =>
       color: theme.mode === "dark" ? "rgba(226,232,240,0.9)" : "#334155",
       fontWeight: "700",
       flex: 1,
+    },
+    bannerSub: {
+      color: theme.colors.muted,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    loadingWrap: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: theme.s(1.5),
+    },
+    loadingText: {
+      color: theme.colors.muted,
+      fontSize: 13,
+      fontWeight: "700",
     },
     unitPress: { width: "100%" },
     unitCard: {

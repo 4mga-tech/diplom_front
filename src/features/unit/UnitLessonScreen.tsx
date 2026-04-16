@@ -1,5 +1,5 @@
 import { fetchUnitLessons, LessonListItem } from "@/lib/learning";
-import { getLevelById, LevelId, Unit, UNITS } from "@/src/data/curriculum";
+import { getLevelById, LevelId } from "@/src/data/curriculum";
 import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -87,10 +87,15 @@ function LessonRow({
 export default function UnitLessonsScreen() {
   const { theme } = useAppTheme();
   const styles = useThemedStyles(createStyles);
+
   const { levelId, unitId } = useLocalSearchParams<{
     levelId?: string;
     unitId?: string;
   }>();
+
+  console.log("UnitLessonsScreen levelId:", levelId);
+  console.log("UnitLessonsScreen unitId:", unitId);
+
   const navigation = useNavigation();
   const [lessons, setLessons] = useState<LessonListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -116,11 +121,6 @@ export default function UnitLessonsScreen() {
       </View>
     );
   }
-
-  const unitMeta = useMemo<Unit | undefined>(
-    () => UNITS.find((u) => u.id === safeUnitId),
-    [safeUnitId],
-  );
 
   const loadLessons = useCallback(
     async (isRefresh = false) => {
@@ -157,6 +157,11 @@ export default function UnitLessonsScreen() {
     return Math.round((completed / lessons.length) * 100);
   }, [lessons]);
 
+  const headerTitle = useMemo(() => {
+    if (!lessons.length) return "Lessons";
+    return `${levelMeta.title} Lessons`;
+  }, [lessons.length, levelMeta.title]);
+
   const handleBack = () => {
     if (navigation.canGoBack()) {
       router.back();
@@ -183,9 +188,9 @@ export default function UnitLessonsScreen() {
         </Pressable>
 
         <View style={{ flex: 1 }}>
-          <Text style={styles.h1}>{unitMeta?.title ?? "Course Package"}</Text>
+          <Text style={styles.h1}>{headerTitle}</Text>
           <Text style={styles.h2}>
-            {levelMeta.title} � {progress}% complete
+            {levelMeta.title} • {progress}% complete
           </Text>
         </View>
 

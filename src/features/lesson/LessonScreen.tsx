@@ -7,6 +7,7 @@ import {
 import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Linking from "expo-linking";
 import {
   router,
   useFocusEffect,
@@ -29,13 +30,11 @@ function PrimaryButton({
   onPress,
   disabled,
   styles,
-  theme,
 }: {
   label: string;
   onPress: () => void;
   disabled?: boolean;
   styles: ReturnType<typeof createStyles>;
-  theme: AppTheme;
 }) {
   return (
     <Pressable
@@ -63,12 +62,10 @@ function SecondaryButton({
   label,
   onPress,
   styles,
-  theme,
 }: {
   label: string;
   onPress: () => void;
   styles: ReturnType<typeof createStyles>;
-  theme: AppTheme;
 }) {
   return (
     <Pressable
@@ -174,7 +171,81 @@ export default function LessonScreen() {
     }
   };
 
+  const openAudio = async (url?: string) => {
+    if (!url) return;
+    try {
+      await Linking.openURL(url);
+    } catch (err) {
+      console.log("Could not open audio URL:", err);
+    }
+  };
+
   const renderContent = (item: LessonContentItem) => {
+    const content = item.content ?? {};
+
+    if (item.type === "pronunciation") {
+      return (
+        <View key={item.id} style={styles.contentCard}>
+          <Text style={styles.contentLabel}>Pronunciation</Text>
+          <Text style={styles.contentTitle}>{item.title}</Text>
+
+          {!!content.letter ? (
+            <Text style={styles.letterText}>{content.letter}</Text>
+          ) : null}
+
+          {!!content.transliteration ? (
+            <Text style={styles.translitText}>
+              Sound: {content.transliteration}
+            </Text>
+          ) : null}
+
+          {!!content.pronunciationTip ? (
+            <Text style={styles.contentBody}>{content.pronunciationTip}</Text>
+          ) : null}
+
+          {!!content.exampleWord ? (
+            <Text style={styles.exampleWord}>
+              Example: {content.exampleWord}
+              {content.exampleMeaning ? ` — ${content.exampleMeaning}` : ""}
+            </Text>
+          ) : null}
+
+          {!!content.audioUrl ? (
+            <SecondaryButton
+              label="Play audio"
+              onPress={() => void openAudio(content.audioUrl)}
+              styles={styles}
+            />
+          ) : null}
+        </View>
+      );
+    }
+
+    if (item.type === "audio") {
+      return (
+        <View key={item.id} style={styles.contentCard}>
+          <Text style={styles.contentLabel}>Audio</Text>
+          <Text style={styles.contentTitle}>
+            {item.title || "Lesson audio"}
+          </Text>
+
+          {!!content.text ? (
+            <Text style={styles.contentBody}>{content.text}</Text>
+          ) : null}
+
+          {!!content.audioUrl ? (
+            <SecondaryButton
+              label="Play audio"
+              onPress={() => void openAudio(content.audioUrl)}
+              styles={styles}
+            />
+          ) : (
+            <Text style={styles.contentBody}>Audio URL not available.</Text>
+          )}
+        </View>
+      );
+    }
+
     if (item.type === "video") {
       return (
         <View key={item.id} style={styles.contentCard}>
@@ -183,7 +254,8 @@ export default function LessonScreen() {
             {item.title || "Lesson video"}
           </Text>
           <Text style={styles.contentBody}>
-            {item.content.videoUrl ||
+            {content.videoUrl ||
+              content.url ||
               "Video URL will be provided by the backend."}
           </Text>
         </View>
@@ -208,7 +280,7 @@ export default function LessonScreen() {
         <Text style={styles.contentLabel}>Reading</Text>
         <Text style={styles.contentTitle}>{item.title || "Lesson notes"}</Text>
         <Text style={styles.contentBody}>
-          {item.content.text || "Lesson text will appear here."}
+          {content.text || "Lesson text will appear here."}
         </Text>
       </View>
     );
@@ -234,7 +306,6 @@ export default function LessonScreen() {
             label="Back"
             onPress={goBackToLessons}
             styles={styles}
-            theme={theme}
           />
         </View>
       </View>
@@ -344,14 +415,12 @@ export default function LessonScreen() {
           label="Back to lessons"
           onPress={goBackToLessons}
           styles={styles}
-          theme={theme}
         />
         <PrimaryButton
           label={lesson.isCompleted ? "Completed" : "Complete lesson"}
           onPress={handleCompleteLesson}
           disabled={submitting || lesson.isCompleted}
           styles={styles}
-          theme={theme}
         />
       </Animated.View>
     </View>
@@ -479,6 +548,21 @@ const createStyles = (theme: AppTheme) =>
       color: "rgba(226,232,240,0.9)",
       fontSize: 14,
       lineHeight: 21,
+    },
+    letterText: {
+      color: theme.colors.text,
+      fontSize: 28,
+      fontWeight: "900",
+    },
+    translitText: {
+      color: "#93C5FD",
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    exampleWord: {
+      color: "#FDE68A",
+      fontSize: 14,
+      fontWeight: "700",
     },
     feedbackCard: {
       marginTop: theme.s(2),
