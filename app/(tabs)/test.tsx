@@ -1,6 +1,5 @@
-import TestLevelSelect from "@/src/features/TestLevelSelect";
+import TestLevelSelect from "@/src/features/test/screens/TestLevelSelectScreen";
 
-TestLevelSelect;
 export default function TestTab() {
   return <TestLevelSelect />;
 }

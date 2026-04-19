@@ -14,19 +14,12 @@ import {
 
 import { fetchLevels, LevelItem } from "@/lib/learning";
 import { useNotifications } from "@/src/store/notificationStore";
-import CourseCard from "@/src/ui/CourseCard";
 import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
-function StatCard({ value, label }: { value: string; label: string }) {
-  const { theme } = useAppTheme();
-  const styles = useThemedStyles(createStyles);
 
-  return (
-    <LinearGradient colors={theme.colors.statGradient} style={styles.statCard}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </LinearGradient>
-  );
-}
+type DisplayLevel = LevelItem & {
+  shortInfo: string;
+  accent: [string, string];
+};
 
 export default function CoursesScreen() {
   const { theme } = useAppTheme();
@@ -36,7 +29,8 @@ export default function CoursesScreen() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const [refreshing, setRefreshing] = useState(false);
+  const [levels, setLevels] = useState<LevelItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const stats = useMemo(() => {
     return {
@@ -46,10 +40,73 @@ export default function CoursesScreen() {
     };
   }, []);
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 700);
-  };
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const fake = {
+        id: Date.now().toString(),
+        message: "New lesson unlocked",
+        type: "lesson",
+        createdAt: Date.now(),
+        read: false,
+      };
+      addNotification(fake);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [addNotification]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetchLevels();
+        setLevels(res);
+      } catch (e) {
+        console.log("Error loading levels", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  const levelMeta = useMemo<
+    Record<string, { shortInfo: string; accent: [string, string] }>
+  >(
+    () => ({
+      B1: {
+        shortInfo: "Letters & basics",
+        accent: ["#5B6CFF", "#7C3AED"],
+      },
+      M1: {
+        shortInfo: "Core vocabulary",
+        accent: ["#0EA5E9", "#2563EB"],
+      },
+      M2: {
+        shortInfo: "Daily communication",
+        accent: ["#14B8A6", "#0F766E"],
+      },
+      M3: {
+        shortInfo: "Advanced practice",
+        accent: ["#F59E0B", "#EA580C"],
+      },
+    }),
+    [],
+  );
+
+  const displayLevels = useMemo<DisplayLevel[]>(() => {
+    const preferredOrder = ["B1", "M1", "M2", "M3"];
+
+    const sorted = [...levels].sort(
+      (a, b) => preferredOrder.indexOf(a.id) - preferredOrder.indexOf(b.id),
+    );
+
+    return sorted.map((item) => ({
+      ...item,
+      shortInfo: levelMeta[item.id]?.shortInfo ?? "Start learning",
+      accent: levelMeta[item.id]?.accent ?? theme.colors.statGradient,
+    }));
+  }, [levels, levelMeta, theme.colors.statGradient]);
 
   const logout = async () => {
     try {
@@ -59,7 +116,6 @@ export default function CoursesScreen() {
       await AsyncStorage.removeItem("user");
 
       await AsyncStorage.setItem("fromLogout", "true");
-
       router.replace("/welcome");
     } catch (error) {
       console.log("Logout error:", error);
@@ -79,86 +135,138 @@ export default function CoursesScreen() {
     ]);
   };
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const fake = {
-        id: Date.now().toString(),
-        message: "New lesson unlocked",
-        type: "lesson",
-        createdAt: Date.now(),
-        read: false,
-      };
-      addNotification(fake);
-    }, 10000);
+  const activeLevel = displayLevels[0]?.id ?? "B1";
 
-    return () => clearInterval(interval);
-  }, [addNotification]);
-  const [levels, setLevels] = useState<LevelItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetchLevels();
-        setLevels(res);
-      } catch (e) {
-        console.log("Error loading levels", e);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
-  }, []);
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Monlanguage</Text>
+      <View style={styles.topBar}>
+        <View style={styles.brandWrap}>
+          <View style={styles.logoBubble}>
+            <Ionicons name="sparkles" size={16} color={theme.colors.text} />
+          </View>
 
-        <View style={styles.headerActions}>
-          <Pressable onPress={confirmLogout} style={styles.iconBtn}>
-            <Ionicons name="log-out-outline" size={22} color="#da6868" />
-          </Pressable>
+          <View>
+            <Text style={styles.brandTitle}>Monlanguage</Text>
+            <Text style={styles.brandSub}>Learn smarter every day</Text>
+          </View>
+        </View>
 
+        <View style={styles.topActions}>
           <Pressable
             onPress={() => router.push("/notification")}
             style={styles.iconBtn}
           >
-            <Ionicons name="notifications-outline" size={22} color="#8B5CF6" />
+            <Ionicons name="notifications-outline" size={19} color="#8B5CF6" />
             {unreadCount > 0 && (
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>{unreadCount}</Text>
+                <Text style={styles.badgeText}>
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </Text>
               </View>
             )}
+          </Pressable>
+
+          <Pressable onPress={confirmLogout} style={styles.iconBtn}>
+            <Ionicons name="log-out-outline" size={19} color="#E57373" />
           </Pressable>
         </View>
       </View>
 
-      <View style={styles.statsRow}>
-        <StatCard value={stats.completed} label="Completed" />
-        <StatCard value={stats.streak} label="Daily Streak" />
-        <StatCard value={stats.xp} label="XP" />
+      <LinearGradient
+        colors={theme.colors.statGradient}
+        style={styles.heroCard}
+      >
+        <View style={styles.heroLeft}>
+          <Text style={styles.heroEyebrow}>Current progress</Text>
+          <Text style={styles.heroTitle}>{activeLevel} level</Text>
+          <Text style={styles.heroDesc}>
+            Keep your streak and continue learning today.
+          </Text>
+        </View>
+
+        <View style={styles.heroRight}>
+          <View style={styles.heroPill}>
+            <Ionicons name="flash" size={13} color={theme.colors.text} />
+            <Text style={styles.heroPillValue}>{stats.xp}</Text>
+            <Text style={styles.heroPillLabel}>XP</Text>
+          </View>
+
+          <View style={styles.heroMiniRow}>
+            <View style={styles.heroMiniItem}>
+              <Ionicons name="flame" size={12} color={theme.colors.text} />
+              <Text style={styles.heroMiniValue}>{stats.streak}</Text>
+            </View>
+
+            <View style={styles.heroMiniDivider} />
+
+            <View style={styles.heroMiniItem}>
+              <Ionicons
+                name="checkmark-circle"
+                size={12}
+                color={theme.colors.text}
+              />
+              <Text style={styles.heroMiniValue}>{stats.completed}</Text>
+            </View>
+          </View>
+        </View>
+      </LinearGradient>
+
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Levels</Text>
+        <Text style={styles.sectionCaption}>
+          {loading ? "Loading..." : `${displayLevels.length} available`}
+        </Text>
       </View>
 
       <FlatList
-        data={levels}
+        data={displayLevels}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <CourseCard
-            title={item.title}
-            description={item.description}
-            progress={0}
-            totalLessons={item.vocabularyCount}
-            completedLessons={0}
-            gradient={item.gradient}
+        numColumns={2}
+        columnWrapperStyle={styles.gridRow}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+        renderItem={({ item, index }) => (
+          <Pressable
+            style={[
+              styles.levelCardWrap,
+              index % 2 === 0 ? { marginRight: 10 } : null,
+            ]}
             onPress={() => {
               router.push({
                 pathname: "/units/[levelId]",
                 params: { levelId: item.id },
               });
             }}
-          />
+          >
+            <LinearGradient colors={item.accent} style={styles.levelCard}>
+              <View style={styles.levelCardTop}>
+                <View style={styles.levelTag}>
+                  <Text style={styles.levelTagText}>Open</Text>
+                </View>
+
+                <Ionicons
+                  name="arrow-forward"
+                  size={16}
+                  color="rgba(255,255,255,0.92)"
+                />
+              </View>
+
+              <View>
+                <Text style={styles.levelCode}>{item.id}</Text>
+                <Text style={styles.levelShortInfo} numberOfLines={1}>
+                  {item.shortInfo}
+                </Text>
+              </View>
+
+              <View style={styles.levelFooter}>
+                <Text style={styles.levelCount}>
+                  {item.vocabularyCount ?? 0} words
+                </Text>
+              </View>
+            </LinearGradient>
+          </Pressable>
         )}
+        ListFooterComponent={<View style={{ height: 24 }} />}
       />
     </View>
   );
@@ -170,39 +278,78 @@ const createStyles = (theme: AppTheme) =>
       flex: 1,
       backgroundColor: theme.colors.bg,
       paddingHorizontal: theme.s(3),
-      paddingTop: theme.s(6),
+      paddingTop: theme.s(6.5),
     },
-    header: {
+
+    topBar: {
       flexDirection: "row",
+      alignItems: "center",
       justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: theme.s(3),
+      marginBottom: theme.s(2.4),
     },
-    headerActions: {
+
+    brandWrap: {
       flexDirection: "row",
       alignItems: "center",
-      gap: theme.s(1),
+      flex: 1,
+      paddingRight: 12,
     },
+
+    logoBubble: {
+      width: 42,
+      height: 42,
+      borderRadius: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 12,
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(255,255,255,0.08)"
+          : "rgba(99,102,241,0.10)",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(255,255,255,0.10)"
+          : "rgba(99,102,241,0.16)",
+    },
+
+    brandTitle: {
+      color: theme.colors.text,
+      fontSize: 22,
+      fontWeight: "800",
+      letterSpacing: 0.2,
+    },
+
+    brandSub: {
+      color: theme.colors.muted,
+      fontSize: 12,
+      fontWeight: "600",
+      marginTop: 3,
+    },
+
+    topActions: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+
     iconBtn: {
-      width: 50,
-      height: 50,
-      borderRadius: 14,
+      width: 44,
+      height: 44,
+      borderRadius: 15,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor:
-        theme.mode === "dark" ? "rgba(255,255,255,0.08)" : theme.colors.card,
+        theme.mode === "dark" ? "rgba(255,255,255,0.07)" : theme.colors.card,
       borderWidth: 1,
       borderColor:
-        theme.mode === "dark" ? "rgba(255,255,255,0.12)" : theme.colors.border,
-      shadowColor: "#000",
-      shadowOpacity: 0.3,
-      shadowRadius: 10,
-      elevation: 6,
+        theme.mode === "dark" ? "rgba(255,255,255,0.09)" : theme.colors.border,
     },
+
     badge: {
       position: "absolute",
-      top: 4,
-      right: 4,
+      top: 5,
+      right: 5,
       backgroundColor: "#EF4444",
       borderRadius: 999,
       minWidth: 16,
@@ -211,79 +358,213 @@ const createStyles = (theme: AppTheme) =>
       justifyContent: "center",
       paddingHorizontal: 3,
     },
+
     badgeText: {
-      color: "white",
+      color: "#fff",
       fontSize: 10,
       fontWeight: "800",
     },
-    title: {
-      color: theme.colors.text,
-      fontSize: 22,
-      fontWeight: "800",
-    },
-    statsRow: {
-      flexDirection: "row",
-      gap: theme.s(1.5),
-      marginBottom: theme.s(2.5),
-    },
-    statCard: {
-      flex: 1,
-      borderRadius: theme.r.xl,
-      paddingVertical: theme.s(2),
-      alignItems: "center",
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-    },
-    statValue: {
-      color: theme.colors.text,
-      fontSize: 20,
-      fontWeight: "800",
-    },
-    statLabel: {
-      color: theme.colors.muted,
-      fontSize: 11,
-      fontWeight: "700",
-      marginTop: 4,
-    },
-    list: {
-      paddingBottom: theme.s(5),
-    },
-    reviewCard: {
-      borderRadius: theme.r.xl,
-      padding: theme.s(2.5),
-      marginBottom: theme.s(2),
+
+    heroCard: {
+      borderRadius: 24,
+      paddingHorizontal: 18,
+      paddingVertical: 16,
+      marginBottom: theme.s(2.3),
       borderWidth: 1,
       borderColor:
-        theme.mode === "dark"
-          ? "rgba(124,92,255,0.25)"
-          : "rgba(37,99,235,0.18)",
+        theme.mode === "dark" ? "rgba(255,255,255,0.10)" : theme.colors.border,
       flexDirection: "row",
       alignItems: "center",
-      gap: theme.s(2),
+      justifyContent: "space-between",
+      minHeight: 118,
     },
-    reviewTitle: {
+
+    heroLeft: {
+      flex: 1,
+      paddingRight: 14,
+    },
+
+    heroEyebrow: {
       color: theme.colors.text,
-      fontSize: 14,
-      fontWeight: "800",
+      fontSize: 11,
+      fontWeight: "700",
+      marginBottom: 6,
     },
-    reviewDesc: {
+
+    heroTitle: {
+      color: theme.colors.text,
+      fontSize: 22,
+      fontWeight: "900",
+      letterSpacing: 0.2,
+    },
+
+    heroDesc: {
       color: theme.colors.muted,
       fontSize: 12,
+      lineHeight: 18,
+      marginTop: 5,
       fontWeight: "600",
-      marginTop: 4,
     },
-    reviewBtn: {
-      paddingHorizontal: theme.s(2),
-      paddingVertical: theme.s(1.25),
+
+    heroRight: {
+      alignItems: "flex-end",
+      justifyContent: "space-between",
+      minHeight: 84,
+    },
+
+    heroPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
       borderRadius: 999,
-      backgroundColor: theme.colors.reviewButton,
+
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.05)",
+
       borderWidth: 1,
       borderColor:
         theme.mode === "dark" ? "rgba(255,255,255,0.14)" : theme.colors.border,
     },
-    reviewBtnText: {
+
+    heroPillValue: {
       color: theme.colors.text,
+      fontSize: 14,
       fontWeight: "800",
+    },
+
+    heroPillLabel: {
+      color: theme.colors.muted,
+      fontSize: 10,
+      fontWeight: "700",
+    },
+
+    heroMiniRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: 12,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      borderRadius: 999,
+
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)",
+
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark" ? "rgba(255,255,255,0.10)" : theme.colors.border,
+    },
+
+    heroMiniItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+    },
+
+    heroMiniDivider: {
+      width: 1,
+      height: 14,
+      backgroundColor: "rgba(255,255,255,0.20)",
+      marginHorizontal: 10,
+    },
+
+    heroMiniValue: {
+      color: theme.colors.text,
       fontSize: 12,
+      fontWeight: "800",
+    },
+
+    sectionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: theme.s(1.4),
+      paddingHorizontal: 2,
+    },
+
+    sectionTitle: {
+      color: theme.colors.text,
+      fontSize: 18,
+      fontWeight: "800",
+      letterSpacing: 0.2,
+    },
+
+    sectionCaption: {
+      color: theme.colors.muted,
+      fontSize: 11,
+      fontWeight: "700",
+    },
+
+    list: {
+      paddingBottom: theme.s(4),
+    },
+
+    gridRow: {
+      justifyContent: "space-between",
+      marginBottom: 10,
+    },
+
+    levelCardWrap: {
+      flex: 1,
+    },
+
+    levelCard: {
+      height: 120,
+      borderRadius: 24,
+      padding: 16,
+      justifyContent: "space-between",
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.14)",
+    },
+
+    levelCardTop: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+
+    levelTag: {
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: 999,
+      backgroundColor: "rgba(255,255,255,0.14)",
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.14)",
+    },
+
+    levelTagText: {
+      color: "#fff",
+      fontSize: 9,
+      fontWeight: "800",
+      letterSpacing: 0.2,
+    },
+
+    levelCode: {
+      color: "#fff",
+      fontSize: 16,
+      fontWeight: "900",
+      letterSpacing: 0.3,
+      marginTop: 6,
+    },
+
+    levelShortInfo: {
+      color: "rgba(255,255,255,0.86)",
+      fontSize: 11,
+      fontWeight: "700",
+      marginTop: 4,
+    },
+
+    levelFooter: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: 12,
+    },
+
+    levelCount: {
+      color: "rgba(255,255,255,0.70)",
+      fontSize: 10,
+      fontWeight: "600",
     },
   });
