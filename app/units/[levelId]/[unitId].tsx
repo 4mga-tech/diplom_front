@@ -1,4 +1,20 @@
-import UnitLessonsScreen from "@/src/features/unit/UnitLessonScreen";
-export default function UnitLessonsRoute() {
-  return <UnitLessonsScreen />;
+import {
+  getLevelRoute,
+  getNormalizedLearningParams,
+  getUnitRoute,
+} from "@/src/features/learning/routes";
+import { Redirect, useLocalSearchParams } from "expo-router";
+
+export default function LegacyUnitRoute() {
+  const params = useLocalSearchParams<{
+    levelId?: string;
+    unitId?: string;
+  }>();
+  const { levelId, unitId } = getNormalizedLearningParams(params);
+
+  if (unitId) {
+    return <Redirect href={getUnitRoute(levelId, unitId)} />;
+  }
+
+  return <Redirect href={getLevelRoute(levelId)} />;
 }

@@ -1,9 +1,9 @@
+import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { AppTheme, useAppTheme, useThemedStyles } from "../ui/theme";
 const FEATURES = ["cyrillic", "speak", "culture"];
 
 export default function WelcomeScreen() {

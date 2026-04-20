@@ -1,11 +1,11 @@
 import { api } from "@/lib/api";
+import { BackButton } from "@/src/ui/BackButton";
+import { FormInput } from "@/src/ui/FormInput";
+import { GradientButton } from "@/src/ui/GradientButton";
+import { AppTheme, useThemedStyles } from "@/src/ui/theme";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
-import { BackButton } from "../ui/BackButton";
-import { FormInput } from "../ui/FormInput";
-import { GradientButton } from "../ui/GradientButton";
-import { AppTheme, useThemedStyles } from "../ui/theme";
 
 type Step = "email" | "reset";
 const emailRegex = /\S+@\S+\.\S+/;

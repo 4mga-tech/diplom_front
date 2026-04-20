@@ -3,7 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useMemo } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { theme } from "../ui/theme";
+import { theme } from "../../../ui/theme";
 
 type Achievement = {
   id: string;

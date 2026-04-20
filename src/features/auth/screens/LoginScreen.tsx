@@ -10,10 +10,10 @@ import {
   Text,
   View,
 } from "react-native";
-import { BackButton } from "../ui/BackButton";
-import { FormInput } from "../ui/FormInput";
-import { GradientButton } from "../ui/GradientButton";
-import { AppTheme, useAppTheme, useThemedStyles } from "../ui/theme";
+import { BackButton } from "../../../ui/BackButton";
+import { FormInput } from "../../../ui/FormInput";
+import { GradientButton } from "../../../ui/GradientButton";
+import { AppTheme, useAppTheme, useThemedStyles } from "../../../ui/theme";
 
 const emailRegex = /\S+@\S+\.\S+/;
 
@@ -146,22 +146,22 @@ export default function LoginScreen() {
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.bg },
-  inner: {
-    flex: 1,
-    paddingHorizontal: theme.s(3),
-    paddingVertical: theme.s(4),
-  },
-  header: { marginBottom: theme.s(3) },
-  content: { flex: 1, gap: theme.s(4) },
-  title: { color: theme.colors.text, fontSize: 28, fontWeight: "800" },
-  subtitle: { color: theme.colors.muted, fontSize: 15 },
-  linkSm: { color: "#60A5FA", fontSize: 13, fontWeight: "600" },
-  bottomText: {
-    textAlign: "center",
-    color: theme.colors.muted,
-    fontSize: 14,
-    marginTop: theme.s(1),
-  },
-  link: { color: "#60A5FA", fontWeight: "700" },
+    container: { flex: 1, backgroundColor: theme.colors.bg },
+    inner: {
+      flex: 1,
+      paddingHorizontal: theme.s(3),
+      paddingVertical: theme.s(4),
+    },
+    header: { marginBottom: theme.s(3) },
+    content: { flex: 1, gap: theme.s(4) },
+    title: { color: theme.colors.text, fontSize: 28, fontWeight: "800" },
+    subtitle: { color: theme.colors.muted, fontSize: 15 },
+    linkSm: { color: "#60A5FA", fontSize: 13, fontWeight: "600" },
+    bottomText: {
+      textAlign: "center",
+      color: theme.colors.muted,
+      fontSize: 14,
+      marginTop: theme.s(1),
+    },
+    link: { color: "#60A5FA", fontWeight: "700" },
   });

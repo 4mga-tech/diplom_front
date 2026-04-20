@@ -1,3 +1,4 @@
+import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -7,7 +8,6 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from "react-native-reanimated";
-import { AppTheme, useAppTheme, useThemedStyles } from "../ui/theme";
 function Card({ children }: { children: React.ReactNode }) {
   const { theme } = useAppTheme();
   const styles = useThemedStyles(createStyles);

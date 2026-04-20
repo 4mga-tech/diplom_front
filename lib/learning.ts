@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import { NormalizedLevelId } from "@/src/features/learning/routes";
 
 export type LessonContentType =
   | "video"
@@ -67,11 +68,60 @@ export type LessonListItem = {
   xpReward: number;
   isCompleted: boolean;
   isUnlocked: boolean;
+  isCurrent?: boolean;
+};
+
+export type LessonEmbeddedUnit = {
+  id: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  order: number;
+  lessonCount: number;
+  completedLessonCount: number;
+  progress: number;
 };
 
 export type LessonDetail = LessonListItem & {
   contents: LessonContentItem[];
+  previousLessonId: string | null;
+  nextLessonId: string | null;
+  unit: LessonEmbeddedUnit | null;
 };
+
+export type UnitListItem = {
+  id: string;
+  order: number;
+  title: string;
+  subtitle: string;
+  description: string;
+  gradient: [string, string];
+  levelId: string;
+  lessonsCount: number;
+  completedLessonsCount: number;
+  unlockedLessonsCount: number;
+  progress: number;
+  isUnlocked: boolean;
+  isCompleted: boolean;
+  currentLessonId: string | null;
+  firstUnlockedLessonId: string | null;
+};
+
+export type UnitDetail = UnitListItem & {
+  lessons: LessonListItem[];
+};
+
+export type LessonProgressState =
+  | "locked"
+  | "unlocked"
+  | "current"
+  | "completed";
+
+export type UnitProgressState =
+  | "locked"
+  | "unlocked"
+  | "in_progress"
+  | "completed";
 
 export type CourseProgress = {
   completedLessonIds: string[];
@@ -85,6 +135,10 @@ function extractData<T>(payload: unknown): T {
   return (maybeWrapped?.data ?? payload) as T;
 }
 
+function normalizeCourseId(courseId: string) {
+  return courseId.trim().toLowerCase();
+}
+
 function mapLesson(raw: any, order = 1): LessonListItem {
   return {
     id: String(raw?.id ?? raw?._id ?? ""),
@@ -95,7 +149,102 @@ function mapLesson(raw: any, order = 1): LessonListItem {
     xpReward: Number(raw?.xpReward ?? raw?.xp ?? 0),
     isCompleted: Boolean(raw?.isCompleted ?? raw?.completed ?? false),
     isUnlocked: Boolean(raw?.isUnlocked ?? raw?.unlocked ?? false),
+    isCurrent: Boolean(raw?.isCurrent ?? raw?.current ?? false),
   };
+}
+
+function mapEmbeddedUnit(raw: any): LessonEmbeddedUnit | null {
+  if (!raw) {
+    return null;
+  }
+
+  const lessonCount = Math.max(0, Number(raw?.lessonCount ?? 0));
+  const completedLessonCount = Math.max(
+    0,
+    Number(raw?.completedLessonCount ?? 0),
+  );
+
+  return {
+    id: String(raw?.id ?? raw?._id ?? ""),
+    title: String(raw?.title ?? "Unit"),
+    subtitle: String(raw?.subtitle ?? ""),
+    description: String(raw?.description ?? ""),
+    order: Math.max(1, Number(raw?.order ?? 1)),
+    lessonCount,
+    completedLessonCount,
+    progress:
+      lessonCount > 0
+        ? Math.round((completedLessonCount / lessonCount) * 100)
+        : 0,
+  };
+}
+
+type BackendUnitResponse = {
+  id?: string;
+  _id?: string;
+  title?: string;
+  subtitle?: string;
+  description?: string;
+  order?: number;
+  lessonCount?: number;
+  completedLessonCount?: number;
+  unlockedLessonCount?: number;
+  isUnlocked?: boolean;
+  isCompleted?: boolean;
+};
+
+type BackendCourseUnitsPayload = {
+  courseId?: string;
+  units?: BackendUnitResponse[];
+};
+
+const inFlightCourseUnitsRequests = new Map<
+  NormalizedLevelId,
+  Promise<UnitListItem[]>
+>();
+
+export function getLessonProgressState(
+  lesson: Pick<LessonListItem, "isCompleted" | "isUnlocked" | "id" | "isCurrent">,
+  currentLessonId?: string | null,
+): LessonProgressState {
+  if (lesson.isCompleted) {
+    return "completed";
+  }
+
+  if (lesson.isCurrent) {
+    return "current";
+  }
+
+  if (currentLessonId && lesson.id === currentLessonId) {
+    return "current";
+  }
+
+  if (lesson.isUnlocked) {
+    return "unlocked";
+  }
+
+  return "locked";
+}
+
+export function getUnitProgressState(
+  unit: Pick<
+    UnitListItem,
+    "isCompleted" | "isUnlocked" | "currentLessonId" | "completedLessonsCount"
+  >,
+): UnitProgressState {
+  if (unit.isCompleted) {
+    return "completed";
+  }
+
+  if (unit.currentLessonId || unit.completedLessonsCount > 0) {
+    return "in_progress";
+  }
+
+  if (unit.isUnlocked) {
+    return "unlocked";
+  }
+
+  return "locked";
 }
 
 export function getFallbackCourseProgress(_courseId: string): CourseProgress {
@@ -110,9 +259,11 @@ export function getFallbackCourseProgress(_courseId: string): CourseProgress {
 export async function fetchCourseProgress(
   courseId: string,
 ): Promise<CourseProgress> {
+  const normalizedCourseId = normalizeCourseId(courseId);
+
   try {
     const res = await api.get(
-      `/me/progress?courseId=${encodeURIComponent(courseId)}`,
+      `/me/progress?courseId=${encodeURIComponent(normalizedCourseId)}`,
     );
     const data = extractData<any>(res.data);
 
@@ -128,7 +279,7 @@ export async function fetchCourseProgress(
     };
   } catch (err) {
     console.log("COURSE PROGRESS API FAILED", err);
-    return getFallbackCourseProgress(courseId);
+    return getFallbackCourseProgress(normalizedCourseId);
   }
 }
 export type LevelItem = {
@@ -166,8 +317,136 @@ export async function fetchLevels(): Promise<LevelItem[]> {
     return [];
   }
 }
-export function getFallbackUnitLessons(_unitId: string): LessonListItem[] {
-  return [];
+
+function getFallbackUnitGradient(order: number): [string, string] {
+  const gradients: [string, string][] = [
+    ["#2563EB", "#0EA5E9"],
+    ["#0F766E", "#14B8A6"],
+    ["#7C3AED", "#DB2777"],
+    ["#EA580C", "#F59E0B"],
+  ];
+
+  return gradients[(Math.max(order, 1) - 1) % gradients.length];
+}
+
+function mapUnit(
+  levelId: NormalizedLevelId,
+  raw: BackendUnitResponse,
+): Omit<UnitListItem, "currentLessonId" | "firstUnlockedLessonId"> {
+  const order = Math.max(1, Number(raw?.order ?? 1));
+  const lessonsCount = Math.max(0, Number(raw?.lessonCount ?? 0));
+  const completedLessonsCount = Math.max(
+    0,
+    Number(raw?.completedLessonCount ?? 0),
+  );
+  const unlockedLessonsCount = Math.max(
+    0,
+    Number(raw?.unlockedLessonCount ?? 0),
+  );
+
+  return {
+    id: String(raw?.id ?? raw?._id ?? ""),
+    levelId,
+    order,
+    title: String(raw?.title ?? "Unit"),
+    subtitle: String(raw?.subtitle ?? ""),
+    description: String(raw?.description ?? ""),
+    gradient: getFallbackUnitGradient(order),
+    lessonsCount,
+    completedLessonsCount,
+    unlockedLessonsCount,
+    progress:
+      lessonsCount > 0
+        ? Math.round((completedLessonsCount / lessonsCount) * 100)
+        : 0,
+    isUnlocked: Boolean(raw?.isUnlocked),
+    isCompleted: Boolean(raw?.isCompleted),
+  };
+}
+
+function attachLessonState(
+  unit: Omit<UnitListItem, "currentLessonId" | "firstUnlockedLessonId">,
+  lessons: LessonListItem[],
+): UnitListItem {
+  const currentLesson = lessons.find(
+    (lesson) => lesson.isUnlocked && !lesson.isCompleted,
+  );
+  const firstUnlockedLesson = lessons.find((lesson) => lesson.isUnlocked);
+
+  return {
+    ...unit,
+    currentLessonId: currentLesson?.id ?? null,
+    firstUnlockedLessonId: firstUnlockedLesson?.id ?? null,
+  };
+}
+
+async function fetchCourseUnits(
+  levelId: NormalizedLevelId,
+): Promise<UnitListItem[]> {
+  const normalizedCourseId = normalizeCourseId(levelId) as NormalizedLevelId;
+  const existingRequest = inFlightCourseUnitsRequests.get(normalizedCourseId);
+
+  if (existingRequest) {
+    return existingRequest;
+  }
+
+  const requestPath = `/courses/${encodeURIComponent(normalizedCourseId)}/units`;
+  const request = (async () => {
+    console.log("[learning][api] GET", requestPath);
+
+    try {
+      const res = await api.get(requestPath);
+      const data = extractData<BackendCourseUnitsPayload>(res.data);
+      const units = Array.isArray(data?.units) ? data.units : [];
+
+      return units
+        .map((unit) => mapUnit(normalizedCourseId, unit))
+        .filter((unit) => unit.id)
+        .map((unit) => ({
+          ...unit,
+          currentLessonId: null,
+          firstUnlockedLessonId: null,
+        }))
+        .sort((a, b) => a.order - b.order);
+    } catch (err: any) {
+      console.log("[learning][api] request failed", {
+        path: requestPath,
+        status: err?.response?.status,
+        data: err?.response?.data,
+      });
+      throw err;
+    } finally {
+      inFlightCourseUnitsRequests.delete(normalizedCourseId);
+    }
+  })();
+
+  inFlightCourseUnitsRequests.set(normalizedCourseId, request);
+  return request;
+}
+
+export async function fetchLevelUnits(
+  levelId: NormalizedLevelId,
+): Promise<UnitListItem[]> {
+  return fetchCourseUnits(levelId);
+}
+
+export async function fetchUnitDetail(
+  levelId: NormalizedLevelId,
+  unitId: string,
+): Promise<UnitDetail | null> {
+  const units = await fetchCourseUnits(levelId);
+  const unit = units.find((item) => item.id === unitId);
+
+  if (!unit) {
+    return null;
+  }
+
+  const lessons = await fetchUnitLessons(unitId);
+
+  return {
+    ...attachLessonState(unit, lessons),
+    lessons,
+  };
 }
 
 export async function fetchUnitLessons(
@@ -190,7 +469,7 @@ export async function fetchUnitLessons(
     console.log("UNIT LESSONS API FAILED UNIT ID:", unitId);
     console.log("UNIT LESSONS ERROR RESPONSE:", err?.response?.data);
     console.log("UNIT LESSONS API FAILED -> fallback", err);
-    return getFallbackUnitLessons(unitId);
+    return [];
   }
 }
 
@@ -249,6 +528,9 @@ export async function fetchLessonDetail(
     return {
       ...mapLesson(data),
       contents,
+      previousLessonId: data?.previousLessonId ? String(data.previousLessonId) : null,
+      nextLessonId: data?.nextLessonId ? String(data.nextLessonId) : null,
+      unit: mapEmbeddedUnit(data?.unit),
     };
   } catch (err) {
     console.log("LESSON DETAIL API FAILED", err);

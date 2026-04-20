@@ -13,6 +13,7 @@ import {
 } from "react-native";
 
 import { fetchLevels, LevelItem } from "@/lib/learning";
+import { getLevelRoute } from "@/src/features/learning/routes";
 import { useNotifications } from "@/src/store/notificationStore";
 import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 
@@ -232,10 +233,12 @@ export default function CoursesScreen() {
               index % 2 === 0 ? { marginRight: 10 } : null,
             ]}
             onPress={() => {
-              router.push({
-                pathname: "/units/[levelId]",
-                params: { levelId: item.id },
+              console.log("[learning][courses] level tapped", {
+                itemId: item.id,
+                route: getLevelRoute(item.id),
+                title: item.title,
               });
+              router.push(getLevelRoute(item.id));
             }}
           >
             <LinearGradient colors={item.accent} style={styles.levelCard}>

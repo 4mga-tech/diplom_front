@@ -1,5 +1,16 @@
-import { fetchUnitLessons, LessonListItem } from "@/lib/learning";
-import { getLevelById, LevelId } from "@/src/data/curriculum";
+import {
+  fetchUnitDetail,
+  getLessonProgressState,
+  LessonProgressState,
+  UnitDetail,
+} from "@/lib/learning";
+import { getLevelById } from "@/src/data/curriculum";
+import {
+  getCanonicalLevelId,
+  getLessonDetailRoute,
+  getNormalizedLearningParams,
+  getUnitRoute,
+} from "@/src/features/learning/routes";
 import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -20,110 +31,42 @@ import {
   View,
 } from "react-native";
 
-function LessonRow({
-  lesson,
-  levelId,
-  styles,
-  theme,
-}: {
-  lesson: LessonListItem;
-  levelId: string;
-  styles: any;
-  theme: AppTheme;
-}) {
-  const locked = !lesson.isUnlocked;
+const LESSON_STATE_LABELS: Record<LessonProgressState, string> = {
+  completed: "Completed",
+  current: "Current",
+  unlocked: "Unlocked",
+  locked: "Locked",
+};
 
-  return (
-    <Pressable
-      disabled={locked}
-      onPress={() => {
-        router.push({
-          pathname: "/lesson",
-          params: {
-            lessonId: lesson.id,
-            unitId: lesson.unitId,
-            levelId,
-          },
-        });
-      }}
-      style={({ pressed }) => [
-        styles.lessonPress,
-        pressed && !locked && { opacity: 0.92 },
-        locked && { opacity: 0.5 },
-      ]}
-    >
-      <LinearGradient
-        colors={
-          theme.mode === "dark"
-            ? ["rgba(30,41,59,0.85)", "rgba(15,23,42,0.85)"]
-            : ["#FFFFFF", "#F8FAFC"]
-        }
-        style={styles.lessonCard}
-      >
-        <View style={styles.leftIcon}>
-          {lesson.isCompleted ? (
-            <Ionicons name="checkmark-circle" size={20} color="#22C55E" />
-          ) : locked ? (
-            <Ionicons name="lock-closed" size={18} color={theme.colors.muted} />
-          ) : (
-            <Ionicons name="play" size={18} color={theme.colors.text} />
-          )}
-        </View>
-
-        <View style={{ flex: 1 }}>
-          <Text style={styles.lessonTitle}>{lesson.title}</Text>
-          <Text style={styles.lessonSub}>{lesson.subtitle}</Text>
-        </View>
-
-        <View style={styles.xpPill}>
-          <Ionicons name="flash" size={14} color="#FACC15" />
-          <Text style={styles.xpText}>{lesson.xpReward} XP</Text>
-        </View>
-      </LinearGradient>
-    </Pressable>
-  );
-}
-
-export default function UnitLessonsScreen() {
+export default function LessonListScreen() {
   const { theme } = useAppTheme();
   const styles = useThemedStyles(createStyles);
-
-  const { levelId, unitId } = useLocalSearchParams<{
-    levelId?: string;
+  const navigation = useNavigation();
+  const params = useLocalSearchParams<{
+    levelId?: string | string[];
     unitId?: string;
   }>();
 
-  // console.log("UnitLessonsScreen levelId:", levelId);
-  // console.log("UnitLessonsScreen unitId:", unitId);
+  const { levelId: safeLevelId, unitId: safeUnitId } =
+    getNormalizedLearningParams(params);
+  const displayLevelId = getCanonicalLevelId(params.levelId);
+  const levelMeta = getLevelById(displayLevelId);
 
-  const navigation = useNavigation();
-  const [lessons, setLessons] = useState<LessonListItem[]>([]);
+  const [unit, setUnit] = useState<UnitDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!unitId || !levelId) {
-    return (
-      <View style={styles.container}>
-        <Text style={{ color: "white" }}>Invalid route</Text>
-      </View>
-    );
-  }
-
-  const safeUnitId = unitId as string;
-  const safeLevelId = levelId as LevelId;
-
-  const levelMeta = getLevelById(safeLevelId);
-  if (!levelMeta) {
-    return (
-      <View style={styles.container}>
-        <Text style={{ color: "white" }}>Level not found</Text>
-      </View>
-    );
-  }
-
-  const loadLessons = useCallback(
+  const loadUnit = useCallback(
     async (isRefresh = false) => {
+      if (!safeUnitId) {
+        setUnit(null);
+        setError("Unit not found.");
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
       if (isRefresh) {
         setRefreshing(true);
       } else {
@@ -131,136 +74,247 @@ export default function UnitLessonsScreen() {
       }
 
       try {
-        const nextLessons = await fetchUnitLessons(safeUnitId);
-        setLessons(nextLessons);
-        setLoadError(null);
-      } catch (error) {
-        console.log("Error loading unit lessons:", error);
-        setLoadError("We could not refresh lessons right now.");
+        const data = await fetchUnitDetail(safeLevelId, safeUnitId);
+        setUnit(data);
+        setError(data ? null : "Unit not found.");
+      } catch (loadError) {
+        console.log("Error loading lesson list:", loadError);
+        setError("We could not refresh this lesson list right now.");
       } finally {
-        setRefreshing(false);
         setLoading(false);
+        setRefreshing(false);
       }
     },
-    [safeUnitId],
+    [safeLevelId, safeUnitId],
   );
 
   useFocusEffect(
     useCallback(() => {
-      void loadLessons();
-    }, [loadLessons]),
+      void loadUnit();
+    }, [loadUnit]),
   );
 
-  const progress = useMemo(() => {
-    if (!lessons.length) return 0;
-    const completed = lessons.filter((lesson) => lesson.isCompleted).length;
-    return Math.round((completed / lessons.length) * 100);
-  }, [lessons]);
+  const currentLesson = useMemo(
+    () => unit?.lessons.find((lesson) => lesson.id === unit.currentLessonId) ?? null,
+    [unit],
+  );
 
-  const headerTitle = useMemo(() => {
-    if (!lessons.length) return "Lessons";
-    return `${levelMeta.title} Lessons`;
-  }, [lessons.length, levelMeta.title]);
-
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     if (navigation.canGoBack()) {
       router.back();
       return;
     }
 
-    router.replace({
-      pathname: "/units/[levelId]",
-      params: { levelId: safeLevelId },
-    });
-  };
+    router.replace(getUnitRoute(safeLevelId, safeUnitId));
+  }, [navigation, safeLevelId, safeUnitId]);
+
+  if (!levelMeta) {
+    return (
+      <View style={styles.centerState}>
+        <View style={styles.stateCard}>
+          <View style={styles.stateIconWrap}>
+            <Ionicons name="search-outline" size={22} color={theme.colors.text} />
+          </View>
+          <Text style={styles.stateTitle}>Level not found</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Pressable
           onPress={handleBack}
-          style={({ pressed }) => [
-            styles.backBtn,
-            pressed && { opacity: 0.75 },
-          ]}
+          style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.75 }]}
         >
-          <Ionicons name="chevron-back" size={22} color={theme.colors.muted} />
+          <Ionicons name="chevron-back" size={22} color={theme.colors.text} />
         </Pressable>
 
         <View style={{ flex: 1 }}>
-          <Text style={styles.h1}>{headerTitle}</Text>
+          <Text style={styles.h1}>{unit?.title ?? "Lesson list"}</Text>
           <Text style={styles.h2}>
-            {levelMeta.title} • {progress}% complete
+            {levelMeta.title} - {unit?.lessonsCount ?? 0} lessons
           </Text>
         </View>
-
-        <Pressable
-          onPress={() => router.push("/review")}
-          style={({ pressed }) => [
-            styles.reviewBtn,
-            pressed && { opacity: 0.85 },
-          ]}
-        >
-          <Ionicons name="refresh" size={18} color={theme.colors.text} />
-        </Pressable>
       </View>
 
       <LinearGradient
-        colors={["rgba(124,58,237,0.14)", "rgba(37,99,235,0.12)"]}
+        colors={["rgba(14,165,233,0.14)", "rgba(37,99,235,0.10)"]}
         style={styles.banner}
       >
-        <Ionicons name="sparkles" size={18} color="#A78BFA" />
-        <Text style={styles.bannerText}>
-          Start with the first unlocked lesson and the backend will unlock the
-          next one for you.
-        </Text>
+        <View style={styles.bannerTop}>
+          <Ionicons name="list-outline" size={18} color="#60A5FA" />
+          <Text style={styles.bannerText}>
+            Track what is current, finished, and still locked at a glance.
+          </Text>
+        </View>
+        <View style={styles.legendRow}>
+          <View style={styles.legendItem}>
+            <Ionicons name="checkmark-circle" size={15} color="#22C55E" />
+            <Text style={styles.legendText}>Completed</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <Ionicons name="play-circle" size={15} color="#60A5FA" />
+            <Text style={styles.legendText}>Current</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <Ionicons name="lock-open" size={15} color="#0EA5E9" />
+            <Text style={styles.legendText}>Unlocked</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <Ionicons name="lock-closed" size={15} color={theme.colors.muted} />
+            <Text style={styles.legendText}>Locked</Text>
+          </View>
+        </View>
+        {currentLesson ? (
+          <View style={styles.currentCallout}>
+            <Text style={styles.currentCalloutLabel}>Current lesson</Text>
+            <Text style={styles.currentCalloutTitle}>{currentLesson.title}</Text>
+          </View>
+        ) : null}
       </LinearGradient>
 
       {loading ? (
-        <View style={styles.stateWrap}>
-          <ActivityIndicator color={theme.colors.text} />
-          <Text style={styles.stateText}>Loading lessons...</Text>
+        <View style={styles.centerState}>
+          <View style={styles.stateCard}>
+            <View style={styles.stateIconWrap}>
+              <ActivityIndicator color={theme.colors.text} />
+            </View>
+            <Text style={styles.stateTitle}>Loading lessons</Text>
+            <Text style={styles.stateText}>Refreshing this unit lesson order and unlock state.</Text>
+          </View>
         </View>
       ) : (
         <FlatList
-          data={lessons}
+          data={unit?.lessons ?? []}
           keyExtractor={(lesson) => lesson.id}
-          contentContainerStyle={{ paddingBottom: theme.s(4) }}
+          contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => void loadLessons(true)}
+              onRefresh={() => void loadUnit(true)}
               tintColor={theme.colors.text}
             />
           }
-          ItemSeparatorComponent={() => (
-            <View style={{ height: theme.s(1.5) }} />
-          )}
-          renderItem={({ item }) => (
-            <LessonRow
-              lesson={item}
-              levelId={safeLevelId}
-              styles={styles}
-              theme={theme}
-            />
-          )}
+          ItemSeparatorComponent={() => <View style={{ height: theme.s(1.5) }} />}
+          renderItem={({ item }) => {
+            const progressState = getLessonProgressState(
+              item,
+              unit?.currentLessonId,
+            );
+            const locked = progressState === "locked";
+            const isCurrent = progressState === "current";
+            const stateColor =
+              progressState === "completed"
+                ? "#22C55E"
+                : progressState === "locked"
+                  ? theme.colors.muted
+                  : progressState === "current"
+                    ? "#60A5FA"
+                    : "#0EA5E9";
+
+            return (
+              <Pressable
+                disabled={locked}
+                onPress={() =>
+                  router.push(getLessonDetailRoute(safeLevelId, safeUnitId, item.id))
+                }
+                style={({ pressed }) => [
+                  styles.lessonCard,
+                  pressed && !locked && { opacity: 0.92 },
+                  locked && { opacity: 0.66 },
+                ]}
+              >
+                <View style={styles.lessonIconWrap}>
+                  <View
+                    style={[
+                      styles.lessonIcon,
+                      progressState === "completed"
+                        ? styles.lessonIconDone
+                        : locked
+                          ? styles.lessonIconLocked
+                          : styles.lessonIconReady,
+                    ]}
+                  >
+                    <Ionicons
+                      name={
+                        progressState === "completed"
+                          ? "checkmark-circle"
+                          : locked
+                            ? "lock-closed"
+                            : isCurrent
+                              ? "play-circle"
+                              : "lock-open"
+                      }
+                      size={22}
+                      color={
+                        progressState === "completed"
+                          ? "#22C55E"
+                          : theme.colors.text
+                      }
+                    />
+                  </View>
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <View style={styles.lessonTopRow}>
+                    <View
+                      style={[
+                        styles.statePill,
+                        {
+                          borderColor: `${stateColor}33`,
+                          backgroundColor:
+                            theme.mode === "dark"
+                              ? `${stateColor}14`
+                              : `${stateColor}10`,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.statePillText, { color: stateColor }]}>
+                        {LESSON_STATE_LABELS[progressState]}
+                      </Text>
+                    </View>
+                    <Text style={styles.orderText}>Lesson {item.order}</Text>
+                  </View>
+
+                  <Text style={styles.lessonTitle}>{item.title}</Text>
+                  <Text style={styles.lessonSubtitle}>{item.subtitle}</Text>
+                </View>
+
+                <View style={styles.rightColumn}>
+                  {progressState === "completed" ? (
+                    <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
+                  ) : locked ? (
+                    <Ionicons name="lock-closed" size={18} color={theme.colors.muted} />
+                  ) : isCurrent ? (
+                    <Ionicons name="play-circle" size={22} color="#60A5FA" />
+                  ) : (
+                    <Text style={styles.xpText}>{item.xpReward} XP</Text>
+                  )}
+                </View>
+              </Pressable>
+            );
+          }}
           ListHeaderComponent={
-            loadError ? (
+            error ? (
               <View style={styles.errorBanner}>
-                <Ionicons
-                  name="cloud-offline-outline"
-                  size={16}
-                  color="#FDE68A"
-                />
-                <Text style={styles.errorText}>{loadError}</Text>
+                <Ionicons name="cloud-offline-outline" size={16} color="#FDE68A" />
+                <Text style={styles.errorText}>{error}</Text>
               </View>
             ) : null
           }
           ListEmptyComponent={
-            <View style={{ marginTop: theme.s(4), alignItems: "center" }}>
-              <Text style={{ color: theme.colors.muted }}>
-                No lessons available in this package yet.
-              </Text>
+            <View style={styles.centerState}>
+              <View style={styles.stateCard}>
+                <View style={styles.stateIconWrap}>
+                  <Ionicons name="book-outline" size={22} color={theme.colors.text} />
+                </View>
+                <Text style={styles.stateTitle}>No lessons yet</Text>
+                <Text style={styles.stateText}>
+                  This unit does not have any lessons available right now.
+                </Text>
+              </View>
             </View>
           }
         />
@@ -281,7 +335,7 @@ const createStyles = (theme: AppTheme) =>
       flexDirection: "row",
       alignItems: "center",
       gap: theme.s(2),
-      marginBottom: theme.s(2),
+      marginBottom: theme.s(2.25),
     },
     backBtn: {
       width: 44,
@@ -290,21 +344,18 @@ const createStyles = (theme: AppTheme) =>
       alignItems: "center",
       justifyContent: "center",
       backgroundColor:
-        theme.mode === "dark" ? "rgba(30,41,59,0.35)" : "#FFFFFF",
+        theme.mode === "dark" ? "rgba(15,23,42,0.72)" : "rgba(255,255,255,0.96)",
       borderWidth: 1,
-      borderColor: "rgba(51,65,85,0.55)",
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(51,65,85,0.55)"
+          : "rgba(148,163,184,0.18)",
     },
-    reviewBtn: {
-      width: 44,
-      height: 44,
-      borderRadius: 14,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: "rgba(59,130,246,0.25)",
-      borderWidth: 1,
-      borderColor: "rgba(59,130,246,0.25)",
+    h1: {
+      color: theme.colors.text,
+      fontSize: 20,
+      fontWeight: "900",
     },
-    h1: { color: theme.colors.text, fontSize: 18, fontWeight: "900" },
     h2: {
       color: theme.colors.muted,
       fontSize: 12,
@@ -312,30 +363,209 @@ const createStyles = (theme: AppTheme) =>
       marginTop: 4,
     },
     banner: {
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(96,165,250,0.14)"
+          : "rgba(59,130,246,0.12)",
+      padding: theme.s(2.2),
+      marginBottom: theme.s(2.5),
+      gap: theme.s(1.75),
+    },
+    bannerTop: {
       flexDirection: "row",
       alignItems: "center",
       gap: theme.s(1),
-      borderRadius: theme.r.xl,
-      borderWidth: 1,
-      borderColor: "rgba(51,65,85,0.55)",
-      padding: theme.s(2),
-      marginBottom: theme.s(2.5),
     },
     bannerText: {
-      color: theme.mode === "dark" ? "rgba(226,232,240,0.9)" : "#334155",
-      fontWeight: "700",
       flex: 1,
+      color: theme.mode === "dark" ? "rgba(226,232,240,0.9)" : "#334155",
+      fontSize: 13,
+      fontWeight: "700",
+      lineHeight: 20,
     },
-    stateWrap: {
+    legendRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: theme.s(1.5),
+    },
+    legendItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    legendText: {
+      color: theme.colors.muted,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    currentCallout: {
+      paddingHorizontal: theme.s(1.5),
+      paddingVertical: theme.s(1.75),
+      borderRadius: 18,
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(15,23,42,0.72)" : "rgba(255,255,255,0.88)",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(96,165,250,0.14)"
+          : "rgba(59,130,246,0.12)",
+    },
+    currentCalloutLabel: {
+      color: theme.colors.muted,
+      fontSize: 11,
+      fontWeight: "800",
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    currentCalloutTitle: {
+      color: theme.colors.text,
+      fontSize: 15,
+      fontWeight: "900",
+      marginTop: 4,
+    },
+    listContent: {
+      paddingBottom: theme.s(4),
+    },
+    lessonCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.s(1.5),
+      borderRadius: 22,
+      paddingHorizontal: theme.s(2),
+      paddingVertical: theme.s(2.1),
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(15,23,42,0.86)" : "rgba(255,255,255,0.98)",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(51,65,85,0.52)"
+          : "rgba(148,163,184,0.18)",
+    },
+    lessonIconWrap: {
+      justifyContent: "center",
+    },
+    lessonIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 18,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+    },
+    lessonIconDone: {
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(34,197,94,0.14)" : "rgba(34,197,94,0.08)",
+      borderColor: "rgba(34,197,94,0.2)",
+    },
+    lessonIconLocked: {
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(51,65,85,0.24)" : "rgba(226,232,240,0.95)",
+      borderColor: "rgba(148,163,184,0.2)",
+    },
+    lessonIconReady: {
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(37,99,235,0.14)" : "rgba(37,99,235,0.08)",
+      borderColor: "rgba(59,130,246,0.18)",
+    },
+    lessonTopRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: theme.s(1),
+      marginBottom: 10,
+    },
+    statePill: {
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 999,
+      borderWidth: 1,
+    },
+    statePillText: {
+      fontSize: 11,
+      fontWeight: "800",
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    orderText: {
+      color: theme.colors.muted,
+      fontSize: 11,
+      fontWeight: "800",
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+    },
+    lessonTitle: {
+      color: theme.colors.text,
+      fontSize: 17,
+      fontWeight: "900",
+      lineHeight: 22,
+    },
+    lessonSubtitle: {
+      color: theme.colors.muted,
+      fontSize: 12,
+      fontWeight: "700",
+      marginTop: 4,
+      lineHeight: 19,
+    },
+    rightColumn: {
+      alignItems: "flex-end",
+      justifyContent: "center",
+      minWidth: 58,
+    },
+    xpText: {
+      color: "#FACC15",
+      fontSize: 11,
+      fontWeight: "900",
+    },
+    centerState: {
       flex: 1,
       alignItems: "center",
       justifyContent: "center",
       gap: theme.s(1.5),
+      paddingHorizontal: theme.s(3),
+    },
+    stateCard: {
+      width: "100%",
+      maxWidth: 360,
+      padding: theme.s(3),
+      borderRadius: 24,
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(15,23,42,0.84)" : "rgba(255,255,255,0.98)",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(51,65,85,0.52)"
+          : "rgba(148,163,184,0.18)",
+      alignItems: "center",
+      gap: theme.s(1.25),
+    },
+    stateIconWrap: {
+      width: 52,
+      height: 52,
+      borderRadius: 18,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(37,99,235,0.16)" : "rgba(37,99,235,0.08)",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(96,165,250,0.2)"
+          : "rgba(59,130,246,0.14)",
+    },
+    stateTitle: {
+      color: theme.colors.text,
+      fontSize: 20,
+      fontWeight: "900",
+      textAlign: "center",
     },
     stateText: {
       color: theme.colors.muted,
       fontSize: 13,
       fontWeight: "700",
+      textAlign: "center",
+      lineHeight: 20,
     },
     errorBanner: {
       flexDirection: "row",
@@ -354,52 +584,4 @@ const createStyles = (theme: AppTheme) =>
       fontWeight: "700",
       flex: 1,
     },
-    lessonPress: { width: "100%" },
-    lessonCard: {
-      borderRadius: theme.r.xl,
-      borderWidth: 1,
-      borderColor:
-        theme.mode === "dark"
-          ? "rgba(51,65,85,0.55)"
-          : "rgba(148,163,184,0.18)",
-      padding: theme.s(2),
-      flexDirection: "row",
-      gap: theme.s(1.5),
-      alignItems: "center",
-    },
-    leftIcon: {
-      width: 38,
-      height: 38,
-      borderRadius: 14,
-      backgroundColor:
-        theme.mode === "dark" ? "rgba(51,65,85,0.25)" : "#E2E8F0",
-      borderWidth: 1,
-      borderColor: "rgba(51,65,85,0.45)",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    lessonTitle: {
-      color: theme.colors.text,
-      fontSize: 14,
-      fontWeight: "900",
-    },
-    lessonSub: {
-      color: theme.colors.muted,
-      fontSize: 12,
-      fontWeight: "700",
-      marginTop: 4,
-    },
-    xpPill: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 999,
-      backgroundColor:
-        theme.mode === "dark" ? "rgba(30,41,59,0.35)" : "#FFFFFF",
-      borderWidth: 1,
-      borderColor: "rgba(250,204,21,0.18)",
-    },
-    xpText: { color: "rgba(250,204,21,0.95)", fontWeight: "900", fontSize: 11 },
   });

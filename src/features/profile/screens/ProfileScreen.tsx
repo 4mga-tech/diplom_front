@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
@@ -15,7 +16,6 @@ import {
   View,
 } from "react-native";
 import { TextInput } from "react-native-gesture-handler";
-import { AppTheme, useAppTheme, useThemedStyles } from "../ui/theme";
 type StoredUser = {
   name?: string;
   email?: string;
