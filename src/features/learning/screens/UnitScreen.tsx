@@ -10,7 +10,6 @@ import { getLevelById } from "@/src/data/curriculum";
 import {
   getCanonicalLevelId,
   getLessonDetailRoute,
-  getLessonListRoute,
   getLevelRoute,
   getNormalizedLearningParams,
 } from "@/src/features/learning/routes";
@@ -32,6 +31,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const LESSON_STATE_LABELS: Record<LessonProgressState, string> = {
   completed: "Completed",
@@ -143,20 +143,20 @@ export default function UnitOverviewScreen() {
 
   if (!levelMeta) {
     return (
-      <View style={styles.centerState}>
+      <SafeAreaView edges={["top"]} style={styles.centerState}>
         <View style={styles.stateCard}>
           <View style={styles.stateIconWrap}>
             <Ionicons name="search-outline" size={22} color={theme.colors.text} />
           </View>
           <Text style={styles.stateTitle}>Level not found</Text>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (loading) {
     return (
-      <View style={styles.centerState}>
+      <SafeAreaView edges={["top"]} style={styles.centerState}>
         <View style={styles.stateCard}>
           <View style={styles.stateIconWrap}>
             <ActivityIndicator color={theme.colors.text} />
@@ -164,13 +164,13 @@ export default function UnitOverviewScreen() {
           <Text style={styles.stateTitle}>Loading unit</Text>
           <Text style={styles.stateText}>Getting the latest lesson unlock state and unit details.</Text>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!unit) {
     return (
-      <View style={styles.centerState}>
+      <SafeAreaView edges={["top"]} style={styles.centerState}>
         <View style={styles.stateCard}>
           <View style={styles.stateIconWrap}>
             <Ionicons name="cloud-offline-outline" size={22} color="#FDE68A" />
@@ -178,17 +178,18 @@ export default function UnitOverviewScreen() {
           <Text style={styles.stateTitle}>Unit unavailable</Text>
           <Text style={styles.stateText}>{error ?? "Unit not found."}</Text>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   const unitState = getUnitProgressState(unit);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView edges={["top"]} style={styles.container}>
       <View style={styles.header}>
         <Pressable
           onPress={handleBack}
+          hitSlop={6}
           style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.75 }]}
         >
           <Ionicons name="chevron-back" size={22} color={theme.colors.text} />
@@ -201,12 +202,6 @@ export default function UnitOverviewScreen() {
           </Text>
         </View>
 
-        <Pressable
-          onPress={() => router.push(getLessonListRoute(safeLevelId, unit.id))}
-          style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.75 }]}
-        >
-          <Ionicons name="list-outline" size={20} color={theme.colors.text} />
-        </Pressable>
       </View>
 
       <ScrollView
@@ -214,36 +209,33 @@ export default function UnitOverviewScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         <LinearGradient colors={unit.gradient} style={styles.heroCard}>
-          <LinearGradient
-            colors={["rgba(255,255,255,0.18)", "rgba(255,255,255,0)"]}
-            style={styles.heroSheen}
-          />
           <View style={styles.heroTop}>
-            <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>{levelMeta.title}</Text>
+            <View style={styles.heroTitleWrap}>
+              <Text style={styles.heroEyebrow}>{levelMeta.title}</Text>
+              <Text style={styles.heroTitle}>{unit.subtitle || unit.title}</Text>
+              <Text style={styles.heroDescription} numberOfLines={1}>
+                {unit.description || "Unit overview"}
+              </Text>
             </View>
-            <View style={styles.progressBadge}>
-              <Text style={styles.progressBadgeText}>{unit.progress}%</Text>
-            </View>
+            <StateChip label={UNIT_STATE_LABELS[unitState]} color="#FFFFFF" theme={theme} />
           </View>
 
-          <Text style={styles.heroTitle}>{unit.subtitle || unit.title}</Text>
-          <Text style={styles.heroDescription}>{unit.description}</Text>
-
-          <View style={styles.heroStats}>
-            <View style={styles.heroStatCard}>
-              <Text style={styles.heroStatValue}>
+          <View style={styles.heroSummaryRow}>
+            <View style={styles.heroSummaryItem}>
+              <Text style={styles.heroSummaryLabel}>Lessons</Text>
+              <Text style={styles.heroSummaryValue}>
                 {unit.completedLessonsCount}/{unit.lessonsCount}
               </Text>
-              <Text style={styles.heroStatLabel}>Lessons complete</Text>
             </View>
-            <View style={styles.heroStatCard}>
-              <Text style={styles.heroStatValue}>{UNIT_STATE_LABELS[unitState]}</Text>
-              <Text style={styles.heroStatLabel}>Unit state</Text>
+            <View style={styles.heroSummaryDivider} />
+            <View style={styles.heroSummaryItem}>
+              <Text style={styles.heroSummaryLabel}>Unlocked</Text>
+              <Text style={styles.heroSummaryValue}>{unit.unlockedLessonsCount}</Text>
             </View>
-            <View style={styles.heroStatCard}>
-              <Text style={styles.heroStatValue}>{unit.unlockedLessonsCount}</Text>
-              <Text style={styles.heroStatLabel}>Unlocked now</Text>
+            <View style={styles.heroSummaryDivider} />
+            <View style={styles.heroSummaryItem}>
+              <Text style={styles.heroSummaryLabel}>Progress</Text>
+              <Text style={styles.heroSummaryValue}>{unit.progress}%</Text>
             </View>
           </View>
         </LinearGradient>
@@ -251,8 +243,7 @@ export default function UnitOverviewScreen() {
         <View style={styles.callout}>
           <Ionicons name="information-circle-outline" size={18} color="#60A5FA" />
           <Text style={styles.calloutText}>
-            Only backend-unlocked lessons are tappable here. Finish the current
-            lesson quiz to move forward inside this unit.
+            Only unlocked lessons can be opened.
           </Text>
         </View>
 
@@ -271,7 +262,7 @@ export default function UnitOverviewScreen() {
             </View>
             <Text style={styles.currentTitle}>{currentLesson.title}</Text>
             <Text style={styles.currentSubtitle}>{currentLesson.subtitle}</Text>
-            <Text style={styles.currentHint}>Continue where you left off.</Text>
+            <Text style={styles.currentHint}>Open lesson</Text>
           </Pressable>
         ) : unit.isCompleted ? (
           <View style={styles.completedCard}>
@@ -281,7 +272,7 @@ export default function UnitOverviewScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.completedTitle}>Unit completed</Text>
               <Text style={styles.completedSubtitle}>
-                All lessons in this unit are finished.
+                All lessons finished.
               </Text>
             </View>
           </View>
@@ -289,9 +280,6 @@ export default function UnitOverviewScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Lesson map</Text>
-          <Pressable onPress={() => router.push(getLessonListRoute(safeLevelId, unit.id))}>
-            <Text style={styles.sectionLink}>Open full list</Text>
-          </Pressable>
         </View>
 
         <View style={styles.lessonStack}>
@@ -388,7 +376,7 @@ export default function UnitOverviewScreen() {
           })}
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -398,7 +386,7 @@ const createStyles = (theme: AppTheme) =>
       flex: 1,
       backgroundColor: theme.colors.bg,
       paddingHorizontal: theme.s(3),
-      paddingTop: theme.s(6),
+      paddingTop: theme.s(1.5),
     },
     centerState: {
       flex: 1,
@@ -422,8 +410,8 @@ const createStyles = (theme: AppTheme) =>
     header: {
       flexDirection: "row",
       alignItems: "center",
-      gap: theme.s(2),
-      marginBottom: theme.s(2.25),
+      gap: theme.s(1.5),
+      marginBottom: theme.s(1.25),
     },
     iconBtn: {
       width: 44,
@@ -452,97 +440,73 @@ const createStyles = (theme: AppTheme) =>
     },
     scrollContent: {
       paddingBottom: theme.s(4),
-      gap: theme.s(2.25),
+      gap: theme.s(1.5),
     },
     heroCard: {
-      borderRadius: 28,
-      padding: theme.s(3),
-      gap: theme.s(2.25),
-      overflow: "hidden",
-      position: "relative",
-    },
-    heroSheen: {
-      position: "absolute",
-      top: -36,
-      right: -24,
-      width: 180,
-      height: 180,
-      borderRadius: 999,
-      transform: [{ rotate: "18deg" }],
+      borderRadius: 24,
+      paddingHorizontal: 16,
+      paddingVertical: 13,
+      gap: theme.s(0.9),
     },
     heroTop: {
       flexDirection: "row",
       justifyContent: "space-between",
-      alignItems: "center",
-      gap: theme.s(1.5),
+      alignItems: "flex-start",
+      gap: theme.s(1),
     },
-    heroBadge: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 999,
-      backgroundColor: "rgba(255,255,255,0.16)",
-      borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.16)",
+    heroTitleWrap: {
+      flex: 1,
+      gap: 3,
     },
-    heroBadgeText: {
+    heroEyebrow: {
       color: "#FFFFFF",
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: "800",
       textTransform: "uppercase",
-      letterSpacing: 0.6,
-    },
-    progressBadge: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 999,
-      backgroundColor: "rgba(15,23,42,0.18)",
-      borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.2)",
-    },
-    progressBadgeText: {
-      color: "#FFFFFF",
-      fontSize: 12,
-      fontWeight: "900",
+      letterSpacing: 0.5,
     },
     heroTitle: {
       color: "#FFFFFF",
-      fontSize: 30,
-      lineHeight: 36,
+      fontSize: 20,
+      lineHeight: 24,
       fontWeight: "900",
     },
     heroDescription: {
-      color: "rgba(255,255,255,0.84)",
-      fontSize: 14,
-      lineHeight: 22,
+      color: "rgba(255,255,255,0.8)",
+      fontSize: 11,
+      lineHeight: 16,
       fontWeight: "600",
     },
-    heroStats: {
+    heroSummaryRow: {
       flexDirection: "row",
-      flexWrap: "wrap",
-      gap: theme.s(1.5),
-    },
-    heroStatCard: {
-      minWidth: 120,
-      flex: 1,
-      paddingHorizontal: theme.s(1.5),
-      paddingVertical: theme.s(1.75),
-      borderRadius: 18,
-      backgroundColor: "rgba(15,23,42,0.18)",
+      alignItems: "stretch",
+      gap: theme.s(1),
+      paddingHorizontal: theme.s(1),
+      paddingVertical: theme.s(0.9),
+      borderRadius: 14,
+      backgroundColor: "rgba(15,23,42,0.14)",
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.18)",
+      borderColor: "rgba(255,255,255,0.12)",
     },
-    heroStatValue: {
+    heroSummaryItem: {
+      flex: 1,
+      gap: 4,
+    },
+    heroSummaryLabel: {
+      color: "rgba(255,255,255,0.74)",
+      fontSize: 10,
+      fontWeight: "700",
+      textTransform: "uppercase",
+      letterSpacing: 0.45,
+    },
+    heroSummaryValue: {
       color: "#FFFFFF",
-      fontSize: 18,
+      fontSize: 13,
       fontWeight: "900",
     },
-    heroStatLabel: {
-      color: "rgba(255,255,255,0.74)",
-      fontSize: 11,
-      fontWeight: "700",
-      marginTop: 6,
-      textTransform: "uppercase",
-      letterSpacing: 0.5,
+    heroSummaryDivider: {
+      width: 1,
+      backgroundColor: "rgba(255,255,255,0.18)",
     },
     callout: {
       flexDirection: "row",
@@ -640,18 +604,12 @@ const createStyles = (theme: AppTheme) =>
     sectionHeader: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
       marginTop: theme.s(0.5),
     },
     sectionTitle: {
       color: theme.colors.text,
       fontSize: 18,
       fontWeight: "900",
-    },
-    sectionLink: {
-      color: "#60A5FA",
-      fontSize: 13,
-      fontWeight: "800",
     },
     lessonStack: {
       gap: theme.s(1.5),

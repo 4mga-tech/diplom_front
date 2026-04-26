@@ -1,8 +1,13 @@
-import { fetchLevels } from "@/lib/levels";
+import {
+  fetchVocabularyWords,
+  isSupportedVocabularyLevelId,
+  normalizeVocabularyLevelId,
+  VocabularyWord,
+} from "@/lib/vocabulary";
 import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Modal,
@@ -12,15 +17,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-type VocabularyWord = {
-  key: string;
-  word: string;
-  translation: string;
-  type: string;
-  alphabetGroup: string;
-  level: string;
-};
 
 const mongolianLetters = [
   "А",
@@ -78,41 +74,47 @@ export default function VocabularyScreen() {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { levelId } = useLocalSearchParams<{ levelId?: string }>();
-  const safeLevel = levelId ?? "M1";
+  const safeLevel = normalizeVocabularyLevelId(levelId) ?? "M1";
+  const requestedLevel = String(levelId ?? "").trim();
+  const isSupportedLevel =
+    requestedLevel.length === 0 || isSupportedVocabularyLevelId(levelId);
+  const displayLevel = isSupportedLevel
+    ? safeLevel
+    : requestedLevel.toUpperCase() || safeLevel;
 
   const [words, setWords] = useState<VocabularyWord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
+  const loadWords = useCallback(async () => {
+    if (!isSupportedLevel) {
+      setWords([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      setWords(await fetchVocabularyWords(safeLevel));
+    } catch (fetchError) {
+      console.log("Vocabulary fetch error:", fetchError);
+      setWords([]);
+      setError("Couldn't load vocabulary right now.");
+    } finally {
+      setLoading(false);
+    }
+  }, [isSupportedLevel, safeLevel]);
+
   useEffect(() => {
-    const fetchWords = async () => {
-      try {
-        setLoading(true);
+    void loadWords();
+  }, [loadWords]);
 
-        const allWords = (await fetchLevels()).flatMap((level) =>
-          level.words.map((word) => ({
-            ...word,
-            level: word.level ?? level.id ?? safeLevel,
-          })),
-        );
-
-        setWords(allWords);
-      } catch (error) {
-        console.log("API error:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchWords();
-  }, [safeLevel]);
-
-  const levelWords = useMemo(
-    () => words.filter((w) => w.level === safeLevel),
-    [words, safeLevel],
-  );
+  const levelWords = useMemo(() => words, [words]);
 
   const displayedWords = useMemo(() => {
     if (!selectedLetter) return levelWords;
@@ -120,8 +122,18 @@ export default function VocabularyScreen() {
   }, [levelWords, selectedLetter]);
 
   const availableLetters = useMemo(() => {
-    return new Set(levelWords.map((w) => w.alphabetGroup));
+    return new Set(
+      levelWords
+        .map((w) => w.alphabetGroup)
+        .filter((alphabetGroup) => alphabetGroup.trim().length > 0),
+    );
   }, [levelWords]);
+
+  useEffect(() => {
+    if (selectedLetter && !availableLetters.has(selectedLetter)) {
+      setSelectedLetter(null);
+    }
+  }, [availableLetters, selectedLetter]);
 
   const renderWordRow = ({ item }: { item: VocabularyWord }) => (
     <Pressable
@@ -159,10 +171,17 @@ export default function VocabularyScreen() {
 
         <View style={styles.topBarCenter}>
           <Text style={styles.topBarTitle}>Vocabulary</Text>
-          <Text style={styles.topBarSub}>{safeLevel} collection</Text>
+          <Text style={styles.topBarSub}>{displayLevel} collection</Text>
         </View>
 
-        <Pressable style={styles.iconBtn} onPress={() => setModalVisible(true)}>
+        <Pressable
+          style={[
+            styles.iconBtn,
+            !isSupportedLevel && styles.iconBtnDisabled,
+          ]}
+          onPress={() => setModalVisible(true)}
+          disabled={!isSupportedLevel}
+        >
           <Ionicons
             name="options-outline"
             size={20}
@@ -174,7 +193,7 @@ export default function VocabularyScreen() {
       <View style={styles.heroCard}>
         <View style={styles.heroHeaderRow}>
           <View style={styles.heroLevelBadge}>
-            <Text style={styles.heroLevelBadgeText}>{safeLevel}</Text>
+            <Text style={styles.heroLevelBadgeText}>{displayLevel}</Text>
           </View>
 
           <View style={styles.heroFilterPill}>
@@ -234,7 +253,20 @@ export default function VocabularyScreen() {
         )}
       </View>
 
-      {loading ? (
+      {!isSupportedLevel ? (
+        <View style={styles.stateWrap}>
+          <Ionicons
+            name="ban-outline"
+            size={22}
+            color={theme.colors.muted}
+          />
+          <Text style={styles.emptyTitle}>Vocabulary unavailable</Text>
+          <Text style={styles.emptyText}>
+            B1 is reserved for Cyrillic and script lessons. Vocabulary is
+            available for M1 to M4 only.
+          </Text>
+        </View>
+      ) : loading ? (
         <View style={styles.stateWrap}>
           <Ionicons
             name="hourglass-outline"
@@ -242,6 +274,19 @@ export default function VocabularyScreen() {
             color={theme.colors.muted}
           />
           <Text style={styles.loading}>Loading vocabulary...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.stateWrap}>
+          <Ionicons
+            name="cloud-offline-outline"
+            size={22}
+            color={theme.colors.muted}
+          />
+          <Text style={styles.emptyTitle}>Unable to load words</Text>
+          <Text style={styles.emptyText}>{error}</Text>
+          <Pressable style={styles.retryBtn} onPress={() => void loadWords()}>
+            <Text style={styles.retryText}>Retry</Text>
+          </Pressable>
         </View>
       ) : displayedWords.length === 0 ? (
         <View style={styles.stateWrap}>
@@ -252,7 +297,9 @@ export default function VocabularyScreen() {
           />
           <Text style={styles.emptyTitle}>No words found</Text>
           <Text style={styles.emptyText}>
-            Try a different letter or clear the current filter.
+            {selectedLetter
+              ? "Try a different letter or clear the current filter."
+              : `No vocabulary is available for ${safeLevel} yet.`}
           </Text>
         </View>
       ) : (
@@ -266,7 +313,11 @@ export default function VocabularyScreen() {
         />
       )}
 
-      <Modal visible={modalVisible} transparent animationType="fade">
+      <Modal
+        visible={modalVisible && isSupportedLevel}
+        transparent
+        animationType="fade"
+      >
         <Pressable
           style={styles.modalOverlay}
           onPress={() => setModalVisible(false)}
@@ -276,7 +327,7 @@ export default function VocabularyScreen() {
               <View>
                 <Text style={styles.modalTitle}>Filter by letter</Text>
                 <Text style={styles.modalSubTitle}>
-                  Choose a Mongolian letter for {safeLevel}
+                  Choose a Mongolian letter for {displayLevel}
                 </Text>
               </View>
 
@@ -821,5 +872,32 @@ const createStyles = (theme: AppTheme) =>
       textAlign: "center",
       fontWeight: "800",
       fontSize: 13,
+    },
+
+    retryBtn: {
+      marginTop: 12,
+      minHeight: 42,
+      minWidth: 120,
+      paddingHorizontal: 16,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(255,255,255,0.06)" : "#FFFFFF",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(255,255,255,0.08)"
+          : "rgba(148,163,184,0.16)",
+    },
+
+    iconBtnDisabled: {
+      opacity: 0.5,
+    },
+
+    retryText: {
+      color: theme.colors.text,
+      fontSize: 13,
+      fontWeight: "700",
     },
   });

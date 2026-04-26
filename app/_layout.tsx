@@ -1,3 +1,4 @@
+import XpBootstrap from "@/src/features/achievements/XpBootstrap";
 import { AppThemeProvider, useAppTheme } from "@/src/ui/theme";
 import {
   ThemeProvider,
@@ -26,6 +27,7 @@ function RootNavigator() {
 
   return (
     <ThemeProvider value={navigationTheme}>
+      <XpBootstrap />
       <Stack screenOptions={{ headerShown: false }} />
       <StatusBar style={isDark ? "light" : "dark"} />
     </ThemeProvider>

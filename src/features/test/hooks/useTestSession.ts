@@ -1,15 +1,21 @@
-import { useMemo, useState } from "react";
-import { TestQuestion, TestSessionResult } from "../types/test.types";
-import { calculatePercentage, calculateXp } from "../utils/testHelper";
+import { useEffect, useMemo, useState } from "react";
+
+import {
+  TestQuestion,
+  TestSubmitPayload,
+  TestType,
+} from "../types/test.types";
+
 export function useTestSession(
   questions: TestQuestion[],
   levelId: string,
-  testType: TestSessionResult["testType"],
+  testType: TestType,
 ) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
-  const [correctCount, setCorrectCount] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answersByQuestionId, setAnswersByQuestionId] = useState<
+    Record<string, string>
+  >({});
 
   const currentQuestion = questions[currentIndex];
   const isLastQuestion = currentIndex === questions.length - 1;
@@ -19,46 +25,64 @@ export function useTestSession(
     return (currentIndex + 1) / questions.length;
   }, [currentIndex, questions.length]);
 
+  useEffect(() => {
+    if (!currentQuestion) {
+      setSelectedOptionId(null);
+      return;
+    }
+
+    setSelectedOptionId(answersByQuestionId[currentQuestion.id] ?? null);
+  }, [answersByQuestionId, currentQuestion]);
+
   function selectOption(optionId: string) {
     setSelectedOptionId(optionId);
   }
 
-  function submitAnswer() {
-    if (!currentQuestion || !selectedOptionId) return false;
+  function clearSelectedOption() {
+    setSelectedOptionId(null);
+  }
 
-    const isCorrect = selectedOptionId === currentQuestion.correctOptionId;
-
-    setAnswers((prev) => ({
-      ...prev,
-      [currentQuestion.id]: selectedOptionId,
-    }));
-
-    if (isCorrect) {
-      setCorrectCount((prev) => prev + 1);
+  function buildAnswersMapWithCurrentSelection() {
+    if (!currentQuestion || !selectedOptionId) {
+      return null;
     }
 
-    return true;
+    return {
+      ...answersByQuestionId,
+      [currentQuestion.id]: selectedOptionId,
+    };
+  }
+
+  function saveCurrentAnswer() {
+    const nextAnswersByQuestionId = buildAnswersMapWithCurrentSelection();
+
+    if (!nextAnswersByQuestionId) {
+      return null;
+    }
+
+    setAnswersByQuestionId(nextAnswersByQuestionId);
+
+    return nextAnswersByQuestionId;
   }
 
   function goNext() {
     if (currentIndex >= questions.length - 1) return;
 
-    setSelectedOptionId(null);
     setCurrentIndex((prev) => prev + 1);
   }
 
-  function buildResult(): TestSessionResult {
-    const total = questions.length;
-    const wrong = total - correctCount;
-
+  function buildSubmitPayload(
+    answersMap = answersByQuestionId,
+  ): TestSubmitPayload {
     return {
       levelId,
       testType,
-      total,
-      correct: correctCount,
-      wrong,
-      xpGained: calculateXp(correctCount),
-      percentage: calculatePercentage(correctCount, total),
+      answers: questions
+        .map((question) => ({
+          questionId: question.id,
+          answer: answersMap[question.id],
+        }))
+        .filter((answer) => typeof answer.answer === "string" && answer.answer.length > 0),
     };
   }
 
@@ -66,13 +90,14 @@ export function useTestSession(
     currentIndex,
     currentQuestion,
     selectedOptionId,
-    correctCount,
+    answersByQuestionId,
     progress,
     isLastQuestion,
     selectOption,
-    submitAnswer,
+    clearSelectedOption,
+    saveCurrentAnswer,
     goNext,
-    buildResult,
+    buildSubmitPayload,
     hasQuestions: questions.length > 0,
     totalQuestions: questions.length,
   };

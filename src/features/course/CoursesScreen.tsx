@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Pressable,
@@ -13,6 +14,15 @@ import {
 } from "react-native";
 
 import { fetchLevels, LevelItem } from "@/lib/learning";
+import {
+  claimDailyLoginXpAction,
+  fetchXpOverview,
+  XpOverview,
+} from "@/src/features/achievements/achievements.service";
+import {
+  notifyXpUpdated,
+  subscribeToXpUpdates,
+} from "@/src/features/achievements/xp-events";
 import { getLevelRoute } from "@/src/features/learning/routes";
 import { useNotifications } from "@/src/store/notificationStore";
 import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
@@ -21,6 +31,62 @@ type DisplayLevel = LevelItem & {
   shortInfo: string;
   accent: [string, string];
 };
+
+type ClaimStateCopy = {
+  buttonLabel: string;
+  detailLabel: string;
+  disabled: boolean;
+};
+
+const EMPTY_XP_OVERVIEW: XpOverview = {
+  totalXp: 0,
+  canClaimDailyXp: false,
+  nextDailyClaimAt: null,
+  dailyClaimXpAmount: null,
+  hintXpCost: null,
+  streak: 0,
+  completedLessons: 0,
+};
+
+function formatNextClaimTime(timestamp: string | null) {
+  if (!timestamp) {
+    return "Already claimed today";
+  }
+
+  const date = new Date(timestamp);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Already claimed today";
+  }
+
+  return `Next claim ${date.toLocaleString()}`;
+}
+
+function getClaimStateCopy(summary: XpOverview, claiming: boolean): ClaimStateCopy {
+  if (claiming) {
+    return {
+      buttonLabel: "Claiming XP...",
+      detailLabel: "Updating your wallet now.",
+      disabled: true,
+    };
+  }
+
+  if (summary.canClaimDailyXp) {
+    return {
+      buttonLabel: summary.dailyClaimXpAmount
+        ? `Claim daily XP (${summary.dailyClaimXpAmount} XP)`
+        : "Claim daily XP",
+      detailLabel: "Available now",
+      disabled: false,
+    };
+  }
+
+  return {
+    buttonLabel: "Claimed today",
+    detailLabel: formatNextClaimTime(summary.nextDailyClaimAt),
+    disabled: true,
+  };
+}
 
 export default function CoursesScreen() {
   const { theme } = useAppTheme();
@@ -32,14 +98,9 @@ export default function CoursesScreen() {
 
   const [levels, setLevels] = useState<LevelItem[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const stats = useMemo(() => {
-    return {
-      completed: "65",
-      streak: "7",
-      xp: "420",
-    };
-  }, []);
+  const [xpOverview, setXpOverview] = useState<XpOverview>(EMPTY_XP_OVERVIEW);
+  const [claiming, setClaiming] = useState(false);
+  const [claimMessage, setClaimMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -68,8 +129,60 @@ export default function CoursesScreen() {
       }
     };
 
-    load();
+    void load();
   }, []);
+
+  const loadXpOverview = useCallback(async (clearMessage = false) => {
+    try {
+      const summary = await fetchXpOverview();
+      setXpOverview(summary);
+
+      if (clearMessage) {
+        setClaimMessage(null);
+      }
+    } catch (error) {
+      console.log("Error loading XP summary:", error);
+    }
+  }, []);
+
+  const handleClaimXp = useCallback(async () => {
+    try {
+      setClaiming(true);
+      setClaimMessage(null);
+      const result = await claimDailyLoginXpAction();
+
+      if (result.claimed) {
+        notifyXpUpdated();
+        setClaimMessage("Daily XP claimed successfully.");
+        await loadXpOverview();
+        return;
+      }
+
+      setXpOverview((current) => ({
+        ...current,
+        canClaimDailyXp: result.canClaimDailyXp,
+        nextDailyClaimAt: result.nextDailyClaimAt,
+        dailyClaimXpAmount: result.amount ?? current.dailyClaimXpAmount,
+      }));
+      setClaimMessage("Daily XP was already claimed today.");
+    } catch (error) {
+      console.log("Error claiming daily XP:", error);
+    } finally {
+      setClaiming(false);
+    }
+  }, [loadXpOverview]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadXpOverview(true);
+    }, [loadXpOverview]),
+  );
+
+  useEffect(() => {
+    return subscribeToXpUpdates(() => {
+      void loadXpOverview();
+    });
+  }, [loadXpOverview]);
 
   const levelMeta = useMemo<
     Record<string, { shortInfo: string; accent: [string, string] }>
@@ -105,9 +218,17 @@ export default function CoursesScreen() {
     return sorted.map((item) => ({
       ...item,
       shortInfo: levelMeta[item.id]?.shortInfo ?? "Start learning",
-      accent: levelMeta[item.id]?.accent ?? theme.colors.statGradient,
+      accent:
+        Array.isArray(item.gradient) && item.gradient.length === 2
+          ? item.gradient
+          : levelMeta[item.id]?.accent ?? ["#334155", "#1E293B"],
     }));
-  }, [levels, levelMeta, theme.colors.statGradient]);
+  }, [levels, levelMeta]);
+
+  const claimState = useMemo(
+    () => getClaimStateCopy(xpOverview, claiming),
+    [claiming, xpOverview],
+  );
 
   const logout = async () => {
     try {
@@ -177,25 +298,52 @@ export default function CoursesScreen() {
         colors={theme.colors.statGradient}
         style={styles.heroCard}
       >
-        <View style={styles.heroLeft}>
-          <Text style={styles.heroEyebrow}>Current progress</Text>
-          <Text style={styles.heroTitle}>{activeLevel} level</Text>
-          <Text style={styles.heroDesc}>
-            Keep your streak and continue learning today.
-          </Text>
-        </View>
-
-        <View style={styles.heroRight}>
-          <View style={styles.heroPill}>
-            <Ionicons name="flash" size={13} color={theme.colors.text} />
-            <Text style={styles.heroPillValue}>{stats.xp}</Text>
-            <Text style={styles.heroPillLabel}>XP</Text>
+        <View style={styles.heroMainRow}>
+          <View style={styles.heroLeft}>
+            <Text style={styles.heroEyebrow}>Current progress</Text>
+            <Text style={styles.heroTitle}>{activeLevel} level</Text>
+            <Text style={styles.heroDesc}>
+              Keep your streak and continue learning today.
+            </Text>
           </View>
 
+          <View style={styles.heroRight}>
+            <Pressable
+              onPress={() => router.push("/(tabs)/achievements")}
+              style={({ pressed }) => [styles.heroPill, pressed && { opacity: 0.88 }]}
+            >
+              <Ionicons name="flash" size={13} color={theme.colors.text} />
+              <Text style={styles.heroPillValue}>{xpOverview.totalXp}</Text>
+              <Text style={styles.heroPillLabel}>Available XP</Text>
+            </Pressable>
+
+            <Pressable
+              disabled={claimState.disabled}
+              onPress={() => {
+                void handleClaimXp();
+              }}
+              style={[
+                styles.claimButton,
+                claimState.disabled && styles.claimButtonDisabled,
+              ]}
+            >
+              {claiming ? (
+                <ActivityIndicator color="#0F172A" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="gift-outline" size={14} color="#0F172A" />
+                  <Text style={styles.claimButtonText}>{claimState.buttonLabel}</Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.heroFooterRow}>
           <View style={styles.heroMiniRow}>
             <View style={styles.heroMiniItem}>
               <Ionicons name="flame" size={12} color={theme.colors.text} />
-              <Text style={styles.heroMiniValue}>{stats.streak}</Text>
+              <Text style={styles.heroMiniValue}>{xpOverview.streak}</Text>
             </View>
 
             <View style={styles.heroMiniDivider} />
@@ -206,8 +354,15 @@ export default function CoursesScreen() {
                 size={12}
                 color={theme.colors.text}
               />
-              <Text style={styles.heroMiniValue}>{stats.completed}</Text>
+              <Text style={styles.heroMiniValue}>{xpOverview.completedLessons}</Text>
             </View>
+          </View>
+
+          <View style={styles.heroStatusWrap}>
+            <Text style={styles.claimStatusText}>{claimState.detailLabel}</Text>
+            {claimMessage ? (
+              <Text style={styles.claimMessageText}>{claimMessage}</Text>
+            ) : null}
           </View>
         </View>
       </LinearGradient>
@@ -376,15 +531,18 @@ const createStyles = (theme: AppTheme) =>
       borderWidth: 1,
       borderColor:
         theme.mode === "dark" ? "rgba(255,255,255,0.10)" : theme.colors.border,
+      minHeight: 118,
+    },
+
+    heroMainRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      minHeight: 118,
+      gap: 12,
     },
 
     heroLeft: {
       flex: 1,
-      paddingRight: 14,
     },
 
     heroEyebrow: {
@@ -412,7 +570,7 @@ const createStyles = (theme: AppTheme) =>
     heroRight: {
       alignItems: "flex-end",
       justifyContent: "space-between",
-      minHeight: 84,
+      gap: 10,
     },
 
     heroPill: {
@@ -422,10 +580,8 @@ const createStyles = (theme: AppTheme) =>
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: 999,
-
       backgroundColor:
         theme.mode === "dark" ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.05)",
-
       borderWidth: 1,
       borderColor:
         theme.mode === "dark" ? "rgba(255,255,255,0.14)" : theme.colors.border,
@@ -443,17 +599,71 @@ const createStyles = (theme: AppTheme) =>
       fontWeight: "700",
     },
 
+    claimButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginTop: 2,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 999,
+      backgroundColor: "#FACC15",
+      borderWidth: 1,
+      borderColor: "rgba(250,204,21,0.28)",
+      maxWidth: 210,
+    },
+
+    claimButtonDisabled: {
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(148,163,184,0.22)" : "rgba(255,255,255,0.20)",
+      borderColor:
+        theme.mode === "dark" ? "rgba(148,163,184,0.18)" : "rgba(255,255,255,0.22)",
+    },
+
+    claimButtonText: {
+      color: "#0F172A",
+      fontSize: 11,
+      fontWeight: "900",
+      flexShrink: 1,
+    },
+
+    heroFooterRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: 12,
+      gap: 12,
+    },
+
+    heroStatusWrap: {
+      flex: 1,
+      alignItems: "flex-end",
+    },
+
+    claimStatusText: {
+      color: theme.colors.text,
+      fontSize: 11,
+      fontWeight: "800",
+      textAlign: "right",
+    },
+
+    claimMessageText: {
+      color: "rgba(255,255,255,0.86)",
+      fontSize: 11,
+      fontWeight: "700",
+      marginTop: 6,
+      textAlign: "right",
+      maxWidth: 210,
+    },
+
     heroMiniRow: {
       flexDirection: "row",
       alignItems: "center",
-      marginTop: 12,
       paddingHorizontal: 10,
       paddingVertical: 8,
       borderRadius: 999,
-
       backgroundColor:
         theme.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)",
-
       borderWidth: 1,
       borderColor:
         theme.mode === "dark" ? "rgba(255,255,255,0.10)" : theme.colors.border,

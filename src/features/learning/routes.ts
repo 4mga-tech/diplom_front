@@ -8,6 +8,7 @@ type RouteIdParams = {
   levelId?: RouteParamValue;
   unitId?: RouteParamValue;
   lessonId?: RouteParamValue;
+  quizId?: RouteParamValue;
 };
 
 const NORMALIZED_LEVEL_IDS: NormalizedLevelId[] = ["b1", "m1", "m2", "m3"];
@@ -43,15 +44,16 @@ export function getNormalizedLearningParams(params: RouteIdParams) {
     levelId: normalizeLevelId(params.levelId),
     unitId: getSingleRouteParamValue(params.unitId) ?? "",
     lessonId: getSingleRouteParamValue(params.lessonId) ?? "",
+    quizId: getSingleRouteParamValue(params.quizId) ?? "",
   };
 }
 
-export function getLevelRoute(levelId: string) {
-  return `/levels/${encodeRouteSegment(levelId)}`;
+export function getLevelRoute(levelId: string): Href {
+  return `/levels/${encodeRouteSegment(levelId)}` as Href;
 }
 
-export function getUnitRoute(levelId: string, unitId: string) {
-  return `/levels/${encodeRouteSegment(levelId)}/units/${encodeRouteSegment(unitId)}`;
+export function getUnitRoute(levelId: string, unitId: string): Href {
+  return `/levels/${encodeRouteSegment(levelId)}/units/${encodeRouteSegment(unitId)}` as Href;
 }
 
 export function getLessonDetailRoute(
@@ -74,8 +76,15 @@ export function getLessonQuizRoute(
   levelId: string,
   unitId: string,
   lessonId: string,
+  quizId?: string | null,
 ): Href {
-  return `/levels/${encodeURIComponent(levelId)}/units/${encodeURIComponent(
+  const baseRoute = `/levels/${encodeURIComponent(levelId)}/units/${encodeURIComponent(
     unitId,
-  )}/lessons/${encodeURIComponent(lessonId)}/quiz` as Href;
+  )}/lessons/${encodeURIComponent(lessonId)}/quiz`;
+
+  if (quizId && quizId.trim().length > 0) {
+    return `${baseRoute}?quizId=${encodeURIComponent(quizId)}` as Href;
+  }
+
+  return baseRoute as Href;
 }

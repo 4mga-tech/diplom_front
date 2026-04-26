@@ -1,8 +1,12 @@
-import { LevelCard, fetchLevels } from "@/lib/levels";
+import {
+  fetchVocabularyLevels,
+  SUPPORTED_VOCABULARY_LEVEL_IDS,
+  VocabularyLevel,
+} from "@/lib/vocabulary";
 import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -13,7 +17,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-type DisplayLevel = LevelCard & {
+type DisplayLevel = VocabularyLevel & {
   shortHint: string;
   accent: string;
 };
@@ -23,32 +27,32 @@ export default function VocabularyIndex() {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
 
-  const [levels, setLevels] = useState<LevelCard[]>([]);
+  const [levels, setLevels] = useState<VocabularyLevel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadLevels = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setLevels(await fetchVocabularyLevels());
+    } catch (err) {
+      console.log("Vocabulary levels fetch error:", err);
+      setLevels([]);
+      setError("Couldn't load vocabulary levels right now.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const loadLevels = async () => {
-      try {
-        setLoading(true);
-        setLevels(await fetchLevels());
-      } catch (err) {
-        console.log("Levels fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadLevels();
-  }, []);
+    void loadLevels();
+  }, [loadLevels]);
 
   const levelMeta = useMemo<
     Record<string, { shortHint: string; accent: string }>
   >(
     () => ({
-      B1: {
-        shortHint: "Letters & basics",
-        accent: "#7C3AED",
-      },
       M1: {
         shortHint: "Core vocabulary",
         accent: "#2563EB",
@@ -61,16 +65,21 @@ export default function VocabularyIndex() {
         shortHint: "Advanced practice",
         accent: "#EA580C",
       },
+      M4: {
+        shortHint: "Extended vocabulary",
+        accent: "#B45309",
+      },
     }),
     [],
   );
 
   const displayLevels = useMemo<DisplayLevel[]>(() => {
-    const preferredOrder = ["B1", "M1", "M2", "M3"];
-
     return [...levels]
+      .filter((lvl) => SUPPORTED_VOCABULARY_LEVEL_IDS.includes(lvl.id))
       .sort(
-        (a, b) => preferredOrder.indexOf(a.id) - preferredOrder.indexOf(b.id),
+        (a, b) =>
+          SUPPORTED_VOCABULARY_LEVEL_IDS.indexOf(a.id) -
+          SUPPORTED_VOCABULARY_LEVEL_IDS.indexOf(b.id),
       )
       .map((lvl) => ({
         ...lvl,
@@ -273,6 +282,18 @@ export default function VocabularyIndex() {
           <ActivityIndicator size="small" color={theme.colors.text} />
           <Text style={styles.loading}>Loading levels...</Text>
         </View>
+      ) : error ? (
+        <View style={styles.emptyWrap}>
+          <Ionicons
+            name="cloud-offline-outline"
+            size={22}
+            color={theme.colors.muted}
+          />
+          <Text style={styles.empty}>{error}</Text>
+          <Pressable style={styles.retryBtn} onPress={() => void loadLevels()}>
+            <Text style={styles.retryText}>Retry</Text>
+          </Pressable>
+        </View>
       ) : displayLevels.length === 0 ? (
         <View style={styles.emptyWrap}>
           <Ionicons
@@ -280,7 +301,9 @@ export default function VocabularyIndex() {
             size={22}
             color={theme.colors.muted}
           />
-          <Text style={styles.empty}>No levels available right now.</Text>
+          <Text style={styles.empty}>
+            No vocabulary levels are available yet.
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -590,5 +613,28 @@ const createStyles = (theme: AppTheme) =>
       color: theme.colors.muted,
       fontSize: 15,
       fontWeight: "500",
+    },
+
+    retryBtn: {
+      marginTop: 10,
+      minHeight: 42,
+      minWidth: 120,
+      paddingHorizontal: 16,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(255,255,255,0.06)" : "#FFFFFF",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(255,255,255,0.08)"
+          : "rgba(148,163,184,0.16)",
+    },
+
+    retryText: {
+      color: theme.colors.text,
+      fontSize: 13,
+      fontWeight: "700",
     },
   });

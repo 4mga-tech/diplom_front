@@ -16,16 +16,26 @@ export type TestQuestion = {
   testType: TestType;
   question: string;
   options: TestOption[];
-  correctOptionId: string;
   explanation?: string;
 };
 
-export type TestSessionResult = {
+export type TestAnswerSubmission = {
+  questionId: string;
+  answer: string;
+};
+
+export type TestSubmitPayload = {
   levelId: string;
   testType: TestType;
-  total: number;
-  correct: number;
-  wrong: number;
+  answers: TestAnswerSubmission[];
+};
+
+export type TestSubmitResult = {
+  levelId: string;
+  testType: TestType;
+  score: number;
+  passed: boolean;
+  correctCount: number;
+  totalQuestions: number;
   xpGained: number;
-  percentage: number;
 };

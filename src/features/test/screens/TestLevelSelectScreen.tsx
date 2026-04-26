@@ -1,8 +1,11 @@
-import { LevelCard, fetchLevels } from "@/lib/levels";
+import {
+  TEST_LEVELS,
+  type TestLevelCard,
+} from "@/src/features/test/constants/testLevels";
 import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React from "react";
 import {
   FlatList,
   ListRenderItem,
@@ -13,70 +16,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const TEST_TYPES = ["Vocabulary", "Grammar", "Listen", "Speak", "Letter"];
-
-const LEVEL_ACCENTS: Record<string, string> = {
-  B1: "#7C3AED",
-  M1: "#2563EB",
-  M2: "#0F766E",
-  M3: "#EA580C",
-};
+const TEST_TYPES = ["Vocabulary", "Grammar", "Listening", "Speaking", "Letters"];
 
 export default function TestLevelSelect() {
   const { theme } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
-
-  const [levels, setLevels] = useState<LevelCard[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const loadLevels = async () => {
-      try {
-        setLoading(true);
-        const data = await fetchLevels();
-        setLevels(data);
-      } catch (err) {
-        console.log("Levels fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadLevels();
-  }, []);
-
-  const sortedLevels = useMemo(() => {
-    const order = ["B1", "M1", "M2", "M3"];
-    return [...levels].sort(
-      (a, b) => order.indexOf(a.id) - order.indexOf(b.id),
-    );
-  }, [levels]);
-
-  const totalWords = useMemo(
-    () => levels.reduce((sum, l) => sum + (l.vocabularyCount || 0), 0),
-    [levels],
-  );
-
-  const openLevels = useMemo(
-    () => levels.filter((l) => l.vocabularyReady).length,
-    [levels],
-  );
-
-  const levelHint = (id: string) => {
-    switch (id) {
-      case "B1":
-        return "Starter";
-      case "M1":
-        return "Foundation";
-      case "M2":
-        return "Daily use";
-      case "M3":
-        return "Advanced";
-      default:
-        return "Level";
-    }
-  };
 
   const renderHeader = () => (
     <>
@@ -92,15 +37,16 @@ export default function TestLevelSelect() {
               <Text style={styles.heroBadgeText}>All test modes</Text>
             </View>
 
-            <Text style={styles.title}>Choose test level</Text>
+            <Text style={styles.title}>Practice your skills</Text>
             <Text style={styles.subtitle}>
-              Pick a level first, then choose the test type.
+              Choose a level, then continue with vocabulary, grammar,
+              listening, and more.
             </Text>
           </View>
 
           <View style={styles.heroStatsCompact}>
-            <Text style={styles.heroStatBig}>{openLevels}</Text>
-            <Text style={styles.heroStatSmall}>open</Text>
+            <Text style={styles.heroStatBig}>{TEST_LEVELS.length}</Text>
+            <Text style={styles.heroStatSmall}>levels</Text>
           </View>
         </View>
 
@@ -114,15 +60,15 @@ export default function TestLevelSelect() {
 
         <View style={styles.headerStats}>
           <View style={styles.stat}>
-            <Text style={styles.statValue}>{levels.length}</Text>
+            <Text style={styles.statValue}>{TEST_LEVELS.length}</Text>
             <Text style={styles.statLabel}>Levels</Text>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.stat}>
-            <Text style={styles.statValue}>{totalWords}</Text>
-            <Text style={styles.statLabel}>Words</Text>
+            <Text style={styles.statValue}>4</Text>
+            <Text style={styles.statLabel}>Core bands</Text>
           </View>
 
           <View style={styles.divider} />
@@ -135,21 +81,15 @@ export default function TestLevelSelect() {
       </View>
 
       <View style={styles.sectionRow}>
-        <Text style={styles.sectionTitle}>Levels</Text>
-        <Text style={styles.sectionCaption}>
-          {loading ? "Loading..." : `${sortedLevels.length} total`}
-        </Text>
+        <Text style={styles.sectionTitle}>Choose a level</Text>
+        <Text style={styles.sectionCaption}>{TEST_LEVELS.length} total</Text>
       </View>
     </>
   );
 
-  const renderItem: ListRenderItem<LevelCard> = ({ item, index }) => {
-    const disabled = !item.vocabularyReady;
-    const accent = LEVEL_ACCENTS[item.id] ?? "#64748B";
-
+  const renderItem: ListRenderItem<TestLevelCard> = ({ item, index }) => {
     return (
       <Pressable
-        disabled={disabled}
         onPress={() =>
           router.push({
             pathname: "/test/test-types/[levelId]" as any,
@@ -159,76 +99,51 @@ export default function TestLevelSelect() {
         style={({ pressed }) => [
           styles.gridItemWrap,
           index % 2 === 0 ? { marginRight: 10 } : null,
-          pressed && !disabled && styles.pressed,
+          pressed && styles.pressed,
         ]}
       >
         <View
           style={[
             styles.card,
-            disabled && styles.cardDisabled,
             {
-              borderColor: disabled
-                ? theme.mode === "dark"
-                  ? "rgba(255,255,255,0.06)"
-                  : "rgba(148,163,184,0.14)"
-                : theme.mode === "dark"
+              borderColor:
+                theme.mode === "dark"
                   ? "rgba(255,255,255,0.08)"
                   : "rgba(148,163,184,0.16)",
             },
           ]}
         >
-          <View
-            style={[
-              styles.cardAccent,
-              { backgroundColor: disabled ? theme.colors.border : accent },
-            ]}
-          />
+          <View style={[styles.cardAccent, { backgroundColor: item.accent }]} />
 
           <View style={styles.cardTop}>
             <View style={styles.levelBadge}>
               <Text style={styles.levelBadgeText}>{item.id}</Text>
             </View>
 
-            <View
-              style={[
-                styles.statusBadge,
-                disabled && styles.statusBadgeDisabled,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.statusText,
-                  disabled && styles.statusTextDisabled,
-                ]}
-              >
-                {disabled ? "Locked" : "Open"}
-              </Text>
+            <View style={styles.statusBadge}>
+              <Text style={styles.statusText}>Ready</Text>
             </View>
           </View>
 
           <View style={styles.cardMiddle}>
             <Text style={styles.level}>{item.title}</Text>
-            <Text style={styles.cardDesc}>{levelHint(item.id)}</Text>
-            <Text style={styles.subtitleText} numberOfLines={2}>
-              {item.subtitle || "Choose a test type after entering."}
+            <Text style={styles.cardDesc}>{item.subtitle}</Text>
+            <Text style={styles.subtitleText} numberOfLines={3}>
+              {item.description}
             </Text>
           </View>
 
           <View style={styles.footer}>
             <View style={styles.meta}>
               <Ionicons
-                name="flash-outline"
+                name="albums-outline"
                 size={13}
                 color={theme.colors.muted}
               />
-              <Text style={styles.metaText}>{item.vocabularyCount} words</Text>
+              <Text style={styles.metaText}>5 test types</Text>
             </View>
 
-            <Ionicons
-              name={disabled ? "lock-closed-outline" : "arrow-forward"}
-              size={15}
-              color={theme.colors.muted}
-            />
+            <Ionicons name="arrow-forward" size={15} color={theme.colors.muted} />
           </View>
         </View>
       </Pressable>
@@ -239,7 +154,7 @@ export default function TestLevelSelect() {
     <SafeAreaView edges={["top"]} style={styles.container}>
       <FlatList
         key="test-level-grid-2"
-        data={loading ? [] : sortedLevels}
+        data={TEST_LEVELS}
         keyExtractor={(item) => item.id}
         numColumns={2}
         renderItem={renderItem}
@@ -247,20 +162,6 @@ export default function TestLevelSelect() {
         contentContainerStyle={styles.content}
         ListHeaderComponent={renderHeader}
         columnWrapperStyle={styles.gridRow}
-        ListEmptyComponent={
-          <View style={styles.stateBox}>
-            <Ionicons
-              name={loading ? "hourglass-outline" : "layers-outline"}
-              size={20}
-              color={theme.colors.muted}
-            />
-            <Text style={styles.stateText}>
-              {loading
-                ? "Loading test levels..."
-                : "No levels available right now."}
-            </Text>
-          </View>
-        }
         ListFooterComponent={<View style={{ height: 8 }} />}
       />
     </SafeAreaView>
@@ -464,27 +365,6 @@ const createStyles = (theme: AppTheme) =>
       fontWeight: "700",
     },
 
-    stateBox: {
-      minHeight: 120,
-      borderRadius: 20,
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-      backgroundColor:
-        theme.mode === "dark" ? "rgba(255,255,255,0.04)" : "#FFFFFF",
-      borderWidth: 1,
-      borderColor:
-        theme.mode === "dark"
-          ? "rgba(255,255,255,0.08)"
-          : "rgba(148,163,184,0.16)",
-    },
-
-    stateText: {
-      color: theme.colors.muted,
-      fontSize: 14,
-      fontWeight: "600",
-    },
-
     gridRow: {
       justifyContent: "space-between",
     },
@@ -522,10 +402,6 @@ const createStyles = (theme: AppTheme) =>
       left: 0,
       right: 0,
       height: 3,
-    },
-
-    cardDisabled: {
-      opacity: 0.58,
     },
 
     cardTop: {
@@ -572,25 +448,10 @@ const createStyles = (theme: AppTheme) =>
         theme.mode === "dark" ? "rgba(34,197,94,0.16)" : "rgba(34,197,94,0.14)",
     },
 
-    statusBadgeDisabled: {
-      backgroundColor:
-        theme.mode === "dark"
-          ? "rgba(148,163,184,0.10)"
-          : "rgba(148,163,184,0.08)",
-      borderColor:
-        theme.mode === "dark"
-          ? "rgba(148,163,184,0.14)"
-          : "rgba(148,163,184,0.12)",
-    },
-
     statusText: {
       color: theme.mode === "dark" ? "#86EFAC" : "#15803D",
       fontSize: 9,
       fontWeight: "800",
-    },
-
-    statusTextDisabled: {
-      color: theme.colors.muted,
     },
 
     cardMiddle: {

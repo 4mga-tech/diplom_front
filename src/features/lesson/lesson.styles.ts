@@ -7,37 +7,65 @@ export const createLessonStyles = (theme: AppTheme) =>
       flex: 1,
       backgroundColor: theme.colors.bg,
       paddingHorizontal: theme.s(3),
-      paddingTop: theme.s(5),
+      paddingTop: theme.s(1.5),
       paddingBottom: theme.s(3),
     },
     header: {
+      gap: theme.s(1),
+      marginBottom: theme.s(1),
+    },
+    headerMainRow: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
       gap: theme.s(1.25),
-      marginBottom: theme.s(2.25),
     },
-    statusPill: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 999,
+    headerIconButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
       backgroundColor:
-        theme.mode === "dark"
-          ? "rgba(15,23,42,0.68)"
-          : "rgba(255,255,255,0.9)",
+        theme.mode === "dark" ? "rgba(15,23,42,0.7)" : "rgba(255,255,255,0.95)",
       borderWidth: 1,
       borderColor:
         theme.mode === "dark"
-          ? "rgba(96,165,250,0.18)"
-          : "rgba(59,130,246,0.16)",
-      maxWidth: "62%",
+          ? "rgba(51,65,85,0.55)"
+          : "rgba(148,163,184,0.18)",
     },
-    statusPillText: {
+    headerIconButtonPressed: {
+      opacity: 0.75,
+    },
+    headerTitleWrap: {
+      flex: 1,
+      gap: 2,
+    },
+    headerTitle: {
+      color: theme.colors.text,
+      fontSize: 19,
+      fontWeight: "900",
+    },
+    headerSubtitle: {
       color: theme.colors.muted,
       fontSize: 12,
+      fontWeight: "700",
+    },
+    statusPill: {
+      alignSelf: "flex-start",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 999,
+      borderWidth: 1,
+    },
+    statusPillText: {
+      fontSize: 11,
       fontWeight: "800",
       textTransform: "uppercase",
-      letterSpacing: 0.6,
+      letterSpacing: 0.5,
+      textAlign: "center",
     },
     centerState: {
       flex: 1,
@@ -88,162 +116,127 @@ export const createLessonStyles = (theme: AppTheme) =>
       lineHeight: 21,
     },
     scroll: { flex: 1 },
-    scrollContent: { paddingBottom: theme.s(4), gap: theme.s(3) },
+    scrollContent: { paddingBottom: theme.s(4), gap: theme.s(1.5) },
     heroCard: {
-      borderRadius: 28,
-      overflow: "hidden",
+      borderRadius: 24,
       borderWidth: 1,
       borderColor:
         theme.mode === "dark"
-          ? "rgba(51,65,85,0.65)"
-          : "rgba(148,163,184,0.18)",
+          ? "rgba(51,65,85,0.62)"
+          : "rgba(148,163,184,0.16)",
       backgroundColor: theme.colors.cardStrong,
-      position: "relative",
-    },
-    heroGlow: {
-      position: "absolute",
-      top: -72,
-      right: -48,
-      width: 240,
-      height: 240,
-      borderRadius: 999,
-      opacity: theme.mode === "dark" ? 1 : 0.8,
-      transform: [{ rotate: "14deg" }],
     },
     heroInner: {
-      paddingHorizontal: theme.s(3),
-      paddingVertical: theme.s(3.1),
-      gap: theme.s(2.35),
+      paddingHorizontal: 16,
+      paddingVertical: 13,
+      gap: theme.s(0.9),
     },
-    heroTopRow: {
+    heroTopMeta: {
       flexDirection: "row",
       justifyContent: "space-between",
-      alignItems: "flex-start",
-      gap: theme.s(2),
+      alignItems: "center",
+      gap: theme.s(1),
     },
-    heroBadge: {
-      alignSelf: "flex-start",
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+    heroStatePill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
       borderRadius: 999,
-      backgroundColor:
-        theme.mode === "dark"
-          ? "rgba(37,99,235,0.16)"
-          : "rgba(37,99,235,0.08)",
       borderWidth: 1,
-      borderColor:
-        theme.mode === "dark"
-          ? "rgba(96,165,250,0.18)"
-          : "rgba(59,130,246,0.16)",
     },
-    heroBadgeText: {
-      color: theme.mode === "dark" ? "#BFDBFE" : "#1D4ED8",
+    heroStatePillText: {
       fontSize: 11,
       fontWeight: "800",
       textTransform: "uppercase",
-      letterSpacing: 0.7,
+      letterSpacing: 0.45,
     },
-    heroIconWrap: {
-      width: 44,
-      height: 44,
-      borderRadius: 16,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor:
-        theme.mode === "dark"
-          ? "rgba(255,255,255,0.08)"
-          : "rgba(255,255,255,0.78)",
-    },
-    heroTextWrap: { gap: 8 },
+    heroTextWrap: { gap: 4 },
     lessonOrderText: {
       color: theme.colors.muted,
       fontSize: 11,
       fontWeight: "800",
       textTransform: "uppercase",
-      letterSpacing: 0.6,
+      letterSpacing: 0.55,
     },
     heroTitle: {
       color: theme.colors.text,
-      fontSize: 30,
+      fontSize: 20,
       fontWeight: "900",
-      lineHeight: 36,
+      lineHeight: 24,
     },
     heroSubtitle: {
-      color: theme.mode === "dark" ? "rgba(226,232,240,0.92)" : "#475569",
-      fontSize: 15,
-      lineHeight: 22,
-      fontWeight: "600",
-    },
-    heroNotice: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      gap: 10,
-      padding: theme.s(1.75),
-      borderRadius: 18,
-      backgroundColor:
-        theme.mode === "dark"
-          ? "rgba(15,23,42,0.62)"
-          : "rgba(255,255,255,0.82)",
-      borderWidth: 1,
-      borderColor:
-        theme.mode === "dark"
-          ? "rgba(96,165,250,0.14)"
-          : "rgba(59,130,246,0.12)",
-    },
-    heroNoticeText: {
-      flex: 1,
-      color: theme.mode === "dark" ? "rgba(226,232,240,0.92)" : "#334155",
-      fontSize: 13,
-      lineHeight: 20,
-      fontWeight: "600",
-    },
-    metaGrid: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: theme.s(1.25),
-    },
-    metaCard: {
-      minWidth: 132,
-      flex: 1,
-      borderRadius: 18,
-      paddingHorizontal: 15,
-      paddingVertical: 15,
-      backgroundColor:
-        theme.mode === "dark"
-          ? "rgba(15,23,42,0.72)"
-          : "rgba(255,255,255,0.88)",
-      borderWidth: 1,
-      borderColor:
-        theme.mode === "dark"
-          ? "rgba(51,65,85,0.52)"
-          : "rgba(148,163,184,0.18)",
-      gap: 8,
-    },
-    metaValueRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-    },
-    metaTopRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: 8,
-    },
-    metaLabel: {
-      color: theme.colors.muted,
+      color: theme.mode === "dark" ? "rgba(226,232,240,0.82)" : "rgba(71,85,105,0.9)",
       fontSize: 11,
+      lineHeight: 16,
+      fontWeight: "600",
+    },
+    heroSummaryRow: {
+      flexDirection: "row",
+      alignItems: "stretch",
+      gap: theme.s(1),
+      paddingHorizontal: theme.s(1),
+      paddingVertical: theme.s(0.9),
+      borderRadius: 14,
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(15,23,42,0.54)" : "rgba(248,250,252,0.96)",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(51,65,85,0.44)"
+          : "rgba(148,163,184,0.16)",
+    },
+    heroSummaryItem: {
+      flex: 1,
+      gap: 4,
+    },
+    heroSummaryLabel: {
+      color: theme.colors.muted,
+      fontSize: 10,
       fontWeight: "800",
       textTransform: "uppercase",
-      letterSpacing: 0.7,
+      letterSpacing: 0.55,
     },
-    metaValue: {
+    heroSummaryValue: {
       color: theme.colors.text,
-      fontSize: 16,
-      fontWeight: "900",
+      fontSize: 12,
+      fontWeight: "800",
+      lineHeight: 18,
+    },
+    heroSummaryDivider: {
+      width: 1,
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(51,65,85,0.55)"
+          : "rgba(148,163,184,0.24)",
+    },
+    heroNoticeCompact: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 8,
+      paddingHorizontal: theme.s(1),
+      paddingVertical: theme.s(0.9),
+      borderRadius: 14,
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(37,99,235,0.1)"
+          : "rgba(37,99,235,0.07)",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(96,165,250,0.18)"
+          : "rgba(59,130,246,0.14)",
+    },
+    heroNoticeCompactText: {
+      flex: 1,
+      color: theme.mode === "dark" ? "rgba(226,232,240,0.9)" : "#334155",
+      fontSize: 10,
+      lineHeight: 14,
+      fontWeight: "600",
     },
     progressTrack: {
-      height: 10,
+      height: 7,
       borderRadius: 999,
       overflow: "hidden",
       backgroundColor:
@@ -255,22 +248,22 @@ export const createLessonStyles = (theme: AppTheme) =>
       backgroundColor: "#60A5FA",
     },
     unitContextCard: {
-      borderRadius: 22,
-      padding: theme.s(2),
+      borderRadius: 16,
+      padding: theme.s(1),
       backgroundColor:
-        theme.mode === "dark" ? "rgba(15,23,42,0.72)" : "rgba(255,255,255,0.92)",
+        theme.mode === "dark" ? "rgba(15,23,42,0.66)" : "rgba(255,255,255,0.94)",
       borderWidth: 1,
       borderColor:
         theme.mode === "dark"
-          ? "rgba(96,165,250,0.16)"
-          : "rgba(59,130,246,0.14)",
-      gap: theme.s(1.25),
+          ? "rgba(96,165,250,0.14)"
+          : "rgba(59,130,246,0.12)",
+      gap: theme.s(0.9),
     },
     unitContextTop: {
       flexDirection: "row",
       justifyContent: "space-between",
-      alignItems: "center",
-      gap: theme.s(1.25),
+      alignItems: "flex-start",
+      gap: theme.s(1),
     },
     unitContextText: {
       flex: 1,
@@ -278,27 +271,39 @@ export const createLessonStyles = (theme: AppTheme) =>
     },
     unitContextEyebrow: {
       color: theme.colors.muted,
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: "800",
       textTransform: "uppercase",
-      letterSpacing: 0.6,
+      letterSpacing: 0.55,
     },
     unitContextTitle: {
       color: theme.colors.text,
-      fontSize: 16,
+      fontSize: 14,
       fontWeight: "900",
-      lineHeight: 22,
-    },
-    unitContextMeta: {
-      color: theme.mode === "dark" ? "#BFDBFE" : "#1D4ED8",
-      fontSize: 12,
-      fontWeight: "800",
+      lineHeight: 18,
     },
     unitProgressText: {
       color: theme.colors.muted,
-      fontSize: 13,
+      fontSize: 10,
       fontWeight: "700",
-      lineHeight: 20,
+      lineHeight: 14,
+    },
+    unitProgressBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(37,99,235,0.18)" : "rgba(37,99,235,0.1)",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(96,165,250,0.18)"
+          : "rgba(59,130,246,0.14)",
+    },
+    unitProgressBadgeText: {
+      color: theme.mode === "dark" ? "#BFDBFE" : "#1D4ED8",
+      fontSize: 11,
+      fontWeight: "900",
     },
     navRow: {
       flexDirection: "row",
@@ -307,12 +312,12 @@ export const createLessonStyles = (theme: AppTheme) =>
     navButton: {
       flex: 1,
     },
-    section: { gap: theme.s(1.5) },
+    section: { gap: theme.s(1) },
     sectionHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "flex-end",
-      gap: theme.s(1.5),
+      gap: theme.s(1),
     },
     sectionHeaderText: {
       flex: 1,
@@ -320,18 +325,18 @@ export const createLessonStyles = (theme: AppTheme) =>
     },
     sectionTitle: {
       color: theme.colors.text,
-      fontSize: 18,
+      fontSize: 17,
       fontWeight: "900",
     },
     sectionHelperText: {
       color: theme.colors.muted,
-      fontSize: 13,
+      fontSize: 12,
       fontWeight: "600",
-      lineHeight: 19,
+      lineHeight: 17,
     },
     sectionSummaryPill: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
       borderRadius: 999,
       backgroundColor:
         theme.mode === "dark"
@@ -345,10 +350,10 @@ export const createLessonStyles = (theme: AppTheme) =>
     },
     sectionCaption: {
       color: theme.colors.muted,
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: "700",
       textTransform: "uppercase",
-      letterSpacing: 0.7,
+      letterSpacing: 0.5,
     },
     contentCard: {
       borderRadius: theme.r.xl,
@@ -365,9 +370,9 @@ export const createLessonStyles = (theme: AppTheme) =>
       borderColor:
         theme.mode === "dark" ? "rgba(96,165,250,0.28)" : "rgba(59,130,246,0.22)",
       shadowColor: theme.colors.shadow,
-      shadowOpacity: theme.mode === "dark" ? 0 : 0.08,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: theme.mode === "dark" ? 0 : 0.06,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 },
       elevation: theme.mode === "dark" ? 0 : 2,
     },
     contentCardViewed: {
@@ -375,16 +380,16 @@ export const createLessonStyles = (theme: AppTheme) =>
         theme.mode === "dark" ? "rgba(34,197,94,0.18)" : "rgba(34,197,94,0.14)",
     },
     contentCardPressed: {
-      opacity: 0.96,
-      transform: [{ scale: 0.995 }],
+      opacity: 0.97,
+      transform: [{ scale: 0.997 }],
     },
     contentHeader: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       gap: 12,
-      paddingHorizontal: theme.s(2),
-      paddingVertical: theme.s(2),
+      paddingHorizontal: theme.s(1.35),
+      paddingVertical: theme.s(1.15),
     },
     contentHeaderLeft: {
       flex: 1,
@@ -393,9 +398,9 @@ export const createLessonStyles = (theme: AppTheme) =>
       gap: 12,
     },
     contentIconWrap: {
-      width: 40,
-      height: 40,
-      borderRadius: 14,
+      width: 38,
+      height: 38,
+      borderRadius: 12,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor:
@@ -423,10 +428,10 @@ export const createLessonStyles = (theme: AppTheme) =>
     },
     contentLabel: {
       color: "rgba(148,163,184,0.78)",
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: "800",
       textTransform: "uppercase",
-      letterSpacing: 0.7,
+      letterSpacing: 0.65,
       flexShrink: 1,
     },
     contentStatusPill: {
@@ -446,14 +451,14 @@ export const createLessonStyles = (theme: AppTheme) =>
     },
     contentTitle: {
       color: theme.colors.text,
-      fontSize: 16,
+      fontSize: 14,
       fontWeight: "800",
-      lineHeight: 22,
+      lineHeight: 19,
     },
     contentBodyWrap: {
-      paddingHorizontal: theme.s(2),
-      paddingBottom: theme.s(2.2),
-      gap: theme.s(1.25),
+      paddingHorizontal: theme.s(1.35),
+      paddingBottom: theme.s(1.35),
+      gap: theme.s(0.85),
       borderTopWidth: 1,
       borderTopColor:
         theme.mode === "dark"
@@ -463,18 +468,18 @@ export const createLessonStyles = (theme: AppTheme) =>
     contentBody: {
       color: theme.mode === "dark" ? "rgba(226,232,240,0.92)" : "#334155",
       fontSize: 14,
-      lineHeight: 22,
+      lineHeight: 21,
     },
     translationText: {
       color: theme.mode === "dark" ? "#93C5FD" : "#2563EB",
       fontSize: 13,
-      lineHeight: 20,
+      lineHeight: 19,
       fontWeight: "600",
     },
     stack: { gap: 10 },
     innerCard: {
-      borderRadius: 18,
-      padding: theme.s(1.6),
+      borderRadius: 14,
+      padding: theme.s(1.05),
       backgroundColor:
         theme.mode === "dark"
           ? "rgba(30,41,59,0.5)"
@@ -500,9 +505,9 @@ export const createLessonStyles = (theme: AppTheme) =>
     },
     letterText: {
       color: theme.colors.text,
-      fontSize: 28,
+      fontSize: 24,
       fontWeight: "900",
-      lineHeight: 34,
+      lineHeight: 30,
     },
     groupBadge: {
       color: "#C4B5FD",
@@ -525,12 +530,54 @@ export const createLessonStyles = (theme: AppTheme) =>
       flex: 1,
       color: theme.mode === "dark" ? "rgba(226,232,240,0.92)" : "#334155",
       fontSize: 14,
-      lineHeight: 21,
+      lineHeight: 20,
     },
     chipsWrap: {
       flexDirection: "row",
       flexWrap: "wrap",
       gap: 8,
+    },
+    writeGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    writeLetterCard: {
+      width: "31%",
+      minWidth: 92,
+      borderRadius: 16,
+      paddingVertical: theme.s(1.2),
+      paddingHorizontal: theme.s(1),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(37,99,235,0.12)"
+          : "rgba(37,99,235,0.07)",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(96,165,250,0.18)"
+          : "rgba(59,130,246,0.14)",
+      gap: 4,
+    },
+    writeLetterCardPressed: {
+      opacity: 0.92,
+      transform: [{ scale: 0.98 }],
+    },
+    writeLetterPrimary: {
+      color: theme.colors.text,
+      fontSize: 24,
+      fontWeight: "900",
+      lineHeight: 28,
+      textAlign: "center",
+    },
+    writeLetterSecondary: {
+      color: theme.colors.muted,
+      fontSize: 10,
+      fontWeight: "700",
+      lineHeight: 14,
+      textAlign: "center",
     },
     chip: {
       paddingHorizontal: 12,
@@ -563,11 +610,9 @@ export const createLessonStyles = (theme: AppTheme) =>
       lineHeight: 21,
     },
     quizEntryCard: {
-      borderRadius: 24,
-      padding: theme.s(2.1),
-      gap: theme.s(1.3),
-      overflow: "hidden",
-      position: "relative",
+      borderRadius: 18,
+      padding: theme.s(1.35),
+      gap: theme.s(0.9),
       backgroundColor:
         theme.mode === "dark" ? "rgba(15,23,42,0.82)" : "rgba(255,255,255,0.96)",
       borderWidth: 1,
@@ -576,22 +621,14 @@ export const createLessonStyles = (theme: AppTheme) =>
           ? "rgba(96,165,250,0.2)"
           : "rgba(59,130,246,0.16)",
     },
-    quizEntryGlow: {
-      position: "absolute",
-      top: -24,
-      right: -18,
-      width: 160,
-      height: 160,
-      borderRadius: 999,
-    },
     quizEntryTop: {
       flexDirection: "row",
       alignItems: "flex-start",
-      gap: theme.s(1.25),
+      gap: theme.s(1.1),
     },
     quizEntryIconWrap: {
-      width: 42,
-      height: 42,
+      width: 40,
+      height: 40,
       borderRadius: 14,
       alignItems: "center",
       justifyContent: "center",
@@ -603,18 +640,28 @@ export const createLessonStyles = (theme: AppTheme) =>
           ? "rgba(96,165,250,0.22)"
           : "rgba(59,130,246,0.16)",
     },
+    quizEntryBody: {
+      flex: 1,
+      gap: 4,
+    },
+    quizEntryEyebrow: {
+      color: "#93C5FD",
+      fontSize: 10,
+      fontWeight: "800",
+      textTransform: "uppercase",
+      letterSpacing: 0.55,
+    },
     quizEntryTitle: {
       color: theme.colors.text,
-      fontSize: 18,
+      fontSize: 16,
       fontWeight: "900",
-      lineHeight: 24,
+      lineHeight: 20,
     },
     quizEntryText: {
       color: theme.mode === "dark" ? "rgba(226,232,240,0.92)" : "#334155",
-      fontSize: 13,
+      fontSize: 11,
       fontWeight: "600",
-      lineHeight: 20,
-      marginTop: 4,
+      lineHeight: 15,
     },
     quizEntryMetaRow: {
       flexDirection: "row",
@@ -629,10 +676,10 @@ export const createLessonStyles = (theme: AppTheme) =>
       letterSpacing: 0.45,
     },
     actionBar: {
-      marginTop: theme.s(2),
+      marginTop: theme.s(1.25),
       padding: theme.s(1),
-      gap: theme.s(1),
-      borderRadius: 22,
+      gap: theme.s(0.9),
+      borderRadius: 18,
       backgroundColor:
         theme.mode === "dark"
           ? "rgba(15,23,42,0.82)"
@@ -643,9 +690,9 @@ export const createLessonStyles = (theme: AppTheme) =>
           ? "rgba(51,65,85,0.58)"
           : "rgba(148,163,184,0.18)",
       shadowColor: theme.colors.shadow,
-      shadowOpacity: theme.mode === "dark" ? 0 : 0.08,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: theme.mode === "dark" ? 0 : 0.06,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 },
       elevation: theme.mode === "dark" ? 0 : 2,
     },
     actionButton: {
@@ -659,13 +706,17 @@ export const createLessonStyles = (theme: AppTheme) =>
       opacity: 0.55,
     },
     primaryButtonInner: {
-      paddingVertical: theme.s(2),
+      paddingVertical: theme.s(1.45),
+      paddingHorizontal: theme.s(1.2),
       alignItems: "center",
+      justifyContent: "center",
       borderRadius: theme.r.xl,
     },
     secondaryButtonInner: {
-      paddingVertical: theme.s(2),
+      paddingVertical: theme.s(1.35),
+      paddingHorizontal: theme.s(1.2),
       alignItems: "center",
+      justifyContent: "center",
       borderRadius: theme.r.xl,
       borderWidth: 1,
       borderColor:
@@ -677,12 +728,12 @@ export const createLessonStyles = (theme: AppTheme) =>
     },
     primaryButtonText: {
       color: theme.colors.text,
-      fontSize: 16,
+      fontSize: 14,
       fontWeight: "900",
     },
     secondaryButtonText: {
       color: theme.colors.text,
-      fontSize: 15,
+      fontSize: 13,
       fontWeight: "800",
     },
   });

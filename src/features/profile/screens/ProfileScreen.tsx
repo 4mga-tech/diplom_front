@@ -1,10 +1,14 @@
 import { api } from "@/lib/api";
+import {
+  fetchProgressSummary,
+  fetchXpWalletSummary,
+} from "@/src/features/achievements/achievements.service";
 import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
-import { useNavigation, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
@@ -83,9 +87,8 @@ function InfoRow({
 }
 
 export default function ProfileScreen() {
-  const navigation = useNavigation();
   const router = useRouter();
-  const { theme, isDark } = useAppTheme();
+  const { theme } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   // useLayoutEffect(() => {
   //   navigation.setOptions({
@@ -125,14 +128,15 @@ export default function ProfileScreen() {
   useEffect(() => {
     const loadStats = async () => {
       try {
-        const res = await api.get("/me/progress/summary");
-        const payload = res.data as any;
-        const data = payload?.data ?? payload;
+        const [xpWallet, progress] = await Promise.all([
+          fetchXpWalletSummary(),
+          fetchProgressSummary(),
+        ]);
 
         setStats({
-          streak: Number(data?.streak ?? 0),
-          completedLessons: Number(data?.completedLessons ?? 0),
-          totalXp: Number(data?.totalXp ?? 0),
+          streak: progress.streak,
+          completedLessons: progress.completedLessons,
+          totalXp: xpWallet.totalXp,
         });
       } catch (err) {
         console.log("Error loading profile stats:", err);

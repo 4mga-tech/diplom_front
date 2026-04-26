@@ -9,11 +9,12 @@ export default function LegacyQuizRoute() {
     lessonId?: string;
     levelId?: string;
     unitId?: string;
+    quizId?: string;
   }>();
-  const { lessonId, levelId, unitId } = getNormalizedLearningParams(params);
+  const { lessonId, levelId, unitId, quizId } = getNormalizedLearningParams(params);
 
   if (lessonId && unitId) {
-    return <Redirect href={getLessonQuizRoute(levelId, unitId, lessonId)} />;
+    return <Redirect href={getLessonQuizRoute(levelId, unitId, lessonId, quizId)} />;
   }
 
   return <Redirect href="/" />;

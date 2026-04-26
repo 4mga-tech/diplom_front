@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import { claimDailyLoginXpIfNeeded } from "@/src/features/achievements/achievements.service";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
@@ -60,6 +61,12 @@ export default function LoginScreen() {
         if (data.token) await AsyncStorage.setItem("token", data.token);
         if (data.user)
           await AsyncStorage.setItem("user", JSON.stringify(data.user));
+
+        try {
+          await claimDailyLoginXpIfNeeded();
+        } catch (claimError) {
+          console.log("Daily login XP claim failed after login:", claimError);
+        }
 
         router.replace("/(tabs)");
       } catch (err: any) {

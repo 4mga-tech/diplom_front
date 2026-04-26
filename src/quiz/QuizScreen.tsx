@@ -1,5 +1,7 @@
 import { api } from "@/lib/api";
-import { completeLesson, fetchLessonDetail } from "@/lib/learning";
+import { fetchLessonDetail, LessonDetail } from "@/lib/learning";
+import { claimLessonXp } from "@/src/features/achievements/achievements.service";
+import { notifyXpUpdated } from "@/src/features/achievements/xp-events";
 import {
   getLessonDetailRoute,
   getLessonListRoute,
@@ -19,21 +21,89 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type Question = {
   id: string;
   type?: string;
   prompt: string;
   options?: string[];
-  correctAnswer?: unknown;
+  correctOptionId?: string;
+  correctAnswer?: string;
+  explanation?: string;
 };
 
-const PASS_PERCENTAGE = 70;
+type QuizSubmitResult = {
+  score: number;
+  passed: boolean;
+  correctCount: number;
+  totalQuestions: number;
+  xpGained: number;
+};
 
-function normalizeValue(value: unknown) {
-  return String(value ?? "").trim().toLowerCase();
+function extractData<T>(payload: unknown): T {
+  const maybeWrapped = payload as { data?: T };
+  return (maybeWrapped?.data ?? payload) as T;
+}
+
+function toNumber(value: unknown, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizeQuizSubmitResult(raw: any): QuizSubmitResult {
+  return {
+    score: toNumber(raw?.score ?? raw?.percentage),
+    passed: Boolean(raw?.passed ?? raw?.isPassed ?? false),
+    correctCount: toNumber(raw?.correctCount ?? raw?.correct),
+    totalQuestions: toNumber(raw?.totalQuestions ?? raw?.total),
+    xpGained: toNumber(raw?.xpGained ?? raw?.xp),
+  };
+}
+
+function normalizeQuestion(raw: any, index: number): Question {
+  return {
+    id: String(raw?.id ?? raw?._id ?? `question-${index + 1}`),
+    type: raw?.type ? String(raw.type) : undefined,
+    prompt: String(raw?.prompt ?? raw?.question ?? raw?.text ?? ""),
+    options: Array.isArray(raw?.options)
+      ? raw.options.map((option: any) =>
+          typeof option === "string"
+            ? option
+            : String(option?.text ?? option?.label ?? option?.value ?? ""),
+        )
+      : [],
+    correctOptionId:
+      raw?.correctOptionId !== undefined && raw?.correctOptionId !== null
+        ? String(raw.correctOptionId)
+        : undefined,
+    correctAnswer:
+      raw?.correctAnswer !== undefined && raw?.correctAnswer !== null
+        ? String(raw.correctAnswer)
+        : undefined,
+    explanation:
+      raw?.explanation !== undefined && raw?.explanation !== null
+        ? String(raw.explanation)
+        : undefined,
+  };
+}
+
+function getOptionLetter(index: number) {
+  return String.fromCharCode(65 + index);
+}
+
+async function submitLessonQuiz(
+  quizId: string,
+  answers: { questionId: string; selected: string }[],
+): Promise<QuizSubmitResult> {
+  const response = await api.post(
+    `/quizzes/${encodeURIComponent(quizId)}/submit`,
+    {
+      answers,
+    },
+  );
+  return normalizeQuizSubmitResult(extractData<any>(response.data));
 }
 
 export default function QuizScreen() {
@@ -43,20 +113,32 @@ export default function QuizScreen() {
     lessonId?: string;
     levelId?: string;
     unitId?: string;
+    quizId?: string;
   }>();
-  const { lessonId, levelId, unitId } = getNormalizedLearningParams(params);
+  const {
+    lessonId,
+    levelId,
+    unitId,
+    quizId: routeQuizId,
+  } = getNormalizedLearningParams(params);
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [typedAnswer, setTypedAnswer] = useState("");
-  const [correctCount, setCorrectCount] = useState(0);
+  const [answersByQuestionId, setAnswersByQuestionId] = useState<
+    Record<string, string>
+  >({});
   const [finished, setFinished] = useState(false);
-  const [passed, setPassed] = useState(false);
+  const [quizResult, setQuizResult] = useState<QuizSubmitResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lessonXpReward, setLessonXpReward] = useState(0);
+  const [lessonCompletionConfirmed, setLessonCompletionConfirmed] =
+    useState(false);
+  const [quizId, setQuizId] = useState(routeQuizId);
+  const [lessonDetail, setLessonDetail] = useState<LessonDetail | null>(null);
 
   React.useEffect(() => {
     const loadQuiz = async () => {
@@ -74,11 +156,24 @@ export default function QuizScreen() {
         const responseData = quizRes.data as any;
         const payload = responseData?.data ?? responseData;
         const nextQuestions = Array.isArray(payload?.questions)
-          ? payload.questions
+          ? payload.questions.map((question: any, index: number) =>
+              normalizeQuestion(question, index),
+            )
           : [];
+        const resolvedQuizId =
+          (typeof payload?.id === "string" && payload.id) ||
+          lessonDetail?.quizId ||
+          routeQuizId ||
+          "";
 
         setQuestions(nextQuestions);
+        setLessonDetail(lessonDetail);
         setLessonXpReward(lessonDetail?.xpReward ?? 0);
+        setQuizId(resolvedQuizId);
+
+        if (!resolvedQuizId) {
+          setError("We could not find this quiz right now.");
+        }
       } catch (loadError) {
         console.log("Quiz load error:", loadError);
         setError("We could not load this quiz right now.");
@@ -88,18 +183,25 @@ export default function QuizScreen() {
     };
 
     void loadQuiz();
-  }, [lessonId]);
+  }, [lessonId, routeQuizId]);
 
   const currentQuestion = questions[questionIndex];
   const totalQuestions = questions.length;
   const progress = totalQuestions
     ? Math.round(((questionIndex + 1) / totalQuestions) * 100)
     : 0;
+  const answeredCount = Object.keys(answersByQuestionId).length;
+  const isFinalExam =
+    levelId === "b1" && lessonDetail?.order === 6 && Boolean(lessonDetail?.hasQuiz);
+  const quizLabel = isFinalExam ? "Final Exam" : "Practice Quiz";
+  const quizShortTitle = isFinalExam ? "Final lesson assessment" : "Short lesson check";
+  const quizModeLabel = isFinalExam ? "Final" : "Practice";
 
   const isChoiceQuestion = useMemo(() => {
     if (!currentQuestion) return false;
     return (
-      Array.isArray(currentQuestion.options) && currentQuestion.options.length > 0
+      Array.isArray(currentQuestion.options) &&
+      currentQuestion.options.length > 0
     );
   }, [currentQuestion]);
 
@@ -107,114 +209,292 @@ export default function QuizScreen() {
     ? Boolean(selectedOption)
     : typedAnswer.trim().length > 0;
 
-  const isAnswerCorrect = useCallback(
-    (question: Question) => {
-      if (Array.isArray(question.options) && question.options.length > 0) {
-        return (
-          normalizeValue(selectedOption) === normalizeValue(question.correctAnswer)
-        );
-      }
+  const selectedOptionIndex =
+    currentQuestion?.options?.findIndex((option) => option === selectedOption) ??
+    -1;
+  const selectedOptionLetter =
+    selectedOptionIndex >= 0
+      ? getOptionLetter(selectedOptionIndex)
+      : null;
+  const correctOptionText = currentQuestion?.correctAnswer?.trim() || null;
+  const correctOptionLetter = currentQuestion?.correctOptionId?.trim() || null;
+  const canEvaluateChoiceImmediately =
+    Boolean(currentQuestion && isChoiceQuestion && selectedOption) &&
+    Boolean(correctOptionText || correctOptionLetter);
+  const selectedChoiceIsCorrect = canEvaluateChoiceImmediately
+    ? selectedOption === correctOptionText ||
+      selectedOptionLetter === correctOptionLetter ||
+      `${selectedOptionIndex}` === correctOptionLetter ||
+      `${selectedOptionIndex + 1}` === correctOptionLetter
+    : null;
 
-      return normalizeValue(typedAnswer) === normalizeValue(question.correctAnswer);
-    },
-    [selectedOption, typedAnswer],
-  );
+  const buildCurrentAnswerValue = useCallback(() => {
+    return isChoiceQuestion ? selectedOption : typedAnswer.trim();
+  }, [isChoiceQuestion, selectedOption, typedAnswer]);
 
   const handleFinishQuiz = useCallback(
-    async (nextCorrectCount: number) => {
-      const percentage = totalQuestions
-        ? Math.round((nextCorrectCount / totalQuestions) * 100)
-        : 0;
-      const nextPassed = percentage >= PASS_PERCENTAGE;
-
-      setPassed(nextPassed);
+    async (nextAnswersByQuestionId: Record<string, string>) => {
       setFinished(true);
-
-      if (!nextPassed || !lessonId) {
+      setError(null);
+      setLessonCompletionConfirmed(false);
+      if (!lessonId || !quizId) {
+        setError("We could not find this quiz right now.");
         return;
       }
 
       setSubmitting(true);
+      let passedQuiz = false;
+
       try {
-        await completeLesson(lessonId);
-      } catch (submitError) {
-        console.log("Quiz completion error:", submitError);
-        setError("Quiz passed, but we could not update lesson progress yet.");
+        const result = await submitLessonQuiz(
+          quizId,
+          questions
+            .map((question) => ({
+              questionId: question.id,
+              selected: nextAnswersByQuestionId[question.id],
+            }))
+            .filter(
+              (answer) =>
+                typeof answer.selected === "string" &&
+                answer.selected.length > 0,
+            ),
+        );
+
+        passedQuiz = result.passed;
+        setQuizResult(result);
+        notifyXpUpdated();
+
+        if (result.passed) {
+          console.log(
+            "[QuizScreen] Completing passed lesson via XP claim route",
+            {
+              lessonId,
+              endpoint: `/me/xp/lessons/${lessonId}/claim`,
+            },
+          );
+          await claimLessonXp(lessonId);
+          setLessonCompletionConfirmed(true);
+          notifyXpUpdated();
+        }
+      } catch (submitError: any) {
+        console.log(
+          "[QuizScreen] Quiz submit or lesson completion request failed",
+          {
+            lessonId,
+            quizId,
+            endpoint: `/me/xp/lessons/${lessonId}/claim`,
+            status: submitError?.response?.status ?? null,
+            data: submitError?.response?.data ?? null,
+            message: submitError?.message ?? "Unknown error",
+          },
+        );
+        setError(
+          passedQuiz
+            ? "Quiz passed, but lesson progress could not be updated yet."
+            : "We could not update lesson progress yet.",
+        );
       } finally {
         setSubmitting(false);
       }
     },
-    [lessonId, totalQuestions],
+    [lessonId, questions, quizId],
   );
 
   const handleNext = useCallback(async () => {
     if (!currentQuestion) return;
 
-    const answerIsCorrect = isAnswerCorrect(currentQuestion);
-    const nextCorrectCount = correctCount + (answerIsCorrect ? 1 : 0);
+    const currentAnswer = buildCurrentAnswerValue();
 
-    if (questionIndex === totalQuestions - 1) {
-      setCorrectCount(nextCorrectCount);
-      await handleFinishQuiz(nextCorrectCount);
+    if (!currentAnswer) {
       return;
     }
 
-    setCorrectCount(nextCorrectCount);
+    const nextAnswersByQuestionId = {
+      ...answersByQuestionId,
+      [currentQuestion.id]: currentAnswer,
+    };
+    setAnswersByQuestionId(nextAnswersByQuestionId);
+
+    if (questionIndex === totalQuestions - 1) {
+      await handleFinishQuiz(nextAnswersByQuestionId);
+      return;
+    }
+
     setQuestionIndex((current) => current + 1);
     setSelectedOption(null);
     setTypedAnswer("");
   }, [
-    correctCount,
+    answersByQuestionId,
+    buildCurrentAnswerValue,
     currentQuestion,
     handleFinishQuiz,
-    isAnswerCorrect,
     questionIndex,
     totalQuestions,
   ]);
 
   const handleBackToLessons = useCallback(() => {
-    if (unitId) {
-      router.replace(getLessonListRoute(levelId, unitId));
+    const resolvedUnitId = unitId || lessonDetail?.unitId;
+
+    if (resolvedUnitId) {
+      router.replace(getLessonListRoute(levelId, resolvedUnitId));
       return;
     }
 
-    router.back();
-  }, [levelId, router, unitId]);
+    router.replace("/");
+  }, [levelId, lessonDetail?.unitId, router, unitId]);
 
   const handleBackToLesson = useCallback(() => {
-    if (unitId && lessonId) {
-      router.replace(getLessonDetailRoute(levelId, unitId, lessonId));
+    const resolvedUnitId = unitId || lessonDetail?.unitId;
+
+    if (resolvedUnitId && lessonId) {
+      router.replace(getLessonDetailRoute(levelId, resolvedUnitId, lessonId));
       return;
     }
 
     handleBackToLessons();
-  }, [handleBackToLessons, lessonId, levelId, router, unitId]);
+  }, [handleBackToLessons, lessonDetail?.unitId, lessonId, levelId, router, unitId]);
+
+  const handleOpenNextLesson = useCallback(() => {
+    const resolvedUnitId = unitId || lessonDetail?.unitId;
+    const nextLessonId = lessonDetail?.nextLessonId;
+
+    if (resolvedUnitId && nextLessonId) {
+      router.replace(getLessonDetailRoute(levelId, resolvedUnitId, nextLessonId));
+      return;
+    }
+
+    handleBackToLessons();
+  }, [
+    handleBackToLessons,
+    lessonDetail?.nextLessonId,
+    lessonDetail?.unitId,
+    levelId,
+    router,
+    unitId,
+  ]);
 
   const handleRetry = useCallback(() => {
     setQuestionIndex(0);
     setSelectedOption(null);
     setTypedAnswer("");
-    setCorrectCount(0);
+    setAnswersByQuestionId({});
     setFinished(false);
-    setPassed(false);
+    setQuizResult(null);
     setError(null);
+    setLessonCompletionConfirmed(false);
   }, []);
+
+  React.useEffect(() => {
+    if (!currentQuestion) {
+      setSelectedOption(null);
+      setTypedAnswer("");
+      return;
+    }
+
+    const savedAnswer = answersByQuestionId[currentQuestion.id] ?? "";
+
+    if (isChoiceQuestion) {
+      setSelectedOption(savedAnswer || null);
+      setTypedAnswer("");
+      return;
+    }
+
+    setTypedAnswer(savedAnswer);
+    setSelectedOption(null);
+  }, [answersByQuestionId, currentQuestion, isChoiceQuestion]);
+
+  const practiceFeedback = useMemo(() => {
+    if (!currentQuestion) {
+      return null;
+    }
+
+    if (isChoiceQuestion) {
+      if (!selectedOption) {
+        return {
+          tone: "neutral" as const,
+          icon: "radio-button-off-outline" as const,
+          title: "Choose the best answer",
+          text: "Select one option, then continue when you are ready.",
+        };
+      }
+
+      if (canEvaluateChoiceImmediately && selectedChoiceIsCorrect !== null) {
+        return selectedChoiceIsCorrect
+          ? {
+              tone: "correct" as const,
+              icon: "checkmark-circle" as const,
+              title: "Correct",
+              text:
+                currentQuestion.explanation ||
+                "Nice work. This answer matches the lesson check.",
+            }
+          : {
+              tone: "incorrect" as const,
+              icon: "close-circle" as const,
+              title: "Not quite",
+              text:
+                currentQuestion.explanation ||
+                "You can still continue, or pause and review the lesson before moving on.",
+            };
+      }
+
+      return {
+        tone: "selected" as const,
+        icon: "checkmark-circle-outline" as const,
+        title: "Answer selected",
+        text: "Your choice is saved for this question. Continue when ready.",
+      };
+    }
+
+    if (!typedAnswer.trim()) {
+      return {
+        tone: "neutral" as const,
+        icon: "create-outline" as const,
+        title: "Type your answer",
+        text: "Enter your response, then continue when you are ready.",
+      };
+    }
+
+    return {
+      tone: "selected" as const,
+      icon: "checkmark-circle-outline" as const,
+      title: "Answer ready",
+      text: `Your typed answer will be submitted with this ${quizModeLabel.toLowerCase()}.`,
+    };
+  }, [
+    canEvaluateChoiceImmediately,
+    currentQuestion,
+    isChoiceQuestion,
+    quizModeLabel,
+    selectedChoiceIsCorrect,
+    selectedOption,
+    typedAnswer,
+  ]);
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.center, { backgroundColor: theme.colors.bg }]}>
+      <SafeAreaView
+        style={[styles.center, { backgroundColor: theme.colors.bg }]}
+      >
         <View
           style={[
             styles.stateCard,
-            { backgroundColor: theme.colors.cardStrong, borderColor: theme.colors.border },
+            {
+              backgroundColor: theme.colors.cardStrong,
+              borderColor: theme.colors.border,
+            },
           ]}
         >
           <View style={styles.stateIconWrap}>
             <ActivityIndicator size="large" color={theme.colors.text} />
           </View>
-          <Text style={[styles.stateTitle, { color: theme.colors.text }]}>Loading quiz</Text>
+          <Text style={[styles.stateTitle, { color: theme.colors.text }]}>
+            {`Loading ${quizLabel}`}
+          </Text>
           <Text style={[styles.stateText, { color: theme.colors.muted }]}>
-            Preparing the questions for this lesson.
+            {isFinalExam
+              ? "Preparing the final assessment for this lesson."
+              : "Preparing a short knowledge check for this lesson."}
           </Text>
         </View>
       </SafeAreaView>
@@ -223,11 +503,16 @@ export default function QuizScreen() {
 
   if (error && questions.length === 0) {
     return (
-      <SafeAreaView style={[styles.center, { backgroundColor: theme.colors.bg }]}>
+      <SafeAreaView
+        style={[styles.center, { backgroundColor: theme.colors.bg }]}
+      >
         <View
           style={[
             styles.stateCard,
-            { backgroundColor: theme.colors.cardStrong, borderColor: theme.colors.border },
+            {
+              backgroundColor: theme.colors.cardStrong,
+              borderColor: theme.colors.border,
+            },
           ]}
         >
           <View
@@ -248,9 +533,11 @@ export default function QuizScreen() {
             <Ionicons name="cloud-offline-outline" size={24} color="#F59E0B" />
           </View>
           <Text style={[styles.stateTitle, { color: theme.colors.text }]}>
-            Quiz unavailable
+            {`${quizLabel} unavailable`}
           </Text>
-          <Text style={[styles.stateText, { color: theme.colors.muted }]}>{error}</Text>
+          <Text style={[styles.stateText, { color: theme.colors.muted }]}>
+            {error}
+          </Text>
           <Pressable
             style={[
               styles.secondaryButton,
@@ -261,7 +548,9 @@ export default function QuizScreen() {
             ]}
             onPress={handleBackToLessons}
           >
-            <Text style={[styles.secondaryButtonText, { color: theme.colors.text }]}>
+            <Text
+              style={[styles.secondaryButtonText, { color: theme.colors.text }]}
+            >
               Back to lessons
             </Text>
           </Pressable>
@@ -271,12 +560,16 @@ export default function QuizScreen() {
   }
 
   if (finished) {
-    const percentage = totalQuestions
-      ? Math.round((correctCount / totalQuestions) * 100)
-      : 0;
+    const percentage = quizResult?.score ?? 0;
+    const passed = Boolean(quizResult?.passed);
+    const completed = passed && lessonCompletionConfirmed;
+    const correctCount = quizResult?.correctCount ?? 0;
+    const resolvedTotalQuestions = quizResult?.totalQuestions ?? totalQuestions;
 
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.bg }]}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.bg }]}
+      >
         <View
           style={[
             styles.resultCard,
@@ -288,51 +581,89 @@ export default function QuizScreen() {
         >
           <LinearGradient
             colors={
-              passed
+              completed
                 ? ["rgba(34,197,94,0.14)", "rgba(34,197,94,0)"]
-                : ["rgba(245,158,11,0.16)", "rgba(245,158,11,0)"]
+                : passed
+                  ? ["rgba(37,99,235,0.14)", "rgba(37,99,235,0)"]
+                  : ["rgba(245,158,11,0.16)", "rgba(245,158,11,0)"]
             }
             style={styles.resultGlow}
           />
           <Animated.View
-            entering={passed ? ZoomIn.springify().damping(14) : ZoomIn.duration(260)}
+            entering={
+              passed ? ZoomIn.springify().damping(14) : ZoomIn.duration(260)
+            }
             style={[
               styles.resultIconWrap,
-              passed ? styles.resultSuccess : styles.resultFailure,
+              completed
+                ? styles.resultSuccess
+                : passed
+                  ? styles.resultInfo
+                  : styles.resultFailure,
             ]}
           >
             <Ionicons
-              name={passed ? "checkmark-circle" : "refresh-circle"}
+              name={
+                completed
+                  ? "checkmark-circle"
+                  : passed
+                    ? "school"
+                    : "refresh-circle"
+              }
               size={34}
-              color={passed ? "#22C55E" : "#F59E0B"}
+              color={completed ? "#22C55E" : passed ? "#60A5FA" : "#F59E0B"}
             />
           </Animated.View>
 
           <Animated.Text
             entering={FadeInDown.delay(60).duration(260)}
-            style={styles.resultTitle}
+            style={styles.resultEyebrow}
           >
-            {passed ? "Lesson completed" : "Quiz not passed yet"}
+            {quizLabel}
           </Animated.Text>
           <Animated.Text
-            entering={FadeInDown.delay(110).duration(260)}
+            entering={FadeInDown.delay(90).duration(260)}
+            style={styles.resultTitle}
+          >
+            {completed
+              ? "Lesson completed"
+              : passed
+                ? isFinalExam
+                  ? "Final exam passed"
+                  : "Practice passed"
+                : isFinalExam
+                  ? "Final exam not passed yet"
+                  : "Practice not passed yet"}
+          </Animated.Text>
+          <Animated.Text
+            entering={FadeInDown.delay(120).duration(260)}
             style={styles.resultSubtitle}
           >
-            {passed
-              ? "Nice work. Your lesson progress has been updated and the next lesson should now unlock."
-              : `You need ${PASS_PERCENTAGE}% or higher to complete this lesson.`}
+            {completed
+              ? "Your lesson progress is updated. You can return to the lesson list and continue forward."
+              : passed
+                ? `Your ${quizModeLabel.toLowerCase()} result was recorded, but lesson progress still needs to finish updating.`
+                : isFinalExam
+                  ? "Review the lesson content and try the final exam again when you are ready."
+                  : "Review the lesson content and try the practice quiz again when you are ready."}
           </Animated.Text>
 
-          {passed ? (
+          {completed ? (
             <Animated.View
               entering={FadeInDown.delay(150).duration(280)}
               style={styles.completionBanner}
             >
               <View style={styles.completionBannerIcon}>
-                <Ionicons name="checkmark-done-circle" size={18} color="#22C55E" />
+                <Ionicons
+                  name="checkmark-done-circle"
+                  size={18}
+                  color="#22C55E"
+                />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.completionBannerTitle}>Progress updated</Text>
+                <Text style={styles.completionBannerTitle}>
+                  Progress updated
+                </Text>
                 <Text style={styles.completionBannerText}>
                   This lesson is now marked as completed.
                 </Text>
@@ -347,7 +678,7 @@ export default function QuizScreen() {
             </View>
             <View style={styles.resultStat}>
               <Text style={styles.resultStatValue}>
-                {correctCount}/{totalQuestions}
+                {correctCount}/{resolvedTotalQuestions}
               </Text>
               <Text style={styles.resultStatLabel}>Correct</Text>
             </View>
@@ -356,7 +687,9 @@ export default function QuizScreen() {
                 entering={FadeInDown.delay(200).duration(280)}
                 style={[styles.resultStat, styles.xpStat]}
               >
-                <Text style={styles.resultStatValue}>+{lessonXpReward}</Text>
+                <Text style={styles.resultStatValue}>
+                  +{quizResult?.xpGained ?? lessonXpReward}
+                </Text>
                 <Text style={styles.resultStatLabel}>XP gained</Text>
               </Animated.View>
             ) : null}
@@ -373,22 +706,55 @@ export default function QuizScreen() {
           ) : null}
 
           <Pressable
-            style={[styles.primaryButton, { backgroundColor: theme.colors.primary }]}
+            style={[
+              styles.primaryButton,
+              { backgroundColor: theme.colors.primary },
+            ]}
             onPress={handleBackToLessons}
           >
             <Text style={styles.primaryButtonText}>Back to lessons</Text>
           </Pressable>
 
+          {completed && lessonDetail?.nextLessonId ? (
+            <Pressable
+              style={[
+                styles.secondaryButton,
+                {
+                  backgroundColor: theme.colors.card,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              onPress={handleOpenNextLesson}
+            >
+              <Text
+                style={[
+                  styles.secondaryButtonText,
+                  { color: theme.colors.text },
+                ]}
+              >
+                Next Lesson
+              </Text>
+            </Pressable>
+          ) : null}
+
           {!passed ? (
             <Pressable
               style={[
                 styles.secondaryButton,
-                { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+                {
+                  backgroundColor: theme.colors.card,
+                  borderColor: theme.colors.border,
+                },
               ]}
               onPress={handleRetry}
             >
-              <Text style={[styles.secondaryButtonText, { color: theme.colors.text }]}>
-                Retry quiz
+              <Text
+                style={[
+                  styles.secondaryButtonText,
+                  { color: theme.colors.text },
+                ]}
+              >
+                {isFinalExam ? "Restart Final Exam" : "Restart Practice Quiz"}
               </Text>
             </Pressable>
           ) : null}
@@ -399,21 +765,32 @@ export default function QuizScreen() {
 
   if (!currentQuestion) {
     return (
-      <SafeAreaView style={[styles.center, { backgroundColor: theme.colors.bg }]}>
+      <SafeAreaView
+        style={[styles.center, { backgroundColor: theme.colors.bg }]}
+      >
         <View
           style={[
             styles.stateCard,
-            { backgroundColor: theme.colors.cardStrong, borderColor: theme.colors.border },
+            {
+              backgroundColor: theme.colors.cardStrong,
+              borderColor: theme.colors.border,
+            },
           ]}
         >
           <View style={styles.stateIconWrap}>
-            <Ionicons name="help-buoy-outline" size={24} color={theme.colors.text} />
+            <Ionicons
+              name="help-buoy-outline"
+              size={24}
+              color={theme.colors.text}
+            />
           </View>
           <Text style={[styles.stateTitle, { color: theme.colors.text }]}>
-            No questions yet
+            {isFinalExam ? "No final exam questions yet" : "No practice questions yet"}
           </Text>
           <Text style={[styles.stateText, { color: theme.colors.muted }]}>
-            This lesson does not have a quiz yet.
+            {isFinalExam
+              ? "This lesson does not have a final exam yet."
+              : "This lesson does not have a practice quiz yet."}
           </Text>
           <Pressable
             style={[
@@ -425,7 +802,9 @@ export default function QuizScreen() {
             ]}
             onPress={handleBackToLessons}
           >
-            <Text style={[styles.secondaryButtonText, { color: theme.colors.text }]}>
+            <Text
+              style={[styles.secondaryButtonText, { color: theme.colors.text }]}
+            >
               Back to lessons
             </Text>
           </Pressable>
@@ -435,27 +814,33 @@ export default function QuizScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.bg }]}>
+    <SafeAreaView
+      edges={["top"]}
+      style={[styles.container, { backgroundColor: theme.colors.bg }]}
+    >
       <View style={styles.header}>
-        <Pressable
-          onPress={handleBackToLesson}
-          style={[
-            styles.iconButton,
-            {
-              backgroundColor: theme.colors.cardStrong,
-              borderColor: theme.colors.border,
-            },
-          ]}
-        >
-          <Ionicons name="chevron-back" size={20} color={theme.colors.text} />
-        </Pressable>
-        <View style={styles.headerCenter}>
-          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-            Lesson quiz
-          </Text>
-          <Text style={[styles.headerSubtitle, { color: theme.colors.muted }]}>
-            Question {questionIndex + 1} of {totalQuestions}
-          </Text>
+        <View style={styles.headerMainRow}>
+          <Pressable
+            onPress={handleBackToLesson}
+            hitSlop={6}
+            style={[
+              styles.iconButton,
+              {
+                backgroundColor: theme.colors.cardStrong,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            <Ionicons name="chevron-back" size={20} color={theme.colors.text} />
+          </Pressable>
+          <View style={styles.headerTitleWrap}>
+            <Text style={[styles.headerEyebrow, { color: theme.colors.muted }]}>
+              {quizLabel}
+            </Text>
+            <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+              {quizShortTitle}
+            </Text>
+          </View>
         </View>
         <View
           style={[
@@ -483,6 +868,10 @@ export default function QuizScreen() {
         </View>
       </View>
 
+      <Text style={[styles.headerMetaText, { color: theme.colors.muted }]}>
+        Question {questionIndex + 1} of {totalQuestions}
+      </Text>
+
       <View
         style={[
           styles.progressTrack,
@@ -497,42 +886,42 @@ export default function QuizScreen() {
         <View
           style={[
             styles.progressFill,
-            { width: `${progress}%`, backgroundColor: theme.colors.primaryMuted },
+            {
+              width: `${progress}%`,
+              backgroundColor: theme.colors.primaryMuted,
+            },
           ]}
         />
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      <View style={styles.quizMetaRow}>
+        <View style={styles.quizMetaCard}>
+          <Text style={styles.quizMetaLabel}>Mode</Text>
+          <Text style={styles.quizMetaValue}>{quizModeLabel}</Text>
+        </View>
+        <View style={styles.quizMetaCard}>
+          <Text style={styles.quizMetaLabel}>Answered</Text>
+          <Text style={styles.quizMetaValue}>
+            {answeredCount + (canSubmitAnswer ? 1 : 0)}/{totalQuestions}
+          </Text>
+        </View>
+      </View>
+
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+      >
         <View
           style={[
             styles.questionCard,
-            { backgroundColor: theme.colors.cardStrong, borderColor: theme.colors.border },
+            {
+              backgroundColor: theme.colors.cardStrong,
+              borderColor: theme.colors.border,
+            },
           ]}
         >
-          <LinearGradient
-            colors={
-              theme.mode === "dark"
-                ? ["rgba(37,99,235,0.14)", "rgba(124,58,237,0.08)"]
-                : ["rgba(37,99,235,0.08)", "rgba(124,58,237,0.04)"]
-            }
-            style={styles.questionCardGlow}
-          />
-          <View
-            style={[
-              styles.questionBadge,
-              {
-                backgroundColor:
-                  theme.mode === "dark"
-                    ? "rgba(124,58,237,0.14)"
-                    : "rgba(124,58,237,0.08)",
-                borderColor:
-                  theme.mode === "dark"
-                    ? "rgba(167,139,250,0.18)"
-                    : "rgba(124,58,237,0.14)",
-              },
-            ]}
-          >
-            <Ionicons name="help-circle-outline" size={15} color="#A78BFA" />
+          <View style={styles.questionBadge}>
+            <Ionicons name="sparkles-outline" size={14} color="#A78BFA" />
             <Text style={styles.questionBadgeText}>
               {isChoiceQuestion ? "Choose one answer" : "Type your answer"}
             </Text>
@@ -542,50 +931,134 @@ export default function QuizScreen() {
             {currentQuestion.prompt}
           </Text>
 
+          <Text
+            style={[styles.questionHelperText, { color: theme.colors.muted }]}
+          >
+            {isFinalExam
+              ? "This final exam checks your understanding across the full lesson."
+              : "This practice quiz is meant to help you check understanding before moving on."}
+          </Text>
+
+          {practiceFeedback ? (
+            <Animated.View
+              entering={FadeInDown.duration(180)}
+              style={[
+                styles.feedbackCard,
+                practiceFeedback.tone === "correct"
+                  ? styles.feedbackCardCorrect
+                  : practiceFeedback.tone === "incorrect"
+                    ? styles.feedbackCardIncorrect
+                    : practiceFeedback.tone === "selected"
+                      ? styles.feedbackCardSelected
+                      : styles.feedbackCardNeutral,
+              ]}
+            >
+              <Ionicons
+                name={practiceFeedback.icon}
+                size={18}
+                color={
+                  practiceFeedback.tone === "correct"
+                    ? "#22C55E"
+                    : practiceFeedback.tone === "incorrect"
+                      ? "#F87171"
+                      : practiceFeedback.tone === "selected"
+                        ? "#60A5FA"
+                        : "#94A3B8"
+                }
+              />
+              <View style={styles.feedbackTextWrap}>
+                <Text style={styles.feedbackTitle}>{practiceFeedback.title}</Text>
+                <Text style={styles.feedbackText}>{practiceFeedback.text}</Text>
+              </View>
+            </Animated.View>
+          ) : null}
+
           {isChoiceQuestion ? (
             <View style={styles.optionsWrap}>
-              {currentQuestion.options?.map((option) => {
+              {currentQuestion.options?.map((option, index) => {
                 const selected = selectedOption === option;
+                const optionLetter = getOptionLetter(index);
+                const isCorrectOption =
+                  Boolean(correctOptionText || correctOptionLetter) &&
+                  (option === correctOptionText ||
+                    optionLetter === correctOptionLetter ||
+                    `${index}` === correctOptionLetter ||
+                    `${index + 1}` === correctOptionLetter);
+                const shouldRevealCorrectOption =
+                  canEvaluateChoiceImmediately &&
+                  selectedChoiceIsCorrect === false &&
+                  isCorrectOption;
+                const showIncorrectState =
+                  canEvaluateChoiceImmediately &&
+                  selectedChoiceIsCorrect === false &&
+                  selected;
+                const showCorrectState =
+                  canEvaluateChoiceImmediately &&
+                  (selectedChoiceIsCorrect === true ? selected : shouldRevealCorrectOption);
 
                 return (
                   <Pressable
                     key={option}
                     onPress={() => setSelectedOption(option)}
-                    style={[
+                    style={({ pressed }) => [
                       styles.optionButton,
                       {
                         backgroundColor: theme.colors.card,
                         borderColor: theme.colors.border,
                       },
                       selected ? styles.optionButtonSelected : null,
+                      showCorrectState ? styles.optionButtonCorrect : null,
+                      showIncorrectState ? styles.optionButtonIncorrect : null,
+                      pressed ? styles.optionButtonPressed : null,
                     ]}
                   >
                     <View
                       style={[
-                        styles.optionIndicator,
-                        {
-                          borderColor: selected ? "#60A5FA" : theme.colors.border,
-                          backgroundColor: selected
-                            ? theme.mode === "dark"
-                              ? "rgba(37,99,235,0.18)"
-                              : "rgba(37,99,235,0.08)"
-                            : "transparent",
-                        },
+                        styles.optionLetterWrap,
+                        selected ? styles.optionLetterWrapSelected : null,
+                        showCorrectState ? styles.optionLetterWrapCorrect : null,
+                        showIncorrectState ? styles.optionLetterWrapIncorrect : null,
                       ]}
                     >
-                      {selected ? (
-                        <Ionicons name="checkmark" size={14} color="#60A5FA" />
-                      ) : null}
+                      <Text
+                        style={[
+                          styles.optionLetterText,
+                          selected ? styles.optionLetterTextSelected : null,
+                          showCorrectState ? styles.optionLetterTextCorrect : null,
+                          showIncorrectState ? styles.optionLetterTextIncorrect : null,
+                        ]}
+                      >
+                        {optionLetter}
+                      </Text>
                     </View>
                     <Text
                       style={[
                         styles.optionText,
-                        { color: theme.mode === "dark" ? "#E2E8F0" : "#0F172A" },
+                        {
+                          color: theme.mode === "dark" ? "#E2E8F0" : "#0F172A",
+                        },
                         selected ? styles.optionTextSelected : null,
+                        showCorrectState ? styles.optionTextCorrect : null,
+                        showIncorrectState ? styles.optionTextIncorrect : null,
                       ]}
                     >
                       {option}
                     </Text>
+                    {showCorrectState ? (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={18}
+                        color="#22C55E"
+                      />
+                    ) : showIncorrectState ? (
+                      <Ionicons name="close-circle" size={18} color="#F87171" />
+                    ) : selected ? (
+                      <Ionicons
+                        name="checkmark-circle-outline"
+                        size={18}
+                        color="#60A5FA"
+                      />
+                    ) : null}
                   </Pressable>
                 );
               })}
@@ -610,21 +1083,45 @@ export default function QuizScreen() {
         </View>
       </ScrollView>
 
-      <Pressable
-        disabled={!canSubmitAnswer}
-        onPress={() => {
-          void handleNext();
-        }}
-        style={[
-          styles.primaryButton,
-          { backgroundColor: theme.colors.primary },
-          !canSubmitAnswer ? styles.primaryButtonDisabled : null,
-        ]}
-      >
-        <Text style={styles.primaryButtonText}>
-          {questionIndex === totalQuestions - 1 ? "Finish quiz" : "Next question"}
-        </Text>
-      </Pressable>
+      <View style={styles.footerActions}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              {
+                backgroundColor: theme.colors.cardStrong,
+                borderColor: theme.colors.border,
+              },
+              pressed ? styles.secondaryButtonPressed : null,
+            ]}
+            onPress={handleBackToLesson}
+          >
+          <Text
+            style={[styles.secondaryButtonText, { color: theme.colors.text }]}
+          >
+            Continue Lesson
+          </Text>
+        </Pressable>
+        <Pressable
+          disabled={!canSubmitAnswer}
+          onPress={() => {
+            void handleNext();
+          }}
+          style={({ pressed }) => [
+            styles.primaryButton,
+            { backgroundColor: theme.colors.primary },
+            !canSubmitAnswer ? styles.primaryButtonDisabled : null,
+            pressed && canSubmitAnswer ? styles.primaryButtonPressed : null,
+          ]}
+        >
+          <Text style={styles.primaryButtonText}>
+            {questionIndex === totalQuestions - 1
+              ? isFinalExam
+                ? "Finish Final Exam"
+                : "Finish Practice Quiz"
+              : "Next Question"}
+          </Text>
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }
@@ -633,7 +1130,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingTop: 8,
     paddingBottom: 20,
   },
   center: {
@@ -662,134 +1159,243 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(59,130,246,0.16)",
   },
+  stateTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+    textAlign: "center",
+  },
+  stateText: {
+    fontSize: 14,
+    lineHeight: 21,
+    fontWeight: "600",
+    textAlign: "center",
+  },
   header: {
+    gap: 10,
+    marginBottom: 12,
+  },
+  headerMainRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
-    marginBottom: 16,
   },
   iconButton: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(30,41,59,0.7)",
     borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.6)",
   },
-  headerCenter: {
+  headerTitleWrap: {
     flex: 1,
-    alignItems: "center",
+    gap: 1,
+  },
+  headerEyebrow: {
+    fontSize: 11,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.55,
   },
   headerTitle: {
-    color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "900",
   },
-  headerSubtitle: {
-    color: "#94A3B8",
+  headerMetaText: {
     fontSize: 12,
     fontWeight: "700",
-    marginTop: 4,
+    marginBottom: 10,
   },
   progressPill: {
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: "rgba(37,99,235,0.16)",
     borderWidth: 1,
-    borderColor: "rgba(59,130,246,0.2)",
   },
   progressPillText: {
-    color: "#BFDBFE",
     fontSize: 12,
     fontWeight: "800",
   },
   progressTrack: {
-    height: 12,
+    height: 10,
     borderRadius: 999,
     overflow: "hidden",
-    marginBottom: 20,
+    marginBottom: 14,
   },
   progressFill: {
     height: "100%",
     borderRadius: 999,
   },
+  quizMetaRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 16,
+  },
+  quizMetaCard: {
+    flex: 1,
+    borderRadius: 14,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    backgroundColor: "rgba(37,99,235,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(59,130,246,0.14)",
+  },
+  quizMetaLabel: {
+    color: "#64748B",
+    fontSize: 10,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  quizMetaValue: {
+    color: "#F8FAFC",
+    fontSize: 14,
+    fontWeight: "800",
+    marginTop: 4,
+  },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 20 },
   questionCard: {
-    borderRadius: 28,
-    padding: 22,
-    backgroundColor: "rgba(15,23,42,0.88)",
+    borderRadius: 24,
+    padding: 18,
     borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.65)",
-    gap: 20,
-    overflow: "hidden",
-    position: "relative",
-  },
-  questionCardGlow: {
-    position: "absolute",
-    top: -28,
-    right: -24,
-    width: 160,
-    height: 160,
-    borderRadius: 999,
+    gap: 14,
   },
   questionBadge: {
     alignSelf: "flex-start",
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     borderRadius: 999,
-    backgroundColor: "rgba(124,58,237,0.14)",
+    backgroundColor: "rgba(124,58,237,0.12)",
     borderWidth: 1,
     borderColor: "rgba(167,139,250,0.18)",
   },
   questionBadgeText: {
     color: "#D8B4FE",
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "800",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.45,
   },
   questionText: {
-    color: "#FFFFFF",
-    fontSize: 26,
-    lineHeight: 34,
+    fontSize: 21,
+    lineHeight: 29,
     fontWeight: "900",
   },
+  questionHelperText: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "600",
+  },
+  feedbackCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  feedbackCardNeutral: {
+    backgroundColor: "rgba(148,163,184,0.08)",
+    borderColor: "rgba(148,163,184,0.16)",
+  },
+  feedbackCardSelected: {
+    backgroundColor: "rgba(37,99,235,0.1)",
+    borderColor: "rgba(96,165,250,0.18)",
+  },
+  feedbackCardCorrect: {
+    backgroundColor: "rgba(34,197,94,0.1)",
+    borderColor: "rgba(34,197,94,0.18)",
+  },
+  feedbackCardIncorrect: {
+    backgroundColor: "rgba(248,113,113,0.08)",
+    borderColor: "rgba(248,113,113,0.16)",
+  },
+  feedbackTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  feedbackTitle: {
+    color: "#F8FAFC",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  feedbackText: {
+    color: "#CBD5E1",
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "600",
+  },
   optionsWrap: {
-    gap: 12,
+    gap: 10,
   },
   optionButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 17,
-    backgroundColor: "rgba(30,41,59,0.72)",
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 15,
     borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.45)",
   },
   optionButtonSelected: {
     backgroundColor: "rgba(37,99,235,0.18)",
     borderColor: "rgba(96,165,250,0.35)",
   },
-  optionIndicator: {
-    width: 24,
-    height: 24,
+  optionButtonPressed: {
+    opacity: 0.92,
+    transform: [{ scale: 0.995 }],
+  },
+  optionButtonCorrect: {
+    backgroundColor: "rgba(34,197,94,0.12)",
+    borderColor: "rgba(34,197,94,0.28)",
+  },
+  optionButtonIncorrect: {
+    backgroundColor: "rgba(248,113,113,0.1)",
+    borderColor: "rgba(248,113,113,0.22)",
+  },
+  optionLetterWrap: {
+    width: 28,
+    height: 28,
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "rgba(148,163,184,0.14)",
     borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.22)",
+  },
+  optionLetterWrapSelected: {
+    backgroundColor: "rgba(37,99,235,0.18)",
+    borderColor: "rgba(96,165,250,0.35)",
+  },
+  optionLetterWrapCorrect: {
+    backgroundColor: "rgba(34,197,94,0.16)",
+    borderColor: "rgba(34,197,94,0.28)",
+  },
+  optionLetterWrapIncorrect: {
+    backgroundColor: "rgba(248,113,113,0.14)",
+    borderColor: "rgba(248,113,113,0.24)",
+  },
+  optionLetterText: {
+    color: "#CBD5E1",
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  optionLetterTextSelected: {
+    color: "#BFDBFE",
+  },
+  optionLetterTextCorrect: {
+    color: "#BBF7D0",
+  },
+  optionLetterTextIncorrect: {
+    color: "#FECACA",
   },
   optionText: {
-    color: "#E2E8F0",
     fontSize: 15,
     fontWeight: "700",
     lineHeight: 22,
@@ -798,25 +1404,38 @@ const styles = StyleSheet.create({
   optionTextSelected: {
     color: "#BFDBFE",
   },
+  optionTextCorrect: {
+    color: "#DCFCE7",
+  },
+  optionTextIncorrect: {
+    color: "#FECACA",
+  },
   input: {
-    borderRadius: 18,
+    borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 16,
     fontSize: 15,
     fontWeight: "600",
     borderWidth: 1,
   },
+  footerActions: {
+    gap: 10,
+    marginTop: 8,
+  },
   primaryButton: {
-    borderRadius: 20,
-    paddingVertical: 18,
+    borderRadius: 18,
+    paddingVertical: 17,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#2563EB",
     borderWidth: 1,
     borderColor: "rgba(96,165,250,0.3)",
   },
   primaryButtonDisabled: {
     opacity: 0.45,
+  },
+  primaryButtonPressed: {
+    opacity: 0.92,
+    transform: [{ scale: 0.995 }],
   },
   primaryButtonText: {
     color: "#FFFFFF",
@@ -829,24 +1448,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(30,41,59,0.72)",
     borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.45)",
     minWidth: 180,
   },
   secondaryButtonText: {
     fontSize: 15,
     fontWeight: "800",
   },
+  secondaryButtonPressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.995 }],
+  },
   resultCard: {
     flex: 1,
     justifyContent: "center",
     borderRadius: 28,
     padding: 26,
-    backgroundColor: "rgba(15,23,42,0.9)",
     borderWidth: 1,
-    borderColor: "rgba(51,65,85,0.65)",
-    gap: 20,
+    gap: 18,
     overflow: "hidden",
     position: "relative",
   },
@@ -870,10 +1489,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(34,197,94,0.22)",
   },
+  resultInfo: {
+    backgroundColor: "rgba(37,99,235,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(96,165,250,0.22)",
+  },
   resultFailure: {
     backgroundColor: "rgba(245,158,11,0.12)",
     borderWidth: 1,
     borderColor: "rgba(245,158,11,0.22)",
+  },
+  resultEyebrow: {
+    color: "#93C5FD",
+    fontSize: 11,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.55,
   },
   resultTitle: {
     color: "#FFFFFF",
@@ -914,19 +1545,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginTop: 6,
     textTransform: "uppercase",
-  },
-  stateTitle: {
-    color: "#FFFFFF",
-    fontSize: 22,
-    fontWeight: "900",
-    textAlign: "center",
-  },
-  stateText: {
-    color: "#94A3B8",
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: "600",
-    textAlign: "center",
   },
   inlineError: {
     color: "#FCA5A5",

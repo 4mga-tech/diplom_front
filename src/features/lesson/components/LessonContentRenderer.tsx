@@ -1,14 +1,16 @@
 import { LessonContentItem } from "@/lib/learning";
 import LessonActionButton from "@/src/features/lesson/components/LessonActionButton";
+import LetterPracticeModal from "@/src/features/lesson/components/LetterPracticeModal";
 import { LessonStyles } from "@/src/features/lesson/lesson.styles";
 import * as Linking from "expo-linking";
 import React from "react";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 type LessonContentRendererProps = {
   item: LessonContentItem;
   styles: LessonStyles;
   onOpenQuiz: () => void;
+  isFinalExam?: boolean;
 };
 
 type ContentBlockProps = LessonContentRendererProps & {
@@ -17,6 +19,15 @@ type ContentBlockProps = LessonContentRendererProps & {
 
 const asArray = <T,>(value: unknown): T[] =>
   Array.isArray(value) ? (value as T[]) : [];
+
+type PracticeLetter = {
+  id: string;
+  primary: string;
+  uppercase?: string | null;
+  lowercase?: string | null;
+  printForm?: string | null;
+  cursiveForm?: string | null;
+};
 
 function openLink(url?: string) {
   if (!url) return;
@@ -203,26 +214,172 @@ function ExerciseWriteContentBlock({
   content,
   styles,
 }: ContentBlockProps) {
-  const letters = asArray<string>(content.letters);
+  const [selectedLetter, setSelectedLetter] = React.useState<PracticeLetter | null>(
+    null,
+  );
+  const letters = React.useMemo(
+    () =>
+      asArray<any>(content.letters)
+        .map((letter, idx) => normalizePracticeLetter(item.id, letter, idx))
+        .filter((letter): letter is PracticeLetter => Boolean(letter?.primary)),
+    [content.letters, item.id],
+  );
+  const groupedLetters = React.useMemo(
+    () =>
+      asArray<any>(content.groups)
+        .map((group, groupIndex) => {
+          const groupLetters = asArray<any>(group?.letters ?? group?.items)
+            .map((letter, letterIndex) =>
+              normalizePracticeLetter(
+                `${item.id}-group-${groupIndex}`,
+                letter,
+                letterIndex,
+              ),
+            )
+            .filter((letter): letter is PracticeLetter => Boolean(letter?.primary));
+
+          if (groupLetters.length === 0) {
+            return null;
+          }
+
+          return {
+            id: String(group?.id ?? `${item.id}-group-${groupIndex}`),
+            title: String(group?.title ?? `Group ${groupIndex + 1}`),
+            description: String(
+              group?.instructionMn ??
+                group?.instructionEn ??
+                group?.summary ??
+                group?.description ??
+                "",
+            ),
+            letters: groupLetters,
+          };
+        })
+        .filter(
+          (
+            group,
+          ): group is {
+            id: string;
+            title: string;
+            description: string;
+            letters: PracticeLetter[];
+          } => Boolean(group),
+        ),
+    [content.groups, item.id],
+  );
+
+  function renderLetterButton(letter: PracticeLetter, idx: number) {
+    return (
+      <Pressable
+        key={letter.id || `${item.id}-write-${idx}`}
+        onPress={() => setSelectedLetter(letter)}
+        style={({ pressed }) => [
+          styles.writeLetterCard,
+          pressed ? styles.writeLetterCardPressed : null,
+        ]}
+      >
+        <Text style={styles.writeLetterPrimary}>{letter.primary}</Text>
+        {letter.uppercase && letter.lowercase ? (
+          <Text style={styles.writeLetterSecondary}>
+            {letter.uppercase} / {letter.lowercase}
+          </Text>
+        ) : letter.printForm ? (
+          <Text style={styles.writeLetterSecondary}>{letter.printForm}</Text>
+        ) : (
+          <Text style={styles.writeLetterSecondary}>Tap to trace</Text>
+        )}
+      </Pressable>
+    );
+  }
 
   return (
     <View style={styles.stack}>
       {!!content.instructionMn ? (
         <BlockText styles={styles}>{content.instructionMn}</BlockText>
       ) : null}
-      {letters.length > 0 ? (
-        <View style={styles.chipsWrap}>
-          {letters.map((letter, idx) => (
-            <View key={`${item.id}-write-${idx}`} style={styles.chip}>
-              <Text style={styles.chipText}>{letter}</Text>
+      <BlockText styles={styles}>Tap any letter tile to open tracing practice.</BlockText>
+      {groupedLetters.length > 0 ? (
+        <View style={styles.stack}>
+          {groupedLetters.map((group) => (
+            <View key={group.id} style={styles.innerCard}>
+              <Text style={styles.innerTitle}>{group.title}</Text>
+              {group.description ? (
+                <BlockText styles={styles}>{group.description}</BlockText>
+              ) : null}
+              <View style={styles.writeGrid}>
+                {group.letters.map((letter, idx) => renderLetterButton(letter, idx))}
+              </View>
             </View>
           ))}
+        </View>
+      ) : letters.length > 0 ? (
+        <View style={styles.writeGrid}>
+          {letters.map((letter, idx) => renderLetterButton(letter, idx))}
         </View>
       ) : (
         <EmptyBlock message="No writing exercise letters available yet." styles={styles} />
       )}
+      <LetterPracticeModal
+        visible={Boolean(selectedLetter)}
+        letter={selectedLetter}
+        onClose={() => setSelectedLetter(null)}
+      />
     </View>
   );
+}
+
+function normalizePracticeLetter(
+  itemId: string,
+  raw: any,
+  index: number,
+): PracticeLetter | null {
+  if (typeof raw === "string") {
+    return {
+      id: `${itemId}-letter-${index}`,
+      primary: raw,
+      uppercase: raw.toUpperCase(),
+      lowercase: raw.toLowerCase(),
+      printForm: raw,
+    };
+  }
+
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+
+  const uppercase = raw?.printUpper ?? raw?.upper ?? raw?.uppercase ?? null;
+  const lowercase = raw?.printLower ?? raw?.lower ?? raw?.lowercase ?? null;
+  const printForm =
+    raw?.printForm ??
+    [uppercase, lowercase].filter(Boolean).join(" ") ??
+    raw?.print ??
+    null;
+  const cursiveForm =
+    raw?.cursiveForm ??
+    [raw?.cursiveUpper, raw?.cursiveLower].filter(Boolean).join(" ") ??
+    raw?.cursive ??
+    null;
+  const primary =
+    raw?.primary ??
+    uppercase ??
+    lowercase ??
+    raw?.letter ??
+    raw?.value ??
+    raw?.name ??
+    "";
+
+  if (!primary) {
+    return null;
+  }
+
+  return {
+    id: String(raw?.id ?? `${itemId}-letter-${index}`),
+    primary: String(primary),
+    uppercase: uppercase ? String(uppercase) : null,
+    lowercase: lowercase ? String(lowercase) : null,
+    printForm: printForm ? String(printForm) : null,
+    cursiveForm: cursiveForm ? String(cursiveForm) : null,
+  };
 }
 
 function ExerciseFillContentBlock({ item, content, styles }: ContentBlockProps) {
@@ -357,15 +514,20 @@ function VideoContentBlock({ content, styles }: ContentBlockProps) {
 function QuizContentBlock({
   styles,
   onOpenQuiz,
+  isFinalExam,
 }: ContentBlockProps) {
   return (
     <View style={styles.stack}>
-      <BlockText styles={styles}>Complete the lesson and open the quiz.</BlockText>
+      <BlockText styles={styles}>
+        {isFinalExam
+          ? "Complete the lesson and open the final exam."
+          : "Complete the lesson and open the quiz."}
+      </BlockText>
       <LessonActionButton
-        label="Open quiz"
+        label={isFinalExam ? "Open final exam" : "Open quiz"}
         onPress={onOpenQuiz}
         styles={styles}
-        icon="arrow-forward"
+        icon={isFinalExam ? "school" : "arrow-forward"}
       />
     </View>
   );
@@ -394,6 +556,7 @@ export default function LessonContentRenderer({
   item,
   styles,
   onOpenQuiz,
+  isFinalExam = false,
 }: LessonContentRendererProps) {
   const content = (item.content ?? {}) as any;
   const Component = CONTENT_COMPONENTS[item.type] ?? TextContentBlock;
@@ -404,6 +567,7 @@ export default function LessonContentRenderer({
       content={content}
       styles={styles}
       onOpenQuiz={onOpenQuiz}
+      isFinalExam={isFinalExam}
     />
   );
 }

@@ -83,6 +83,9 @@ export type LessonEmbeddedUnit = {
 };
 
 export type LessonDetail = LessonListItem & {
+  hasQuiz?: boolean;
+  quizId?: string | null;
+  quizPassingScore?: number | null;
   contents: LessonContentItem[];
   previousLessonId: string | null;
   nextLessonId: string | null;
@@ -309,7 +312,7 @@ export async function fetchLevels(): Promise<LevelItem[]> {
 
           gradient: Array.isArray(item?.gradient)
             ? [String(item.gradient[0]), String(item.gradient[1])]
-            : ["#2563EB", "#06B6D4"],
+            : ["#334155", "#1E293B"],
         }))
       : [];
   } catch (err) {
@@ -527,6 +530,12 @@ export async function fetchLessonDetail(
 
     return {
       ...mapLesson(data),
+      hasQuiz: Boolean(data?.hasQuiz),
+      quizId: data?.quizId ? String(data.quizId) : null,
+      quizPassingScore:
+        data?.quizPassingScore !== undefined && data?.quizPassingScore !== null
+          ? Number(data.quizPassingScore)
+          : null,
       contents,
       previousLessonId: data?.previousLessonId ? String(data.previousLessonId) : null,
       nextLessonId: data?.nextLessonId ? String(data.nextLessonId) : null,
