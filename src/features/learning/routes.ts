@@ -2,7 +2,7 @@ import { LevelId } from "@/src/data/curriculum";
 import type { Href } from "expo-router";
 
 type RouteParamValue = string | string[] | undefined;
-export type NormalizedLevelId = "b1" | "m1" | "m2" | "m3";
+export type NormalizedLevelId = "b1" | "m1" | "m2" | "m3" | "m4";
 
 type RouteIdParams = {
   levelId?: RouteParamValue;
@@ -11,7 +11,7 @@ type RouteIdParams = {
   quizId?: RouteParamValue;
 };
 
-const NORMALIZED_LEVEL_IDS: NormalizedLevelId[] = ["b1", "m1", "m2", "m3"];
+const NORMALIZED_LEVEL_IDS: NormalizedLevelId[] = ["b1", "m1", "m2", "m3", "m4"];
 
 function encodeRouteSegment(value: string) {
   return encodeURIComponent(value);

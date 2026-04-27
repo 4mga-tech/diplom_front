@@ -3,9 +3,9 @@ import { claimLessonXp } from "@/src/features/achievements/achievements.service"
 import { notifyXpUpdated } from "@/src/features/achievements/xp-events";
 import {
   getLessonDetailRoute,
-  getNormalizedLearningParams,
   getLessonListRoute,
   getLessonQuizRoute,
+  getNormalizedLearningParams,
 } from "@/src/features/learning/routes";
 import LessonScreenView from "@/src/features/lesson/components/LessonScreenView";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
@@ -24,7 +24,9 @@ export default function LessonScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [completingLesson, setCompletingLesson] = useState(false);
-  const [completionMessage, setCompletionMessage] = useState<string | null>(null);
+  const [completionMessage, setCompletionMessage] = useState<string | null>(
+    null,
+  );
 
   const loadLesson = useCallback(async () => {
     if (!lessonId) {
@@ -39,7 +41,7 @@ export default function LessonScreen() {
       setLesson(data);
       setError(data ? null : "Lesson not found.");
     } catch (loadError) {
-      console.log("Error loading lesson:", loadError);
+      console.error("Error loading lesson:", loadError);
       setError("We could not load this lesson right now.");
     } finally {
       setLoading(false);
@@ -72,7 +74,15 @@ export default function LessonScreen() {
     router.replace(
       getLessonQuizRoute(levelId, resolvedUnitId, lesson.id, lesson.quizId),
     );
-  }, [lesson?.id, lesson?.isUnlocked, lesson?.quizId, lesson?.unitId, levelId, unitId]);
+  }, [
+    lesson?.id,
+    lesson?.hasQuiz,
+    lesson?.isUnlocked,
+    lesson?.quizId,
+    lesson?.unitId,
+    levelId,
+    unitId,
+  ]);
 
   const resolvedUnitId = lesson?.unit?.id || unitId || lesson?.unitId || "";
 
@@ -99,14 +109,12 @@ export default function LessonScreen() {
   const handleCompleteLesson = useCallback(async () => {
     if (
       !lesson?.id ||
-      levelId !== "b1" ||
       lesson.hasQuiz ||
       lesson.isCompleted ||
       completingLesson
     ) {
       return;
     }
-
     try {
       setCompletingLesson(true);
       setCompletionMessage(null);
@@ -122,12 +130,18 @@ export default function LessonScreen() {
 
       await loadLesson();
     } catch (completionError) {
-      console.log("Error completing lesson:", completionError);
+      console.error("Error completing lesson:", completionError);
       setCompletionMessage("We could not complete this lesson right now.");
     } finally {
       setCompletingLesson(false);
     }
-  }, [completingLesson, levelId, lesson?.hasQuiz, lesson?.id, lesson?.isCompleted, loadLesson]);
+  }, [
+    completingLesson,
+    lesson?.hasQuiz,
+    lesson?.id,
+    lesson?.isCompleted,
+    loadLesson,
+  ]);
 
   return (
     <LessonScreenView

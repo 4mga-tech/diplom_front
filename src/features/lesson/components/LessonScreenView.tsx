@@ -93,17 +93,17 @@ export default function LessonScreenView({
   const canOpenQuiz = hasQuiz && canStartPracticeQuiz;
   const canManuallyCompleteLesson = Boolean(
     lesson &&
-      levelId === "b1" &&
-      !lesson.hasQuiz &&
-      !lesson.isCompleted,
+      hasQuiz === false &&
+      lesson.isCompleted === false,
   );
   const isFinalExamLesson = Boolean(
-    lesson?.hasQuiz && lesson?.order === 6 && levelId === "b1",
+    levelId === "b1" && lesson?.hasQuiz && lesson?.order === 6,
   );
+  const quizLessonLabel = isFinalExamLesson ? "Final Exam" : "Practice Quiz";
   const nextActionLabel = isFinalExamLesson
     ? "Final Exam"
     : canOpenQuiz
-      ? "Practice Quiz"
+      ? quizLessonLabel
       : "Lesson content";
   const heroNoticeText = isFinalExamLesson
     ? "Review each section, then take the final exam when you are ready."
@@ -111,7 +111,7 @@ export default function LessonScreenView({
       ? "Finish the practice quiz after the lesson."
       : "This lesson focuses on guided study and practice only.";
   const quizCardEyebrow = isFinalExamLesson ? "Final check" : "Practice check";
-  const quizCardTitle = isFinalExamLesson ? "Final Exam" : "Practice Quiz";
+  const quizCardTitle = quizLessonLabel;
   const quizCardText = isFinalExamLesson
     ? "Complete the final exam after reviewing the full lesson."
     : activeSection
@@ -250,9 +250,15 @@ export default function LessonScreenView({
 
             <View style={styles.heroTextWrap}>
               <Text style={styles.heroTitle}>{lesson.title}</Text>
+              {lesson.titleEn ? (
+                <Text style={styles.heroTitleEn}>{lesson.titleEn}</Text>
+              ) : null}
               <Text style={styles.heroSubtitle}>
                 {lesson.subtitle || "Lesson overview"}
               </Text>
+              {lesson.subtitleEn ? (
+                <Text style={styles.heroSubtitleEn}>{lesson.subtitleEn}</Text>
+              ) : null}
             </View>
 
             <View style={styles.heroSummaryRow}>

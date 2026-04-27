@@ -1,4 +1,5 @@
-import { LessonContentItem } from "@/lib/learning";
+import { LessonContentItem, LessonGlossaryItem } from "@/lib/learning";
+import GlossaryModal from "@/src/features/lesson/components/GlossaryModal";
 import LessonActionButton from "@/src/features/lesson/components/LessonActionButton";
 import LetterPracticeModal from "@/src/features/lesson/components/LetterPracticeModal";
 import { LessonStyles } from "@/src/features/lesson/lesson.styles";
@@ -15,6 +16,9 @@ type LessonContentRendererProps = {
 
 type ContentBlockProps = LessonContentRendererProps & {
   content: any;
+  glossary: LessonGlossaryItem[];
+  onSelectGlossaryWord: (word: string) => void;
+  activeGlossaryWordKey: string | null;
 };
 
 const asArray = <T,>(value: unknown): T[] =>
@@ -29,12 +33,37 @@ type PracticeLetter = {
   cursiveForm?: string | null;
 };
 
+const TOKEN_PATTERN = /(\s+|[^\s]+)/g;
+
 function openLink(url?: string) {
   if (!url) return;
 
   void Linking.openURL(url).catch((error) => {
-    console.log("Could not open lesson media:", error);
+    console.error("Could not open lesson media:", error);
   });
+}
+
+function normalizeGlossaryWord(value: string) {
+  return value
+    .trim()
+    .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "")
+    .toLocaleLowerCase();
+}
+
+function createGlossaryIndex(glossary: LessonGlossaryItem[]) {
+  return glossary.reduce<Record<string, LessonGlossaryItem>>((acc, item) => {
+    const key = normalizeGlossaryWord(item.word ?? "");
+
+    if (key) {
+      acc[key] = item;
+    }
+
+    return acc;
+  }, {});
+}
+
+function tokenizeText(value: string) {
+  return value.match(TOKEN_PATTERN) ?? [value];
 }
 
 function BlockText({
@@ -57,14 +86,139 @@ function EmptyBlock({
   return <BlockText styles={styles}>{message}</BlockText>;
 }
 
-function TextContentBlock({ content, styles }: ContentBlockProps) {
+function SupportingText({
+  children,
+  styles,
+}: {
+  children: React.ReactNode;
+  styles: LessonStyles;
+}) {
+  return <Text style={styles.supportingText}>{children}</Text>;
+}
+
+function GlossaryText({
+  text,
+  styles,
+  glossary,
+  onSelectGlossaryWord,
+  activeGlossaryWordKey,
+  variant = "body",
+}: {
+  text: string;
+  styles: LessonStyles;
+  glossary: LessonGlossaryItem[];
+  onSelectGlossaryWord: (word: string) => void;
+  activeGlossaryWordKey: string | null;
+  variant?: "body" | "title" | "note";
+}) {
+  const glossaryIndex = React.useMemo(() => createGlossaryIndex(glossary), [glossary]);
+
+  if (glossary.length === 0) {
+    if (variant === "title") {
+      return <Text style={styles.innerTitle}>{text}</Text>;
+    }
+
+    if (variant === "note") {
+      return <Text style={styles.noteText}>{text}</Text>;
+    }
+
+    return <BlockText styles={styles}>{text}</BlockText>;
+  }
+
+  const baseStyle =
+    variant === "title"
+      ? styles.innerTitle
+      : variant === "note"
+        ? styles.noteText
+        : styles.contentBody;
+
+  return (
+    <Text style={baseStyle}>
+      {tokenizeText(text).map((token, index) => {
+        const normalizedToken = normalizeGlossaryWord(token);
+        const glossaryItem = normalizedToken
+          ? glossaryIndex[normalizedToken] ?? null
+          : null;
+
+        if (!glossaryItem) {
+          return token;
+        }
+
+        return (
+          <Text
+            key={`${normalizedToken}-${index}`}
+            style={[
+              styles.glossaryWord,
+              activeGlossaryWordKey === normalizedToken
+                ? styles.glossaryWordActive
+                : null,
+            ]}
+            suppressHighlighting
+            onPress={() => onSelectGlossaryWord(token)}
+          >
+            {token}
+          </Text>
+        );
+      })}
+    </Text>
+  );
+}
+
+function BilingualInstruction({
+  instructionMn,
+  instructionEn,
+  styles,
+  glossary,
+  onSelectGlossaryWord,
+  activeGlossaryWordKey,
+}: {
+  instructionMn?: string;
+  instructionEn?: string;
+  styles: LessonStyles;
+  glossary: LessonGlossaryItem[];
+  onSelectGlossaryWord: (word: string) => void;
+  activeGlossaryWordKey: string | null;
+}) {
+  if (!instructionMn && !instructionEn) {
+    return null;
+  }
+
   return (
     <>
-      <BlockText styles={styles}>
-        {content?.textMn || content?.text || "Lesson text will appear here."}
-      </BlockText>
+      {instructionMn ? (
+        <GlossaryText
+          text={instructionMn}
+          styles={styles}
+          glossary={glossary}
+          onSelectGlossaryWord={onSelectGlossaryWord}
+          activeGlossaryWordKey={activeGlossaryWordKey}
+        />
+      ) : null}
+      {instructionEn ? (
+        <SupportingText styles={styles}>{instructionEn}</SupportingText>
+      ) : null}
+    </>
+  );
+}
+
+function TextContentBlock({
+  content,
+  styles,
+  glossary,
+  onSelectGlossaryWord,
+  activeGlossaryWordKey,
+}: ContentBlockProps) {
+  return (
+    <>
+      <GlossaryText
+        text={content?.textMn || content?.text || "Lesson text will appear here."}
+        styles={styles}
+        glossary={glossary}
+        onSelectGlossaryWord={onSelectGlossaryWord}
+        activeGlossaryWordKey={activeGlossaryWordKey}
+      />
       {content?.textEn ? (
-        <Text style={styles.translationText}>{content.textEn}</Text>
+        <SupportingText styles={styles}>{content.textEn}</SupportingText>
       ) : null}
     </>
   );
@@ -108,21 +262,34 @@ function ClassificationContentBlock({
   item,
   content,
   styles,
+  glossary,
+  onSelectGlossaryWord,
+  activeGlossaryWordKey,
 }: ContentBlockProps) {
   const groups = asArray<any>(content.groups);
 
   return (
     <View style={styles.stack}>
       {!!content.summary ? (
-        <BlockText styles={styles}>{content.summary}</BlockText>
+        <GlossaryText
+          text={content.summary}
+          styles={styles}
+          glossary={glossary}
+          onSelectGlossaryWord={onSelectGlossaryWord}
+          activeGlossaryWordKey={activeGlossaryWordKey}
+        />
       ) : null}
       {groups.length > 0 ? (
         groups.map((group, idx) => (
           <View key={`${item.id}-group-${idx}`} style={styles.innerCard}>
             <Text style={styles.innerTitle}>{group?.title}</Text>
-            <BlockText styles={styles}>
-              {Array.isArray(group?.items) ? group.items.join(", ") : ""}
-            </BlockText>
+            <GlossaryText
+              text={Array.isArray(group?.items) ? group.items.join(", ") : ""}
+              styles={styles}
+              glossary={glossary}
+              onSelectGlossaryWord={onSelectGlossaryWord}
+              activeGlossaryWordKey={activeGlossaryWordKey}
+            />
           </View>
         ))
       ) : (
@@ -136,6 +303,9 @@ function GrammarNoteContentBlock({
   item,
   content,
   styles,
+  glossary,
+  onSelectGlossaryWord,
+  activeGlossaryWordKey,
 }: ContentBlockProps) {
   const notes = asArray<string>(content.notes);
 
@@ -148,14 +318,28 @@ function GrammarNoteContentBlock({
       {notes.map((note, idx) => (
         <View key={`${item.id}-note-${idx}`} style={styles.noteRow}>
           <Text style={styles.noteBullet}>-</Text>
-          <Text style={styles.noteText}>{note}</Text>
+          <GlossaryText
+            text={note}
+            styles={styles}
+            glossary={glossary}
+            onSelectGlossaryWord={onSelectGlossaryWord}
+            activeGlossaryWordKey={activeGlossaryWordKey}
+            variant="note"
+          />
         </View>
       ))}
     </View>
   );
 }
 
-function VocabListContentBlock({ item, content, styles }: ContentBlockProps) {
+function VocabListContentBlock({
+  item,
+  content,
+  styles,
+  glossary,
+  onSelectGlossaryWord,
+  activeGlossaryWordKey,
+}: ContentBlockProps) {
   const items = asArray<any>(content.items);
 
   if (items.length === 0) {
@@ -166,8 +350,21 @@ function VocabListContentBlock({ item, content, styles }: ContentBlockProps) {
     <View style={styles.stack}>
       {items.map((vocabItem, idx) => (
         <View key={`${item.id}-vocab-${idx}`} style={styles.innerCard}>
-          <Text style={styles.innerTitle}>{vocabItem?.word ?? ""}</Text>
-          <BlockText styles={styles}>{vocabItem?.meaning ?? ""}</BlockText>
+          <GlossaryText
+            text={String(vocabItem?.word ?? "")}
+            styles={styles}
+            glossary={glossary}
+            onSelectGlossaryWord={onSelectGlossaryWord}
+            activeGlossaryWordKey={activeGlossaryWordKey}
+            variant="title"
+          />
+          <GlossaryText
+            text={String(vocabItem?.meaning ?? "")}
+            styles={styles}
+            glossary={glossary}
+            onSelectGlossaryWord={onSelectGlossaryWord}
+            activeGlossaryWordKey={activeGlossaryWordKey}
+          />
         </View>
       ))}
     </View>
@@ -178,20 +375,53 @@ function ExerciseRepeatContentBlock({
   item,
   content,
   styles,
+  glossary,
+  onSelectGlossaryWord,
+  activeGlossaryWordKey,
 }: ContentBlockProps) {
   const rows = asArray<any>(content.rows);
 
   return (
     <View style={styles.stack}>
-      {!!content.instructionMn ? (
-        <BlockText styles={styles}>{content.instructionMn}</BlockText>
-      ) : null}
+      <BilingualInstruction
+        instructionMn={content?.instructionMn}
+        instructionEn={content?.instructionEn}
+        styles={styles}
+        glossary={glossary}
+        onSelectGlossaryWord={onSelectGlossaryWord}
+        activeGlossaryWordKey={activeGlossaryWordKey}
+      />
       {rows.length > 0 ? (
         rows.map((row, idx) => (
           <View key={`${item.id}-row-${idx}`} style={styles.innerCard}>
-            {!!row?.prompt ? <Text style={styles.innerTitle}>{row.prompt}</Text> : null}
-            {!!row?.line ? <BlockText styles={styles}>{row.line}</BlockText> : null}
-            {!!row?.text ? <BlockText styles={styles}>{row.text}</BlockText> : null}
+            {!!row?.prompt ? (
+              <GlossaryText
+                text={String(row.prompt)}
+                styles={styles}
+                glossary={glossary}
+                onSelectGlossaryWord={onSelectGlossaryWord}
+                activeGlossaryWordKey={activeGlossaryWordKey}
+                variant="title"
+              />
+            ) : null}
+            {!!row?.line ? (
+              <GlossaryText
+                text={String(row.line)}
+                styles={styles}
+                glossary={glossary}
+                onSelectGlossaryWord={onSelectGlossaryWord}
+                activeGlossaryWordKey={activeGlossaryWordKey}
+              />
+            ) : null}
+            {!!row?.text ? (
+              <GlossaryText
+                text={String(row.text)}
+                styles={styles}
+                glossary={glossary}
+                onSelectGlossaryWord={onSelectGlossaryWord}
+                activeGlossaryWordKey={activeGlossaryWordKey}
+              />
+            ) : null}
             {!!row?.audioUrl ? (
               <LessonActionButton
                 label="Play practice audio"
@@ -294,9 +524,14 @@ function ExerciseWriteContentBlock({
 
   return (
     <View style={styles.stack}>
-      {!!content.instructionMn ? (
-        <BlockText styles={styles}>{content.instructionMn}</BlockText>
-      ) : null}
+      <BilingualInstruction
+        instructionMn={content?.instructionMn}
+        instructionEn={content?.instructionEn}
+        styles={styles}
+        glossary={[]}
+        onSelectGlossaryWord={() => {}}
+        activeGlossaryWordKey={null}
+      />
       <BlockText styles={styles}>Tap any letter tile to open tracing practice.</BlockText>
       {groupedLetters.length > 0 ? (
         <View style={styles.stack}>
@@ -382,18 +617,36 @@ function normalizePracticeLetter(
   };
 }
 
-function ExerciseFillContentBlock({ item, content, styles }: ContentBlockProps) {
+function ExerciseFillContentBlock({
+  item,
+  content,
+  styles,
+  glossary,
+  onSelectGlossaryWord,
+  activeGlossaryWordKey,
+}: ContentBlockProps) {
   const questions = asArray<any>(content.questions);
   const groups = asArray<any>(content.groups);
 
   return (
     <View style={styles.stack}>
-      {!!content.instructionMn ? (
-        <BlockText styles={styles}>{content.instructionMn}</BlockText>
-      ) : null}
+      <BilingualInstruction
+        instructionMn={content?.instructionMn}
+        instructionEn={content?.instructionEn}
+        styles={styles}
+        glossary={glossary}
+        onSelectGlossaryWord={onSelectGlossaryWord}
+        activeGlossaryWordKey={activeGlossaryWordKey}
+      />
       {questions.map((question, idx) => (
         <View key={`${item.id}-q-${idx}`} style={styles.innerCard}>
-          <BlockText styles={styles}>{question?.prompt ?? ""}</BlockText>
+          <GlossaryText
+            text={String(question?.prompt ?? "")}
+            styles={styles}
+            glossary={glossary}
+            onSelectGlossaryWord={onSelectGlossaryWord}
+            activeGlossaryWordKey={activeGlossaryWordKey}
+          />
         </View>
       ))}
       {groups.map((group, idx) => (
@@ -403,9 +656,14 @@ function ExerciseFillContentBlock({ item, content, styles }: ContentBlockProps) 
           ) : null}
           {Array.isArray(group?.lines)
             ? group.lines.map((line: string, lineIdx: number) => (
-                <BlockText key={`${item.id}-line-${lineIdx}`} styles={styles}>
-                  {line}
-                </BlockText>
+                <GlossaryText
+                  key={`${item.id}-line-${lineIdx}`}
+                  text={line}
+                  styles={styles}
+                  glossary={glossary}
+                  onSelectGlossaryWord={onSelectGlossaryWord}
+                  activeGlossaryWordKey={activeGlossaryWordKey}
+                />
               ))
             : null}
         </View>
@@ -421,21 +679,33 @@ function ExerciseWordBuildContentBlock({
   item,
   content,
   styles,
+  glossary,
+  onSelectGlossaryWord,
+  activeGlossaryWordKey,
 }: ContentBlockProps) {
   const questions = asArray<any>(content.questions);
   const example = content.example;
 
   return (
     <View style={styles.stack}>
-      {!!content.instructionMn ? (
-        <BlockText styles={styles}>{content.instructionMn}</BlockText>
-      ) : null}
+      <BilingualInstruction
+        instructionMn={content?.instructionMn}
+        instructionEn={content?.instructionEn}
+        styles={styles}
+        glossary={glossary}
+        onSelectGlossaryWord={onSelectGlossaryWord}
+        activeGlossaryWordKey={activeGlossaryWordKey}
+      />
       {example ? (
         <View style={styles.innerCard}>
           <Text style={styles.innerTitle}>Example</Text>
-          <BlockText styles={styles}>
-            {Array.isArray(example?.numbers) ? example.numbers.join(" ") : ""}
-          </BlockText>
+          <GlossaryText
+            text={Array.isArray(example?.numbers) ? example.numbers.join(" ") : ""}
+            styles={styles}
+            glossary={glossary}
+            onSelectGlossaryWord={onSelectGlossaryWord}
+            activeGlossaryWordKey={activeGlossaryWordKey}
+          />
           <Text style={styles.exampleWord}>Answer: {example?.answer ?? ""}</Text>
         </View>
       ) : null}
@@ -445,9 +715,13 @@ function ExerciseWordBuildContentBlock({
             <Text style={styles.innerTitle}>
               Question {question?.index ?? idx + 1}
             </Text>
-            <BlockText styles={styles}>
-              {Array.isArray(question?.numbers) ? question.numbers.join(" ") : ""}
-            </BlockText>
+            <GlossaryText
+              text={Array.isArray(question?.numbers) ? question.numbers.join(" ") : ""}
+              styles={styles}
+              glossary={glossary}
+              onSelectGlossaryWord={onSelectGlossaryWord}
+              activeGlossaryWordKey={activeGlossaryWordKey}
+            />
           </View>
         ))
       ) : (
@@ -457,7 +731,13 @@ function ExerciseWordBuildContentBlock({
   );
 }
 
-function PronunciationContentBlock({ content, styles }: ContentBlockProps) {
+function PronunciationContentBlock({
+  content,
+  styles,
+  glossary,
+  onSelectGlossaryWord,
+  activeGlossaryWordKey,
+}: ContentBlockProps) {
   return (
     <View style={styles.stack}>
       {!!content.letter ? <Text style={styles.letterText}>{content.letter}</Text> : null}
@@ -468,10 +748,16 @@ function PronunciationContentBlock({ content, styles }: ContentBlockProps) {
         <BlockText styles={styles}>{content.pronunciationTip}</BlockText>
       ) : null}
       {!!content.exampleWord ? (
-        <Text style={styles.exampleWord}>
-          Example: {content.exampleWord}
-          {content.exampleMeaning ? ` - ${content.exampleMeaning}` : ""}
-        </Text>
+        <View style={styles.stackTight}>
+          <Text style={styles.exampleWordLabel}>Example</Text>
+          <GlossaryText
+            text={String(content.exampleWord)}
+            styles={styles}
+            glossary={glossary}
+            onSelectGlossaryWord={onSelectGlossaryWord}
+            activeGlossaryWordKey={activeGlossaryWordKey}
+          />
+        </View>
       ) : null}
       {!!content.audioUrl ? (
         <LessonActionButton
@@ -485,10 +771,24 @@ function PronunciationContentBlock({ content, styles }: ContentBlockProps) {
   );
 }
 
-function AudioContentBlock({ content, styles }: ContentBlockProps) {
+function AudioContentBlock({
+  content,
+  styles,
+  glossary,
+  onSelectGlossaryWord,
+  activeGlossaryWordKey,
+}: ContentBlockProps) {
   return (
     <View style={styles.stack}>
-      {!!content.text ? <BlockText styles={styles}>{content.text}</BlockText> : null}
+      {!!content.text ? (
+        <GlossaryText
+          text={content.text}
+          styles={styles}
+          glossary={glossary}
+          onSelectGlossaryWord={onSelectGlossaryWord}
+          activeGlossaryWordKey={activeGlossaryWordKey}
+        />
+      ) : null}
       {!!content.audioUrl ? (
         <LessonActionButton
           label="Play audio"
@@ -559,15 +859,82 @@ export default function LessonContentRenderer({
   isFinalExam = false,
 }: LessonContentRendererProps) {
   const content = (item.content ?? {}) as any;
+  const glossary = React.useMemo(
+    () =>
+      asArray<LessonGlossaryItem>(content.glossary).filter(
+        (glossaryItem) =>
+          Boolean(glossaryItem?.word) && Boolean(glossaryItem?.translation),
+      ),
+    [content.glossary],
+  );
+  const glossaryIndex = React.useMemo(() => createGlossaryIndex(glossary), [glossary]);
+  const [selectedGlossaryItem, setSelectedGlossaryItem] =
+    React.useState<LessonGlossaryItem | null>(null);
+  const [activeGlossaryWordKey, setActiveGlossaryWordKey] = React.useState<string | null>(
+    null,
+  );
+  const highlightTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const Component = CONTENT_COMPONENTS[item.type] ?? TextContentBlock;
 
+  React.useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleSelectGlossaryWord = React.useCallback(
+    (word: string) => {
+      if (glossary.length === 0) {
+        return;
+      }
+
+      const normalizedWord = normalizeGlossaryWord(word);
+      const glossaryItem = normalizedWord ? glossaryIndex[normalizedWord] ?? null : null;
+
+      if (!glossaryItem) {
+        return;
+      }
+
+      setSelectedGlossaryItem(glossaryItem);
+      setActiveGlossaryWordKey(normalizedWord);
+
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+
+      highlightTimeoutRef.current = setTimeout(() => {
+        setActiveGlossaryWordKey((current) =>
+          current === normalizedWord ? null : current,
+        );
+      }, 700);
+    },
+    [glossary.length, glossaryIndex],
+  );
+
+  const handleCloseGlossary = React.useCallback(() => {
+    setSelectedGlossaryItem(null);
+    setActiveGlossaryWordKey(null);
+  }, []);
+
   return (
-    <Component
-      item={item}
-      content={content}
-      styles={styles}
-      onOpenQuiz={onOpenQuiz}
-      isFinalExam={isFinalExam}
-    />
+    <>
+      <Component
+        item={item}
+        content={content}
+        styles={styles}
+        glossary={glossary}
+        onSelectGlossaryWord={handleSelectGlossaryWord}
+        activeGlossaryWordKey={activeGlossaryWordKey}
+        onOpenQuiz={onOpenQuiz}
+        isFinalExam={isFinalExam}
+      />
+      <GlossaryModal
+        visible={Boolean(selectedGlossaryItem)}
+        item={selectedGlossaryItem}
+        onClose={handleCloseGlossary}
+      />
+    </>
   );
 }

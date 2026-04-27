@@ -156,13 +156,13 @@ export async function fetchLevels(): Promise<LevelCard[]> {
       }
     } catch (error) {
       if (!isAxios404(error) || error.response?.status !== 404) {
-        console.log(`Levels fetch error at ${endpoint}:`, error);
+        console.error(`Levels fetch error at ${endpoint}:`, error);
         return getFallbackLevels();
       }
     }
   }
 
-  console.log(
+  console.error(
     `Levels endpoint not found. Tried: ${LEVEL_ENDPOINTS.join(", ")}. Using fallback data.`,
   );
   return getFallbackLevels();

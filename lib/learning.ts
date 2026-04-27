@@ -19,6 +19,7 @@ export type LessonContentType =
   | "quiz_link";
 
 export type LessonContentPayload = {
+  glossary?: LessonGlossaryItem[];
   text?: string;
   textMn?: string;
   textEn?: string;
@@ -51,11 +52,19 @@ export type LessonContentPayload = {
   lines?: string[];
 };
 
+export type LessonGlossaryItem = {
+  word: string;
+  translation: string;
+  noteMn?: string;
+  noteEn?: string;
+};
+
 export type LessonContentItem = {
   id: string;
   type: LessonContentType;
   order: number;
   title?: string;
+  titleEn?: string;
   content: LessonContentPayload;
 };
 
@@ -63,7 +72,9 @@ export type LessonListItem = {
   id: string;
   unitId: string;
   title: string;
+  titleEn?: string;
   subtitle: string;
+  subtitleEn?: string;
   order: number;
   xpReward: number;
   isCompleted: boolean;
@@ -147,7 +158,9 @@ function mapLesson(raw: any, order = 1): LessonListItem {
     id: String(raw?.id ?? raw?._id ?? ""),
     unitId: String(raw?.unitId ?? ""),
     title: String(raw?.title ?? "Lesson"),
+    titleEn: raw?.titleEn ? String(raw.titleEn) : undefined,
     subtitle: String(raw?.subtitle ?? raw?.description ?? ""),
+    subtitleEn: raw?.subtitleEn ? String(raw.subtitleEn) : undefined,
     order: Number(raw?.order ?? order),
     xpReward: Number(raw?.xpReward ?? raw?.xp ?? 0),
     isCompleted: Boolean(raw?.isCompleted ?? raw?.completed ?? false),
@@ -207,7 +220,10 @@ const inFlightCourseUnitsRequests = new Map<
 >();
 
 export function getLessonProgressState(
-  lesson: Pick<LessonListItem, "isCompleted" | "isUnlocked" | "id" | "isCurrent">,
+  lesson: Pick<
+    LessonListItem,
+    "isCompleted" | "isUnlocked" | "id" | "isCurrent"
+  >,
   currentLessonId?: string | null,
 ): LessonProgressState {
   if (lesson.isCompleted) {
@@ -281,7 +297,7 @@ export async function fetchCourseProgress(
       streak: Number(data?.streak ?? 0),
     };
   } catch (err) {
-    console.log("COURSE PROGRESS API FAILED", err);
+    console.error("COURSE PROGRESS API FAILED", err);
     return getFallbackCourseProgress(normalizedCourseId);
   }
 }
@@ -295,28 +311,37 @@ export type LevelItem = {
   gradient: [string, string];
 };
 
+function isValidGradient(value: unknown): value is [string, string] {
+  return (
+    Array.isArray(value) &&
+    value.length === 2 &&
+    typeof value[0] === "string" &&
+    value[0].trim().length > 0 &&
+    typeof value[1] === "string" &&
+    value[1].trim().length > 0
+  );
+}
+
 export async function fetchLevels(): Promise<LevelItem[]> {
   try {
     const res = await api.get("/content/levels");
-    // console.log("LEVELS API RAW:", JSON.stringify(res.data, null, 2));
     const data = extractData<any[]>(res.data);
 
     return Array.isArray(data)
       ? data.map((item) => ({
-          id: String(item?.id ?? ""),
+          id: String(item?.id ?? "").trim().toUpperCase(),
           title: String(item?.title ?? ""),
           subtitle: String(item?.subtitle ?? ""),
           description: String(item?.description ?? ""),
           vocabularyReady: Boolean(item?.vocabularyReady),
           vocabularyCount: Number(item?.vocabularyCount ?? 0),
-
-          gradient: Array.isArray(item?.gradient)
-            ? [String(item.gradient[0]), String(item.gradient[1])]
+          gradient: isValidGradient(item?.gradient)
+            ? [item.gradient[0].trim(), item.gradient[1].trim()]
             : ["#334155", "#1E293B"],
         }))
       : [];
   } catch (err) {
-    console.log("LEVELS API FAILED", err);
+    console.error("LEVELS API FAILED", err);
     return [];
   }
 }
@@ -395,8 +420,6 @@ async function fetchCourseUnits(
 
   const requestPath = `/courses/${encodeURIComponent(normalizedCourseId)}/units`;
   const request = (async () => {
-    console.log("[learning][api] GET", requestPath);
-
     try {
       const res = await api.get(requestPath);
       const data = extractData<BackendCourseUnitsPayload>(res.data);
@@ -412,7 +435,7 @@ async function fetchCourseUnits(
         }))
         .sort((a, b) => a.order - b.order);
     } catch (err: any) {
-      console.log("[learning][api] request failed", {
+      console.error("[learning][api] request failed", {
         path: requestPath,
         status: err?.response?.status,
         data: err?.response?.data,
@@ -456,22 +479,19 @@ export async function fetchUnitLessons(
   unitId: string,
 ): Promise<LessonListItem[]> {
   try {
-    // console.log("REQUEST UNIT ID:", unitId);
     const res = await api.get(`/units/${unitId}/lessons`);
-    // console.log("UNIT LESSONS API RAW:", JSON.stringify(res.data, null, 2));
 
     const data = extractData<any[]>(res.data);
 
     if (!Array.isArray(data)) {
-      // console.log("UNIT LESSONS -> fallback because data is not array");
       return [];
     }
 
     return data.map((lesson, index) => mapLesson(lesson, index + 1));
   } catch (err: any) {
-    console.log("UNIT LESSONS API FAILED UNIT ID:", unitId);
-    console.log("UNIT LESSONS ERROR RESPONSE:", err?.response?.data);
-    console.log("UNIT LESSONS API FAILED -> fallback", err);
+    console.error("UNIT LESSONS API FAILED UNIT ID:", unitId);
+    console.error("UNIT LESSONS ERROR RESPONSE:", err?.response?.data);
+    console.error("UNIT LESSONS API FAILED -> fallback", err);
     return [];
   }
 }
@@ -481,7 +501,6 @@ export async function fetchLessonDetail(
 ): Promise<LessonDetail | null> {
   try {
     const res = await api.get(`/lessons/${lessonId}`);
-    // console.log("LESSON DETAIL API RAW:", JSON.stringify(res.data, null, 2));
 
     const data = extractData<any>(res.data);
 
@@ -493,7 +512,20 @@ export async function fetchLessonDetail(
           type: (item?.type ?? "text") as LessonContentType,
           order: Number(item?.order ?? index + 1),
           title: item?.title,
+          titleEn: item?.titleEn,
           content: {
+            glossary: Array.isArray(item?.content?.glossary)
+              ? item.content.glossary.map((glossaryItem: any) => ({
+                  word: String(glossaryItem?.word ?? ""),
+                  translation: String(glossaryItem?.translation ?? ""),
+                  noteMn: glossaryItem?.noteMn
+                    ? String(glossaryItem.noteMn)
+                    : undefined,
+                  noteEn: glossaryItem?.noteEn
+                    ? String(glossaryItem.noteEn)
+                    : undefined,
+                }))
+              : undefined,
             text: item?.content?.text,
             textMn: item?.content?.textMn,
             textEn: item?.content?.textEn,
@@ -527,22 +559,30 @@ export async function fetchLessonDetail(
           },
         }))
       : [];
+    const hasQuiz =
+      data?.hasQuiz === true ||
+      data?.hasQuiz === "true" ||
+      (data?.quizId !== undefined &&
+        data?.quizId !== null &&
+        String(data.quizId).length > 0);
 
     return {
       ...mapLesson(data),
-      hasQuiz: Boolean(data?.hasQuiz),
+      hasQuiz,
       quizId: data?.quizId ? String(data.quizId) : null,
       quizPassingScore:
         data?.quizPassingScore !== undefined && data?.quizPassingScore !== null
           ? Number(data.quizPassingScore)
           : null,
       contents,
-      previousLessonId: data?.previousLessonId ? String(data.previousLessonId) : null,
+      previousLessonId: data?.previousLessonId
+        ? String(data.previousLessonId)
+        : null,
       nextLessonId: data?.nextLessonId ? String(data.nextLessonId) : null,
       unit: mapEmbeddedUnit(data?.unit),
     };
   } catch (err) {
-    console.log("LESSON DETAIL API FAILED", err);
+    console.error("LESSON DETAIL API FAILED", err);
     return null;
   }
 }

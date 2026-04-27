@@ -166,10 +166,22 @@ export const createLessonStyles = (theme: AppTheme) =>
       fontWeight: "900",
       lineHeight: 24,
     },
+    heroTitleEn: {
+      color: theme.colors.muted,
+      fontSize: 13,
+      lineHeight: 18,
+      fontWeight: "700",
+    },
     heroSubtitle: {
       color: theme.mode === "dark" ? "rgba(226,232,240,0.82)" : "rgba(71,85,105,0.9)",
       fontSize: 11,
       lineHeight: 16,
+      fontWeight: "600",
+    },
+    heroSubtitleEn: {
+      color: theme.colors.muted,
+      fontSize: 12,
+      lineHeight: 17,
       fontWeight: "600",
     },
     heroSummaryRow: {
@@ -455,6 +467,12 @@ export const createLessonStyles = (theme: AppTheme) =>
       fontWeight: "800",
       lineHeight: 19,
     },
+    contentTitleEn: {
+      color: theme.colors.muted,
+      fontSize: 12,
+      fontWeight: "600",
+      lineHeight: 17,
+    },
     contentBodyWrap: {
       paddingHorizontal: theme.s(1.35),
       paddingBottom: theme.s(1.35),
@@ -470,6 +488,24 @@ export const createLessonStyles = (theme: AppTheme) =>
       fontSize: 14,
       lineHeight: 21,
     },
+    supportingText: {
+      color: theme.colors.muted,
+      fontSize: 12,
+      lineHeight: 18,
+      fontWeight: "600",
+    },
+    glossaryWord: {
+      color: theme.mode === "dark" ? "#BFDBFE" : "#1D4ED8",
+      fontWeight: "700",
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(37,99,235,0.14)" : "rgba(37,99,235,0.08)",
+      borderRadius: 6,
+    },
+    glossaryWordActive: {
+      color: theme.mode === "dark" ? "#E0F2FE" : "#1E40AF",
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(59,130,246,0.28)" : "rgba(96,165,250,0.22)",
+    },
     translationText: {
       color: theme.mode === "dark" ? "#93C5FD" : "#2563EB",
       fontSize: 13,
@@ -477,6 +513,7 @@ export const createLessonStyles = (theme: AppTheme) =>
       fontWeight: "600",
     },
     stack: { gap: 10 },
+    stackTight: { gap: 4 },
     innerCard: {
       borderRadius: 14,
       padding: theme.s(1.05),
@@ -608,6 +645,13 @@ export const createLessonStyles = (theme: AppTheme) =>
       fontSize: 14,
       fontWeight: "700",
       lineHeight: 21,
+    },
+    exampleWordLabel: {
+      color: theme.colors.muted,
+      fontSize: 11,
+      fontWeight: "800",
+      textTransform: "uppercase",
+      letterSpacing: 0.45,
     },
     quizEntryCard: {
       borderRadius: 18,

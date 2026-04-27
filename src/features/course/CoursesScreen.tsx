@@ -29,7 +29,6 @@ import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 
 type DisplayLevel = LevelItem & {
   shortInfo: string;
-  accent: [string, string];
 };
 
 type ClaimStateCopy = {
@@ -37,6 +36,23 @@ type ClaimStateCopy = {
   detailLabel: string;
   disabled: boolean;
 };
+
+function isValidGradient(value: unknown): value is [string, string] {
+  return (
+    Array.isArray(value) &&
+    value.length === 2 &&
+    typeof value[0] === "string" &&
+    value[0].trim().length > 0 &&
+    typeof value[1] === "string" &&
+    value[1].trim().length > 0
+  );
+}
+
+function getLevelGradient(gradient?: [string, string] | null): [string, string] {
+  return isValidGradient(gradient)
+    ? [gradient[0].trim(), gradient[1].trim()]
+    : ["#334155", "#1E293B"];
+}
 
 const EMPTY_XP_OVERVIEW: XpOverview = {
   totalXp: 0,
@@ -62,7 +78,10 @@ function formatNextClaimTime(timestamp: string | null) {
   return `Next claim ${date.toLocaleString()}`;
 }
 
-function getClaimStateCopy(summary: XpOverview, claiming: boolean): ClaimStateCopy {
+function getClaimStateCopy(
+  summary: XpOverview,
+  claiming: boolean,
+): ClaimStateCopy {
   if (claiming) {
     return {
       buttonLabel: "Claiming XP...",
@@ -184,44 +203,45 @@ export default function CoursesScreen() {
     });
   }, [loadXpOverview]);
 
-  const levelMeta = useMemo<
-    Record<string, { shortInfo: string; accent: [string, string] }>
-  >(
+  const levelMeta = useMemo<Record<string, { shortInfo: string }>>(
     () => ({
       B1: {
         shortInfo: "Letters & basics",
-        accent: ["#5B6CFF", "#7C3AED"],
       },
       M1: {
         shortInfo: "Core vocabulary",
-        accent: ["#0EA5E9", "#2563EB"],
       },
       M2: {
         shortInfo: "Daily communication",
-        accent: ["#14B8A6", "#0F766E"],
       },
       M3: {
         shortInfo: "Advanced practice",
-        accent: ["#F59E0B", "#EA580C"],
+      },
+      M4: {
+        shortInfo: "Fluent grammar",
       },
     }),
     [],
   );
 
   const displayLevels = useMemo<DisplayLevel[]>(() => {
-    const preferredOrder = ["B1", "M1", "M2", "M3"];
+    const preferredOrder = ["B1", "M1", "M2", "M3", "M4"];
 
     const sorted = [...levels].sort(
-      (a, b) => preferredOrder.indexOf(a.id) - preferredOrder.indexOf(b.id),
+      (a, b) => {
+        const aIndex = preferredOrder.indexOf(a.id);
+        const bIndex = preferredOrder.indexOf(b.id);
+        return (
+          (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) -
+          (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex)
+        );
+      },
     );
 
     return sorted.map((item) => ({
       ...item,
       shortInfo: levelMeta[item.id]?.shortInfo ?? "Start learning",
-      accent:
-        Array.isArray(item.gradient) && item.gradient.length === 2
-          ? item.gradient
-          : levelMeta[item.id]?.accent ?? ["#334155", "#1E293B"],
+      gradient: getLevelGradient(item.gradient),
     }));
   }, [levels, levelMeta]);
 
@@ -310,7 +330,10 @@ export default function CoursesScreen() {
           <View style={styles.heroRight}>
             <Pressable
               onPress={() => router.push("/(tabs)/achievements")}
-              style={({ pressed }) => [styles.heroPill, pressed && { opacity: 0.88 }]}
+              style={({ pressed }) => [
+                styles.heroPill,
+                pressed && { opacity: 0.88 },
+              ]}
             >
               <Ionicons name="flash" size={13} color={theme.colors.text} />
               <Text style={styles.heroPillValue}>{xpOverview.totalXp}</Text>
@@ -332,7 +355,9 @@ export default function CoursesScreen() {
               ) : (
                 <>
                   <Ionicons name="gift-outline" size={14} color="#0F172A" />
-                  <Text style={styles.claimButtonText}>{claimState.buttonLabel}</Text>
+                  <Text style={styles.claimButtonText}>
+                    {claimState.buttonLabel}
+                  </Text>
                 </>
               )}
             </Pressable>
@@ -354,7 +379,9 @@ export default function CoursesScreen() {
                 size={12}
                 color={theme.colors.text}
               />
-              <Text style={styles.heroMiniValue}>{xpOverview.completedLessons}</Text>
+              <Text style={styles.heroMiniValue}>
+                {xpOverview.completedLessons}
+              </Text>
             </View>
           </View>
 
@@ -388,15 +415,19 @@ export default function CoursesScreen() {
               index % 2 === 0 ? { marginRight: 10 } : null,
             ]}
             onPress={() => {
-              console.log("[learning][courses] level tapped", {
-                itemId: item.id,
-                route: getLevelRoute(item.id),
-                title: item.title,
-              });
+              // console.log("[learning][courses] level tapped", {
+              //   itemId: item.id,
+              //   route: getLevelRoute(item.id),
+              //   title: item.title,
+              // });
               router.push(getLevelRoute(item.id));
             }}
           >
-            <LinearGradient colors={item.accent} style={styles.levelCard}>
+            <LinearGradient
+              key={`${item.id}-${item.gradient.join("-")}`}
+              colors={[...item.gradient]}
+              style={styles.levelCard}
+            >
               <View style={styles.levelCardTop}>
                 <View style={styles.levelTag}>
                   <Text style={styles.levelTagText}>Open</Text>
@@ -615,9 +646,13 @@ const createStyles = (theme: AppTheme) =>
 
     claimButtonDisabled: {
       backgroundColor:
-        theme.mode === "dark" ? "rgba(148,163,184,0.22)" : "rgba(255,255,255,0.20)",
+        theme.mode === "dark"
+          ? "rgba(148,163,184,0.22)"
+          : "rgba(255,255,255,0.20)",
       borderColor:
-        theme.mode === "dark" ? "rgba(148,163,184,0.18)" : "rgba(255,255,255,0.22)",
+        theme.mode === "dark"
+          ? "rgba(148,163,184,0.18)"
+          : "rgba(255,255,255,0.22)",
     },
 
     claimButtonText: {

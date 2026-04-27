@@ -84,6 +84,9 @@ export default function LessonContentCard({
                 ) : null}
               </View>
               <Text style={styles.contentTitle}>{meta.getDefaultTitle(item)}</Text>
+              {item.titleEn ? (
+                <Text style={styles.contentTitleEn}>{item.titleEn}</Text>
+              ) : null}
             </View>
           </View>
         </View>

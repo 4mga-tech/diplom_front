@@ -1,4 +1,4 @@
-export type LevelId = "B1" | "M1" | "M2" | "M3";
+export type LevelId = "B1" | "M1" | "M2" | "M3" | "M4";
 
 export type Level = {
   id: LevelId;
@@ -65,6 +65,15 @@ export const LEVELS: Level[] = [
     vocabularyReady: false,
     vocabularyCount: 0,
     gradient: ["#F59E0B", "#EF4444"],
+  },
+  {
+    id: "M4",
+    title: "M4",
+    subtitle: "Upper-Intermediate",
+    description: "Upper-Intermediate",
+    vocabularyReady: false,
+    vocabularyCount: 0,
+    gradient: ["#0F766E", "#14B8A6"],
   },
 ];
 
