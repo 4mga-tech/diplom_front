@@ -7,10 +7,12 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   Pressable,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
 
 import { fetchLevels, LevelItem } from "@/lib/learning";
@@ -36,6 +38,7 @@ type ClaimStateCopy = {
   detailLabel: string;
   disabled: boolean;
 };
+const logoImage = require("../../../assets/logo.png");
 
 function isValidGradient(value: unknown): value is [string, string] {
   return (
@@ -110,8 +113,11 @@ function getClaimStateCopy(
 export default function CoursesScreen() {
   const { theme } = useAppTheme();
   const styles = useThemedStyles(createStyles);
+  const { width } = useWindowDimensions();
   const router = useRouter();
   const { notifications, addNotification } = useNotifications();
+  const headerLogoFrameSize = Math.max(46, Math.min(54, width * 0.135));
+  const headerLogoImageSize = headerLogoFrameSize * 1.42;
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -283,8 +289,25 @@ export default function CoursesScreen() {
     <View style={styles.container}>
       <View style={styles.topBar}>
         <View style={styles.brandWrap}>
-          <View style={styles.logoBubble}>
-            <Ionicons name="sparkles" size={16} color={theme.colors.text} />
+          <View
+            style={[
+              styles.logoBubble,
+              {
+                width: headerLogoFrameSize,
+                height: headerLogoFrameSize,
+                borderRadius: Math.round(headerLogoFrameSize * 0.36),
+              },
+            ]}
+          >
+            <Image
+              source={logoImage}
+              style={{
+                width: headerLogoImageSize,
+                height: headerLogoImageSize,
+                marginTop: -6,
+              }}
+              resizeMode="contain"
+            />
           </View>
 
           <View>
@@ -485,9 +508,9 @@ const createStyles = (theme: AppTheme) =>
     },
 
     logoBubble: {
-      width: 42,
-      height: 42,
-      borderRadius: 16,
+      width: 48,
+      height: 48,
+      borderRadius: 18,
       alignItems: "center",
       justifyContent: "center",
       marginRight: 12,
@@ -500,6 +523,7 @@ const createStyles = (theme: AppTheme) =>
         theme.mode === "dark"
           ? "rgba(255,255,255,0.10)"
           : "rgba(99,102,241,0.16)",
+      overflow: "hidden",
     },
 
     brandTitle: {
