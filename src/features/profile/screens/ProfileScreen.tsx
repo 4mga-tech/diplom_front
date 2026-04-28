@@ -1,16 +1,24 @@
-import { api } from "@/lib/api";
 import {
   fetchProgressSummary,
   fetchXpWalletSummary,
 } from "@/src/features/achievements/achievements.service";
+import {
+  fetchCurrentUserProfile,
+  updateProfileName,
+  uploadCurrentUserAvatar,
+} from "@/src/features/profile/profile.service";
+import {
+  clearAuthSession,
+  useAuthState,
+} from "@/src/store/authStore";
 import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Image,
   Pressable,
@@ -20,10 +28,6 @@ import {
   View,
 } from "react-native";
 import { TextInput } from "react-native-gesture-handler";
-type StoredUser = {
-  name?: string;
-  email?: string;
-};
 
 type LearningStats = {
   streak: number;
@@ -90,6 +94,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { theme } = useAppTheme();
   const styles = useThemedStyles(createStyles);
+  const { user, isHydrated } = useAuthState();
   // useLayoutEffect(() => {
   //   navigation.setOptions({
   //     headerRight: () => (
@@ -106,23 +111,15 @@ export default function ProfileScreen() {
   //     ),
   //   });
   // }, []);
-  const [user, setUser] = useState<StoredUser | null>(null);
   const [stats, setStats] = useState<LearningStats>(DEFAULT_STATS);
-
-  useEffect(() => {
-    const loadUser = async () => {
-      const stored = await AsyncStorage.getItem("user");
-      if (stored) {
-        setUser(JSON.parse(stored) as StoredUser);
-      }
-    };
-    loadUser();
-  }, []);
 
   useEffect(() => {
     if (user?.name) {
       setName(user.name);
+      return;
     }
+
+    setName("");
   }, [user]);
 
   useEffect(() => {
@@ -147,54 +144,83 @@ export default function ProfileScreen() {
     loadStats();
   }, []);
 
-  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [isRefreshingProfile, setIsRefreshingProfile] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [isSavingName, setIsSavingName] = useState(false);
+
+  const refreshProfile = useCallback(async () => {
+    try {
+      setIsRefreshingProfile(true);
+      setAvatarError(null);
+      setNameError(null);
+      await fetchCurrentUserProfile();
+    } catch (err) {
+      console.log("Error refreshing profile:", err);
+    } finally {
+      setIsRefreshingProfile(false);
+    }
+  }, []);
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images", "videos"],
-      quality: 1,
-      allowsEditing: true,
-    });
+    try {
+      setAvatarError(null);
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 0.9,
+        allowsEditing: true,
+      });
 
-    if (!result.canceled) {
-      setAvatarUri(result.assets[0].uri);
-      await AsyncStorage.setItem("avatarUri", result.assets[0].uri);
+      if (result.canceled || !result.assets?.[0]) {
+        return;
+      }
+
+      setIsUploadingAvatar(true);
+      await uploadCurrentUserAvatar(result.assets[0]);
+      await refreshProfile();
+    } catch (err: any) {
+      console.log("Error uploading avatar:", err);
+      setAvatarError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Could not update your profile image.",
+      );
+    } finally {
+      setIsUploadingAvatar(false);
     }
   };
 
-  useEffect(() => {
-    const loadAvatar = async () => {
-      const savedUri = await AsyncStorage.getItem("avatarUri");
-      if (savedUri) setAvatarUri(savedUri);
-    };
-    loadAvatar();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      void refreshProfile();
+    }, [refreshProfile]),
+  );
 
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user?.name || "");
 
   const handleSaveName = async () => {
     try {
-      const res = await api.patch("/user/profile", { name });
-      const updatedUser = res.data as StoredUser;
-
-      setUser(updatedUser);
-      await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
+      setIsSavingName(true);
+      setNameError(null);
+      await updateProfileName(name);
       setIsEditing(false);
-    } catch (err) {
+    } catch (err: any) {
       console.log("Error updating name:", err);
+      setNameError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Could not update your display name.",
+      );
+    } finally {
+      setIsSavingName(false);
     }
   };
 
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem("registered");
-      await AsyncStorage.removeItem("onboardingDone");
-      await AsyncStorage.removeItem("token");
-      await AsyncStorage.removeItem("user");
-
-      await AsyncStorage.setItem("fromLogout", "true");
-
+      await clearAuthSession();
       router.replace("/welcome");
     } catch (error) {
       console.log("Logout error:", error);
@@ -253,22 +279,39 @@ export default function ProfileScreen() {
                 colors={["#2563EB", "#7C3AED"]}
                 style={styles.avatar}
               >
-                {avatarUri ? (
+                {user?.avatarUrl ? (
                   <Image
-                    source={{ uri: avatarUri }}
+                    source={{ uri: user.avatarUrl }}
                     style={styles.avatarImage}
                   />
                 ) : (
                   <Ionicons name="person" size={48} color="white" />
                 )}
+                {isUploadingAvatar ? (
+                  <View style={styles.avatarLoadingOverlay}>
+                    <ActivityIndicator color="white" size="small" />
+                  </View>
+                ) : null}
               </LinearGradient>
 
-              <Pressable onPress={pickImage} style={styles.avatarPressable}>
+              <Pressable
+                onPress={pickImage}
+                disabled={isUploadingAvatar}
+                style={styles.avatarPressable}
+              >
                 <View style={styles.cameraIcon}>
-                  <Ionicons name="camera" size={15} color="white" />
+                  {isUploadingAvatar ? (
+                    <ActivityIndicator color="white" size="small" />
+                  ) : (
+                    <Ionicons name="camera" size={15} color="white" />
+                  )}
                 </View>
               </Pressable>
             </View>
+
+            {avatarError ? (
+              <Text style={styles.avatarErrorText}>{avatarError}</Text>
+            ) : null}
 
             {/* <Text style={styles.profileEyebrow}>Mongol Hel Learner</Text> */}
 
@@ -281,16 +324,28 @@ export default function ProfileScreen() {
                   style={styles.nameInputInline}
                   autoFocus
                   onSubmitEditing={handleSaveName}
+                  editable={!isSavingName}
                   placeholder="Enter your name"
                   placeholderTextColor="#64748B"
                 />
+                {nameError ? (
+                  <Text style={styles.avatarErrorText}>{nameError}</Text>
+                ) : null}
                 <View style={styles.editActions}>
-                  <Pressable onPress={handleSaveName} style={styles.inlineBtn}>
-                    <Text style={styles.inlineBtnText}>Save</Text>
+                  <Pressable
+                    onPress={handleSaveName}
+                    disabled={isSavingName}
+                    style={styles.inlineBtn}
+                  >
+                    <Text style={styles.inlineBtnText}>
+                      {isSavingName ? "Saving..." : "Save"}
+                    </Text>
                   </Pressable>
                   <Pressable
+                    disabled={isSavingName}
                     onPress={() => {
                       setName(user?.name || "");
+                      setNameError(null);
                       setIsEditing(false);
                     }}
                     style={[styles.inlineBtn, styles.secondaryInlineBtn]}
@@ -306,6 +361,9 @@ export default function ProfileScreen() {
                   Keep your photo and display name updated for a polished
                   profile.
                 </Text>
+                {isRefreshingProfile && isHydrated ? (
+                  <Text style={styles.refreshingText}>Refreshing profile...</Text>
+                ) : null}
                 <Pressable
                   onPress={() => setIsEditing(true)}
                   style={({ pressed }) => [
@@ -535,6 +593,13 @@ const createStyles = (theme: AppTheme) =>
       height: 112,
       borderRadius: 999,
     },
+    avatarLoadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: 999,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(15,23,42,0.42)",
+    },
     avatarPressable: {
       ...StyleSheet.absoluteFillObject,
       alignItems: "flex-end",
@@ -575,6 +640,19 @@ const createStyles = (theme: AppTheme) =>
       marginTop: 8,
       marginBottom: 16,
       lineHeight: 20,
+    },
+    refreshingText: {
+      color: "#93C5FD",
+      fontSize: 12,
+      fontWeight: "700",
+      marginBottom: 12,
+    },
+    avatarErrorText: {
+      color: "#FCA5A5",
+      fontSize: 12,
+      fontWeight: "600",
+      textAlign: "center",
+      marginBottom: 10,
     },
     editCard: {
       width: "100%",

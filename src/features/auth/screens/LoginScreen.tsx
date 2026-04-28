@@ -1,5 +1,6 @@
 import { api } from "@/lib/api";
 import { claimDailyLoginXpIfNeeded } from "@/src/features/achievements/achievements.service";
+import { setAuthSession } from "@/src/store/authStore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
@@ -69,10 +70,7 @@ export default function LoginScreen() {
         })) as { data: LoginResponse };
 
         await AsyncStorage.setItem("registered", "true");
-        if (data.token) await AsyncStorage.setItem("token", data.token);
-        if (data.user) {
-          await AsyncStorage.setItem("user", JSON.stringify(data.user));
-        }
+        await setAuthSession({ token: data.token, user: data.user });
 
         try {
           await claimDailyLoginXpIfNeeded();

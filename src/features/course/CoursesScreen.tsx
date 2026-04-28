@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -26,6 +25,7 @@ import {
   subscribeToXpUpdates,
 } from "@/src/features/achievements/xp-events";
 import { getLevelRoute } from "@/src/features/learning/routes";
+import { clearAuthSession } from "@/src/store/authStore";
 import { useNotifications } from "@/src/store/notificationStore";
 import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 
@@ -258,12 +258,7 @@ export default function CoursesScreen() {
 
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem("registered");
-      await AsyncStorage.removeItem("onboardingDone");
-      await AsyncStorage.removeItem("token");
-      await AsyncStorage.removeItem("user");
-
-      await AsyncStorage.setItem("fromLogout", "true");
+      await clearAuthSession();
       router.replace("/welcome");
     } catch (error) {
       console.log("Logout error:", error);

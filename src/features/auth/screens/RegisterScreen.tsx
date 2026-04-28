@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import { setAuthSession } from "@/src/store/authStore";
 import { BackButton } from "@/src/ui/BackButton";
 import { FormInput } from "@/src/ui/FormInput";
 import { GradientButton } from "@/src/ui/GradientButton";
@@ -125,18 +126,15 @@ export default function RegisterScreen() {
     try {
       setVerifyingOtp(true);
 
-      const { data } = await api.post("/auth/register/verify-otp", {
+      const { data } = (await api.post("/auth/register/verify-otp", {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         password,
         code: cleanOtp,
-      });
+      })) as { data: RegisterResponse };
 
-      if (data.token) await AsyncStorage.setItem("token", data.token);
-      if (data.user) {
-        await AsyncStorage.setItem("user", JSON.stringify(data.user));
-      }
       await AsyncStorage.setItem("registered", "true");
+      await setAuthSession({ token: data.token, user: data.user });
 
       Alert.alert("Success", "Account created successfully");
       router.replace("/onboarding");
