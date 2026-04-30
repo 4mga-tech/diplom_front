@@ -18,6 +18,7 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -48,6 +49,7 @@ export default function TestSessionScreen() {
 
   const [questions, setQuestions] = useState<TestQuestion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [submittingTest, setSubmittingTest] = useState(false);
   const [walletXp, setWalletXp] = useState(0);
   const [walletLoaded, setWalletLoaded] = useState(false);
@@ -58,6 +60,8 @@ export default function TestSessionScreen() {
     Record<string, string[]>
   >({});
   const [examStarted, setExamStarted] = useState(false);
+  const [assessmentTitle, setAssessmentTitle] = useState("Level Assessment");
+  const [passingScore, setPassingScore] = useState(75);
 
   useEffect(() => {
     let mounted = true;
@@ -65,13 +69,24 @@ export default function TestSessionScreen() {
     async function load() {
       try {
         setLoading(true);
-        const data = await testService.getQuestions(safeLevel, safeType);
+        setLoadError(null);
+        const data = await testService.getQuestionSet(safeLevel, safeType);
 
-        if (mounted) {
-          setQuestions(data);
+        if (!mounted) {
+          return;
         }
+
+        setQuestions(data.questions);
+        setAssessmentTitle(data.title);
+        setPassingScore(data.passingScore);
       } catch (error) {
         console.log("Test questions load failed:", error);
+
+        if (!mounted) {
+          return;
+        }
+
+        setLoadError("We could not load this exam right now.");
       } finally {
         if (mounted) {
           setLoading(false);
@@ -134,7 +149,7 @@ export default function TestSessionScreen() {
     hasQuestions,
     currentIndex,
     totalQuestions,
-  } = useTestSession(questions, safeLevel, safeType);
+  } = useTestSession(questions, safeLevel.toLowerCase(), safeType);
 
   useEffect(() => {
     setHintFeedback(null);
@@ -331,6 +346,7 @@ export default function TestSessionScreen() {
           params: {
             levelId: safeLevel,
             testType: safeType,
+            title: assessmentTitle,
             score: String(result.score),
             passed: String(result.passed),
             correctCount: String(result.correctCount),
@@ -372,8 +388,8 @@ export default function TestSessionScreen() {
     ? {
         title: `${walletXp} XP available`,
         subtitle: hintCostKnown
-          ? `Hints cost ${hintXpCost} XP. Tests do not cost XP to start.`
-          : "Hints use XP, but tests do not cost XP to start.",
+          ? `Hints cost ${hintXpCost} XP. Starting an exam is free.`
+          : "Hints use XP, but starting an exam is free.",
       }
     : {
         title: "Loading XP wallet",
@@ -382,24 +398,36 @@ export default function TestSessionScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView edges={["top"]} style={styles.center}>
+      <SafeAreaView edges={["top", "bottom"]} style={styles.center}>
         <View style={styles.loadingCard}>
           <ActivityIndicator size="large" color="#F8FAFC" />
-          <Text style={styles.loadingTitle}>Loading Final Lesson Exam</Text>
+          <Text style={styles.loadingTitle}>Loading assessment</Text>
           <Text style={styles.loadingText}>
-            Preparing the full assessment for this skill.
+            Preparing the {assessmentTitle.toLowerCase()} for this level.
           </Text>
         </View>
       </SafeAreaView>
     );
   }
 
+  if (loadError) {
+    return (
+      <SafeAreaView edges={["top", "bottom"]} style={styles.center}>
+        <Text style={styles.emptyTitle}>Exam unavailable</Text>
+        <Text style={styles.emptyText}>{loadError}</Text>
+        <Pressable style={styles.primaryBtn} onPress={() => router.back()}>
+          <Text style={styles.primaryBtnText}>Back to exams</Text>
+        </Pressable>
+      </SafeAreaView>
+    );
+  }
+
   if (!hasQuestions || !currentQuestion) {
     return (
-      <SafeAreaView edges={["top"]} style={styles.center}>
+      <SafeAreaView edges={["top", "bottom"]} style={styles.center}>
         <Text style={styles.emptyTitle}>No exam questions yet</Text>
         <Text style={styles.emptyText}>
-          This exam is not ready for {safeLevel} yet.
+          This assessment is not available for {safeLevel} right now.
         </Text>
 
         <Pressable style={styles.primaryBtn} onPress={() => router.back()}>
@@ -411,68 +439,86 @@ export default function TestSessionScreen() {
 
   if (!examStarted) {
     return (
-      <SafeAreaView edges={["top"]} style={styles.container}>
+      <SafeAreaView edges={["top", "bottom"]} style={styles.container}>
         <View style={styles.header}>
           <Pressable onPress={handleQuit} hitSlop={6} style={styles.headerIcon}>
             <Ionicons name="chevron-back" size={20} color="#E2E8F0" />
           </Pressable>
 
           <View style={styles.headerTitleWrap}>
-            <Text style={styles.headerEyebrow}>Final Lesson Exam</Text>
+            <Text style={styles.headerEyebrow}>Level assessment</Text>
             <Text style={styles.headerTitle}>Assessment overview</Text>
           </View>
         </View>
 
-        <View style={styles.examIntroCard}>
-          <View style={styles.examIntroBadge}>
-            <Ionicons name="shield-checkmark-outline" size={14} color="#F59E0B" />
-            <Text style={styles.examIntroBadgeText}>Assessment</Text>
-          </View>
-
-          <Text style={styles.examIntroTitle}>Final lesson exam</Text>
-          <Text style={styles.examIntroText}>
-            This final exam is separate from the lesson practice quiz. Complete every
-            question to receive your official backend-evaluated result for this skill.
-          </Text>
-
-          <View style={styles.examIntroMetaGrid}>
-            <View style={styles.examIntroMetaCard}>
-              <Text style={styles.examIntroMetaLabel}>Questions</Text>
-              <Text style={styles.examIntroMetaValue}>{totalQuestions}</Text>
+        <ScrollView
+          style={styles.scrollArea}
+          contentContainerStyle={styles.introScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.examIntroCard}>
+            <View style={styles.examIntroBadge}>
+              <Ionicons
+                name="shield-checkmark-outline"
+                size={14}
+                color="#F59E0B"
+              />
+              <Text style={styles.examIntroBadgeText}>Assessment</Text>
             </View>
-            <View style={styles.examIntroMetaCard}>
-              <Text style={styles.examIntroMetaLabel}>Scoring</Text>
-              <Text style={styles.examIntroMetaValue}>Backend evaluated</Text>
-            </View>
-          </View>
 
-          <View style={styles.examIntroMetaGrid}>
-            <View style={styles.examIntroMetaCard}>
-              <Text style={styles.examIntroMetaLabel}>Passing</Text>
-              <Text style={styles.examIntroMetaValue}>Verified on submit</Text>
-            </View>
-            <View style={styles.examIntroMetaCard}>
-              <Text style={styles.examIntroMetaLabel}>XP reward</Text>
-              <Text style={styles.examIntroMetaValue}>Applied on submit</Text>
-            </View>
-          </View>
-
-          <View style={styles.examIntroNotice}>
-            <Ionicons name="information-circle-outline" size={16} color="#FCD34D" />
-            <Text style={styles.examIntroNoticeText}>
-              Hint spending is optional. Your pass requirement and XP reward are both
-              confirmed by the backend when you submit.
+            <Text style={styles.examIntroTitle}>{assessmentTitle}</Text>
+            <Text style={styles.examIntroText}>
+              This level exam is separate from lesson quizzes. Complete every
+              question to finish the official {safeLevel} {safeType} exam for
+              this skill.
             </Text>
-          </View>
-        </View>
 
-        <View style={styles.footer}>
+            <View style={styles.examIntroMetaGrid}>
+              <View style={styles.examIntroMetaCard}>
+                <Text style={styles.examIntroMetaLabel}>Questions</Text>
+                <Text style={styles.examIntroMetaValue}>{totalQuestions}</Text>
+              </View>
+              <View style={styles.examIntroMetaCard}>
+                <Text style={styles.examIntroMetaLabel}>Scoring</Text>
+                <Text style={styles.examIntroMetaValue}>Backend evaluated</Text>
+              </View>
+            </View>
+
+            <View style={styles.examIntroMetaGrid}>
+              <View style={styles.examIntroMetaCard}>
+                <Text style={styles.examIntroMetaLabel}>Passing</Text>
+                <Text style={styles.examIntroMetaValue}>{passingScore}%</Text>
+              </View>
+              <View style={styles.examIntroMetaCard}>
+                <Text style={styles.examIntroMetaLabel}>XP</Text>
+                <Text style={styles.examIntroMetaValue}>Reward on pass</Text>
+              </View>
+            </View>
+
+            <View style={styles.examIntroNotice}>
+              <Ionicons
+                name="information-circle-outline"
+                size={16}
+                color="#FCD34D"
+              />
+              <Text style={styles.examIntroNoticeText}>
+                Starting the exam does not cost XP. XP is only spent if you use
+                hints during the assessment.
+              </Text>
+            </View>
+          </View>
+        </ScrollView>
+
+        <View style={styles.footerFixed}>
           <Pressable style={styles.secondaryBtn} onPress={handleQuit}>
             <Text style={styles.secondaryBtnText}>Back to exams</Text>
           </Pressable>
 
-          <Pressable style={styles.primaryBtn} onPress={() => setExamStarted(true)}>
-            <Text style={styles.primaryBtnText}>Start Final Exam</Text>
+          <Pressable
+            style={styles.primaryBtn}
+            onPress={() => setExamStarted(true)}
+          >
+            <Text style={styles.primaryBtnText}>Start Exam</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -480,7 +526,7 @@ export default function TestSessionScreen() {
   }
 
   return (
-    <SafeAreaView edges={["top"]} style={styles.container}>
+    <SafeAreaView edges={["top", "bottom"]} style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerMainRow}>
           <Pressable onPress={handleQuit} hitSlop={6} style={styles.headerIcon}>
@@ -488,49 +534,100 @@ export default function TestSessionScreen() {
           </Pressable>
 
           <View style={styles.headerTitleWrap}>
-            <Text style={styles.headerEyebrow}>Final Lesson Exam</Text>
-            <Text style={styles.headerTitle}>{`${safeLevel} ${safeType}`}</Text>
+            <Text style={styles.headerEyebrow}>Level assessment</Text>
+            <Text style={styles.headerTitle}>{assessmentTitle}</Text>
           </View>
 
           <View style={styles.headerScorePill}>
-            <Text style={styles.headerScorePillText}>{Math.round(progress * 100)}%</Text>
+            <Text style={styles.headerScorePillText}>
+              {Math.round(progress * 100)}%
+            </Text>
           </View>
         </View>
-      </View>
 
-      <Text style={styles.headerSubtitle}>
-        Question {currentIndex + 1} of {totalQuestions}
-      </Text>
-
-      <View style={styles.progressWrap}>
-        <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-      </View>
-
-      <View style={styles.examNotice}>
-        <Ionicons name="shield-checkmark-outline" size={16} color="#F59E0B" />
-        <Text style={styles.examNoticeText}>
-          This is a final assessment. Read carefully and submit your best answer.
+        <Text style={styles.headerSubtitle}>
+          {safeLevel} • Question {currentIndex + 1} of {totalQuestions}
         </Text>
-      </View>
 
-      <View style={styles.walletBanner}>
-        <View style={styles.walletBannerIcon}>
-          <Ionicons name="flash" size={16} color="#FCD34D" />
-        </View>
-        <View style={styles.walletBannerTextWrap}>
-          <Text style={styles.walletBannerTitle}>{walletSummaryCopy.title}</Text>
-          <Text style={styles.walletBannerText}>{walletSummaryCopy.subtitle}</Text>
+        <View style={styles.progressWrap}>
+          <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
         </View>
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.questionLabel}>Exam question</Text>
-        <Text style={styles.questionText}>{currentQuestion.question}</Text>
+      <ScrollView
+        style={styles.scrollArea}
+        contentContainerStyle={styles.questionScrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.examNotice}>
+          <Ionicons
+            name="shield-checkmark-outline"
+            size={15}
+            color="#F59E0B"
+          />
+          <Text style={styles.examNoticeText}>
+            This is a backend-scored level exam. Read carefully and submit your
+            best answer.
+          </Text>
+        </View>
+
+        <View style={styles.walletBanner}>
+          <View style={styles.walletBannerIcon}>
+            <Ionicons name="flash" size={15} color="#FCD34D" />
+          </View>
+          <View style={styles.walletBannerTextWrap}>
+            <Text style={styles.walletBannerTitle}>{walletSummaryCopy.title}</Text>
+            <Text style={styles.walletBannerText}>{walletSummaryCopy.subtitle}</Text>
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.questionLabel}>Exam question</Text>
+          <Text style={styles.questionText}>{currentQuestion.question}</Text>
+
+          <View style={styles.optionsWrap}>
+            {visibleOptions.map((option: TestOption, index) => {
+              const selected = selectedOptionId === option.id;
+
+              return (
+                <Pressable
+                  key={option.id}
+                  onPress={() => selectOption(option.id)}
+                  style={[styles.optionBtn, selected && styles.optionBtnSelected]}
+                >
+                  <View
+                    style={[
+                      styles.optionBadge,
+                      selected && styles.optionBadgeSelected,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.optionBadgeText,
+                        selected && styles.optionBadgeTextSelected,
+                      ]}
+                    >
+                      {String.fromCharCode(65 + index)}
+                    </Text>
+                  </View>
+                  <Text
+                    style={[
+                      styles.optionText,
+                      selected && styles.optionTextSelected,
+                    ]}
+                  >
+                    {option.text}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
 
         <View style={styles.hintSection}>
           <View style={styles.hintMeta}>
             <View style={styles.hintMetaIcon}>
-              <Ionicons name="bulb-outline" size={15} color="#FACC15" />
+              <Ionicons name="bulb-outline" size={14} color="#FACC15" />
             </View>
             <View style={styles.hintMetaTextWrap}>
               <Text style={styles.hintMetaTitle}>Need a little help?</Text>
@@ -549,7 +646,7 @@ export default function TestSessionScreen() {
               <ActivityIndicator color="#0F172A" size="small" />
             ) : (
               <>
-                <Ionicons name="flash" size={14} color="#0F172A" />
+                <Ionicons name="flash" size={13} color="#0F172A" />
                 <Text style={styles.hintBtnText}>{hintButtonLabel}</Text>
               </>
             )}
@@ -575,7 +672,7 @@ export default function TestSessionScreen() {
                     ? "information-circle"
                     : "alert-circle"
               }
-              size={16}
+              size={15}
               color={
                 hintFeedback.tone === "success"
                   ? "#86EFAC"
@@ -587,77 +684,54 @@ export default function TestSessionScreen() {
             <Text style={styles.hintFeedbackText}>{hintFeedback.message}</Text>
           </View>
         ) : null}
+      </ScrollView>
 
-        <View style={styles.optionsWrap}>
-          {visibleOptions.map((option: TestOption, index) => {
-            const selected = selectedOptionId === option.id;
-
-            return (
-              <Pressable
-                key={option.id}
-                onPress={() => selectOption(option.id)}
-                style={[styles.optionBtn, selected && styles.optionBtnSelected]}
-              >
-                <View style={[styles.optionBadge, selected && styles.optionBadgeSelected]}>
-                  <Text
-                    style={[styles.optionBadgeText, selected && styles.optionBadgeTextSelected]}
-                  >
-                    {String.fromCharCode(65 + index)}
-                  </Text>
-                </View>
-                <Text
-                  style={[
-                    styles.optionText,
-                    selected && styles.optionTextSelected,
-                  ]}
-                >
-                  {option.text}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-
-      <View style={styles.footer}>
+      <View style={styles.footerFixed}>
         {submittingTest ? (
           <View style={styles.evaluatingCard}>
             <ActivityIndicator size="small" color="#FCD34D" />
             <View style={styles.evaluatingTextWrap}>
               <Text style={styles.evaluatingTitle}>Evaluating answers</Text>
               <Text style={styles.evaluatingText}>
-                Submitting your final exam to the backend now.
+                Submitting your exam to the backend now.
               </Text>
             </View>
           </View>
         ) : null}
 
-        <Pressable style={styles.secondaryBtn} onPress={handleQuit}>
-          <Text style={styles.secondaryBtnText}>Back to exams</Text>
-        </Pressable>
+        <View style={styles.footerActions}>
+          <Pressable style={styles.secondaryBtn} onPress={handleQuit}>
+            <Text style={styles.secondaryBtnText}>Exit</Text>
+          </Pressable>
 
-        <Pressable
-          style={[styles.primaryBtn, submittingTest && styles.primaryBtnDisabled]}
-          onPress={() => {
-            void handleNext();
-          }}
-          disabled={submittingTest}
-        >
-          {submittingTest ? (
-            <ActivityIndicator color="white" size="small" />
-          ) : (
-            <Text style={styles.primaryBtnText}>
-              {isLastQuestion ? "Submit Final Exam" : "Next Question"}
-            </Text>
-          )}
-        </Pressable>
+          <Pressable
+            style={[styles.primaryBtn, submittingTest && styles.primaryBtnDisabled]}
+            onPress={() => {
+              void handleNext();
+            }}
+            disabled={submittingTest}
+          >
+            {submittingTest ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <Text style={styles.primaryBtnText}>
+                {isLastQuestion ? "Submit Exam" : "Next"}
+              </Text>
+            )}
+          </Pressable>
+        </View>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0F172A", paddingHorizontal: 20, paddingTop: 8, paddingBottom: 20 },
+  container: {
+    flex: 1,
+    backgroundColor: "#0F172A",
+    paddingHorizontal: 16,
+    paddingTop: 6,
+  },
   center: {
     flex: 1,
     backgroundColor: "#0F172A",
@@ -668,40 +742,39 @@ const styles = StyleSheet.create({
   loadingCard: {
     width: "100%",
     maxWidth: 360,
-    borderRadius: 24,
-    padding: 24,
+    borderRadius: 22,
+    padding: 22,
     alignItems: "center",
-    gap: 12,
+    gap: 10,
     backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
   },
   loadingTitle: {
     color: "white",
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: "900",
     textAlign: "center",
   },
   loadingText: {
     color: "#94A3B8",
-    fontSize: 14,
+    fontSize: 13,
     textAlign: "center",
-    lineHeight: 20,
+    lineHeight: 19,
   },
   header: {
-    gap: 10,
-    marginBottom: 8,
+    marginBottom: 10,
   },
   headerMainRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
   },
   headerIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.06)",
@@ -710,30 +783,30 @@ const styles = StyleSheet.create({
   },
   headerTitleWrap: {
     flex: 1,
-    gap: 1,
+    gap: 2,
   },
   headerEyebrow: {
     color: "#F59E0B",
     fontSize: 10,
     fontWeight: "800",
     textTransform: "uppercase",
-    letterSpacing: 0.55,
+    letterSpacing: 0.5,
   },
   headerTitle: {
     color: "white",
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "800",
-    textTransform: "capitalize",
   },
   headerSubtitle: {
     color: "#94A3B8",
     fontSize: 12,
     fontWeight: "700",
-    marginBottom: 12,
+    marginTop: 8,
+    marginBottom: 10,
   },
   headerScorePill: {
-    paddingHorizontal: 11,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     borderRadius: 999,
     backgroundColor: "rgba(245,158,11,0.12)",
     borderWidth: 1,
@@ -745,20 +818,34 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   progressWrap: {
-    height: 10,
+    height: 8,
     backgroundColor: "rgba(255,255,255,0.08)",
     borderRadius: 999,
     overflow: "hidden",
-    marginBottom: 14,
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: "#F59E0B",
+    borderRadius: 999,
+  },
+  scrollArea: {
+    flex: 1,
+  },
+  introScrollContent: {
+    paddingBottom: 12,
+  },
+  questionScrollContent: {
+    paddingBottom: 12,
+    gap: 10,
   },
   examIntroCard: {
-    borderRadius: 24,
-    padding: 18,
+    borderRadius: 22,
+    padding: 16,
     backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
-    gap: 14,
-    marginTop: 8,
+    gap: 12,
+    marginTop: 6,
   },
   examIntroBadge: {
     alignSelf: "flex-start",
@@ -777,18 +864,18 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "800",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.45,
   },
   examIntroTitle: {
     color: "white",
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 24,
+    lineHeight: 30,
     fontWeight: "900",
   },
   examIntroText: {
     color: "#CBD5E1",
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: 13,
+    lineHeight: 19,
     fontWeight: "600",
   },
   examIntroMetaGrid: {
@@ -797,9 +884,9 @@ const styles = StyleSheet.create({
   },
   examIntroMetaCard: {
     flex: 1,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
     backgroundColor: "rgba(15,23,42,0.55)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.06)",
@@ -809,7 +896,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "800",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.45,
   },
   examIntroMetaValue: {
     color: "#F8FAFC",
@@ -821,7 +908,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 8,
-    padding: 12,
+    padding: 11,
     borderRadius: 14,
     backgroundColor: "rgba(245,158,11,0.08)",
     borderWidth: 1,
@@ -831,46 +918,39 @@ const styles = StyleSheet.create({
     flex: 1,
     color: "#E2E8F0",
     fontSize: 12,
-    lineHeight: 18,
+    lineHeight: 17,
     fontWeight: "600",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#F59E0B",
-    borderRadius: 999,
   },
   examNotice: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 8,
-    padding: 12,
-    borderRadius: 16,
+    padding: 10,
+    borderRadius: 14,
     backgroundColor: "rgba(245,158,11,0.08)",
     borderWidth: 1,
     borderColor: "rgba(245,158,11,0.16)",
-    marginBottom: 16,
   },
   examNoticeText: {
     flex: 1,
     color: "#E2E8F0",
     fontSize: 12,
-    lineHeight: 18,
+    lineHeight: 17,
     fontWeight: "600",
   },
   walletBanner: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 10,
-    padding: 12,
-    borderRadius: 16,
+    padding: 10,
+    borderRadius: 14,
     backgroundColor: "rgba(37,99,235,0.08)",
     borderWidth: 1,
     borderColor: "rgba(96,165,250,0.16)",
-    marginBottom: 16,
   },
   walletBannerIcon: {
-    width: 30,
-    height: 30,
+    width: 28,
+    height: 28,
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
@@ -888,34 +968,83 @@ const styles = StyleSheet.create({
   walletBannerText: {
     color: "#CBD5E1",
     fontSize: 12,
-    lineHeight: 18,
+    lineHeight: 17,
     fontWeight: "600",
   },
   card: {
     backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 24,
-    padding: 18,
+    borderRadius: 20,
+    padding: 14,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
-    marginBottom: 20,
-    gap: 14,
+    gap: 12,
   },
   questionLabel: {
     color: "#F59E0B",
     fontSize: 10,
     fontWeight: "800",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.45,
   },
   questionText: {
     color: "white",
-    fontSize: 22,
-    lineHeight: 30,
+    fontSize: 19,
+    lineHeight: 26,
     fontWeight: "800",
+  },
+  optionsWrap: {
+    gap: 8,
+  },
+  optionBtn: {
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    borderRadius: 13,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    minHeight: 52,
+  },
+  optionBtnSelected: {
+    backgroundColor: "rgba(245,158,11,0.14)",
+    borderColor: "#F59E0B",
+  },
+  optionBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  optionBadgeSelected: {
+    backgroundColor: "rgba(245,158,11,0.18)",
+    borderColor: "rgba(245,158,11,0.28)",
+  },
+  optionBadgeText: {
+    color: "#CBD5E1",
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  optionBadgeTextSelected: {
+    color: "#FDE68A",
+  },
+  optionText: {
+    color: "#E2E8F0",
+    fontSize: 14,
+    fontWeight: "600",
+    flex: 1,
+  },
+  optionTextSelected: {
+    color: "white",
   },
   hintSection: {
     gap: 10,
-    padding: 14,
+    padding: 12,
     borderRadius: 16,
     backgroundColor: "rgba(15,23,42,0.52)",
     borderWidth: 1,
@@ -927,8 +1056,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   hintMetaIcon: {
-    width: 28,
-    height: 28,
+    width: 26,
+    height: 26,
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
@@ -946,7 +1075,7 @@ const styles = StyleSheet.create({
   hintMetaText: {
     color: "#CBD5E1",
     fontSize: 12,
-    lineHeight: 18,
+    lineHeight: 17,
     fontWeight: "600",
   },
   hintBtn: {
@@ -955,10 +1084,10 @@ const styles = StyleSheet.create({
     gap: 6,
     borderRadius: 999,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 9,
     backgroundColor: "#FACC15",
     alignSelf: "flex-start",
-    minWidth: 140,
+    minWidth: 138,
     justifyContent: "center",
   },
   hintBtnDisabled: {
@@ -993,70 +1122,27 @@ const styles = StyleSheet.create({
   hintFeedbackText: {
     flex: 1,
     fontSize: 12,
-    lineHeight: 18,
+    lineHeight: 17,
     fontWeight: "700",
     color: "#E2E8F0",
   },
-  optionsWrap: {
-    gap: 12,
+  footerFixed: {
+    gap: 10,
+    paddingTop: 10,
+    paddingBottom: 14,
+    backgroundColor: "#0F172A",
   },
-  optionBtn: {
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+  footerActions: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  optionBtnSelected: {
-    backgroundColor: "rgba(245,158,11,0.14)",
-    borderColor: "#F59E0B",
-  },
-  optionBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-  },
-  optionBadgeSelected: {
-    backgroundColor: "rgba(245,158,11,0.18)",
-    borderColor: "rgba(245,158,11,0.28)",
-  },
-  optionBadgeText: {
-    color: "#CBD5E1",
-    fontSize: 12,
-    fontWeight: "900",
-  },
-  optionBadgeTextSelected: {
-    color: "#FDE68A",
-  },
-  optionText: {
-    color: "#E2E8F0",
-    fontSize: 15,
-    fontWeight: "600",
-    flex: 1,
-  },
-  optionTextSelected: {
-    color: "white",
-  },
-  footer: {
-    marginTop: "auto",
-    gap: 12,
+    gap: 10,
   },
   evaluatingCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
     backgroundColor: "rgba(245,158,11,0.08)",
     borderWidth: 1,
     borderColor: "rgba(245,158,11,0.16)",
@@ -1073,13 +1159,14 @@ const styles = StyleSheet.create({
   evaluatingText: {
     color: "#CBD5E1",
     fontSize: 12,
-    lineHeight: 18,
+    lineHeight: 17,
     fontWeight: "600",
   },
   primaryBtn: {
+    flex: 1,
     backgroundColor: "#F59E0B",
-    paddingVertical: 16,
-    borderRadius: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
     alignItems: "center",
   },
   primaryBtnDisabled: {
@@ -1087,13 +1174,14 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: {
     color: "white",
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "800",
   },
   secondaryBtn: {
+    flex: 1,
     backgroundColor: "rgba(255,255,255,0.06)",
-    paddingVertical: 16,
-    borderRadius: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
@@ -1108,11 +1196,13 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "800",
     marginBottom: 10,
+    textAlign: "center",
   },
   emptyText: {
     color: "#94A3B8",
     fontSize: 14,
     textAlign: "center",
     marginBottom: 20,
+    lineHeight: 20,
   },
 });

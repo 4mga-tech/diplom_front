@@ -2,8 +2,7 @@ export type TestType =
   | "vocabulary"
   | "grammar"
   | "listening"
-  | "speaking"
-  | "letter";
+  | "speaking";
 
 export type TestOption = {
   id: string;
@@ -21,7 +20,7 @@ export type TestQuestion = {
 
 export type TestAnswerSubmission = {
   questionId: string;
-  answer: string;
+  selectedOptionId: string;
 };
 
 export type TestSubmitPayload = {
@@ -38,4 +37,37 @@ export type TestSubmitResult = {
   correctCount: number;
   totalQuestions: number;
   xpGained: number;
+  totalXp?: number;
+};
+
+export type TestLevelSummary = {
+  levelId: string;
+  title: string;
+  activeTypes: Extract<TestType, "vocabulary" | "grammar">[];
+  questionCounts: {
+    vocabulary: number;
+    grammar: number;
+  };
+};
+
+export type TestTypeAvailability = {
+  testType: TestType;
+  title: string;
+  active: boolean;
+  status: "available" | "coming_soon";
+  questionCount: number;
+};
+
+export type TestTypeAvailabilityResponse = {
+  levelId: string;
+  types: TestTypeAvailability[];
+};
+
+export type TestQuestionSet = {
+  levelId: string;
+  testType: TestType;
+  title: string;
+  passingScore: number;
+  totalQuestions: number;
+  questions: TestQuestion[];
 };

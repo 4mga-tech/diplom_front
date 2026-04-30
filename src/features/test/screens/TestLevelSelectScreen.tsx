@@ -1,12 +1,15 @@
 import {
   TEST_LEVELS,
-  type TestLevelCard,
+  type TestLevelCard as TestLevelVisual,
 } from "@/src/features/test/constants/testLevels";
+import { testService } from "@/src/features/test/services/test.service";
+import { TestLevelSummary } from "@/src/features/test/types/test.types";
 import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   ListRenderItem,
   Pressable,
@@ -16,12 +19,59 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const TEST_TYPES = ["Vocabulary", "Grammar", "Listening", "Speaking", "Letters"];
+const TEST_TYPES = ["Vocabulary", "Grammar", "Listening", "Speaking"];
 
 export default function TestLevelSelect() {
   const { theme } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
+  const [levels, setLevels] = useState<TestLevelSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadLevels() {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await testService.getLevels();
+
+        if (!mounted) {
+          return;
+        }
+
+        setLevels(data);
+      } catch (loadError) {
+        console.log("Test levels load failed:", loadError);
+
+        if (!mounted) {
+          return;
+        }
+
+        setError("We could not load the available exam levels right now.");
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadLevels();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const visualMetaById = useMemo(
+    () =>
+      new Map<string, TestLevelVisual>(
+        TEST_LEVELS.map((item) => [item.id.toLowerCase(), item]),
+      ),
+    [],
+  );
 
   const renderHeader = () => (
     <>
@@ -30,23 +80,23 @@ export default function TestLevelSelect() {
           <View style={styles.heroLeft}>
             <View style={styles.heroBadge}>
               <Ionicons
-                name="sparkles-outline"
+                name="shield-checkmark-outline"
                 size={12}
                 color={theme.colors.text}
               />
-              <Text style={styles.heroBadgeText}>All test modes</Text>
+              <Text style={styles.heroBadgeText}>Level assessment</Text>
             </View>
 
-            <Text style={styles.title}>Practice your skills</Text>
+            <Text style={styles.title}>Assessment hub</Text>
             <Text style={styles.subtitle}>
-              Choose a level, then continue with vocabulary, grammar,
-              listening, and more.
+              The test tab is reserved for full level assessments. Vocabulary
+              and grammar exams are available across M1 to M4.
             </Text>
           </View>
 
           <View style={styles.heroStatsCompact}>
-            <Text style={styles.heroStatBig}>{TEST_LEVELS.length}</Text>
-            <Text style={styles.heroStatSmall}>levels</Text>
+            <Text style={styles.heroStatBig}>{levels.length}</Text>
+            <Text style={styles.heroStatSmall}>live now</Text>
           </View>
         </View>
 
@@ -60,40 +110,50 @@ export default function TestLevelSelect() {
 
         <View style={styles.headerStats}>
           <View style={styles.stat}>
-            <Text style={styles.statValue}>{TEST_LEVELS.length}</Text>
-            <Text style={styles.statLabel}>Levels</Text>
+            <Text style={styles.statValue}>{levels.length}</Text>
+            <Text style={styles.statLabel}>Active levels</Text>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.stat}>
-            <Text style={styles.statValue}>4</Text>
-            <Text style={styles.statLabel}>Core bands</Text>
+            <Text style={styles.statValue}>2</Text>
+            <Text style={styles.statLabel}>Live test types</Text>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.stat}>
             <Text style={styles.statValue}>{TEST_TYPES.length}</Text>
-            <Text style={styles.statLabel}>Modes</Text>
+            <Text style={styles.statLabel}>Visible modes</Text>
           </View>
         </View>
       </View>
 
       <View style={styles.sectionRow}>
         <Text style={styles.sectionTitle}>Choose a level</Text>
-        <Text style={styles.sectionCaption}>{TEST_LEVELS.length} total</Text>
+        <Text style={styles.sectionCaption}>
+          {loading ? "Loading..." : `${levels.length} available`}
+        </Text>
       </View>
     </>
   );
 
-  const renderItem: ListRenderItem<TestLevelCard> = ({ item, index }) => {
+  const renderItem: ListRenderItem<TestLevelSummary> = ({ item, index }) => {
+    const visualMeta = visualMetaById.get(item.levelId) ?? null;
+    const levelLabel = item.title.toUpperCase();
+    const levelAccent = visualMeta?.accent ?? "#2563EB";
+    const levelSubtitle = visualMeta?.subtitle ?? "Level exam";
+    const levelDescription =
+      visualMeta?.description ??
+      "Backend-backed vocabulary and grammar exams with more skills coming later.";
+
     return (
       <Pressable
         onPress={() =>
           router.push({
             pathname: "/test/test-types/[levelId]" as any,
-            params: { levelId: item.id },
+            params: { levelId: levelLabel },
           })
         }
         style={({ pressed }) => [
@@ -106,6 +166,8 @@ export default function TestLevelSelect() {
           style={[
             styles.card,
             {
+              backgroundColor:
+                theme.mode === "dark" ? "rgba(255,255,255,0.04)" : "#FFFFFF",
               borderColor:
                 theme.mode === "dark"
                   ? "rgba(255,255,255,0.08)"
@@ -113,23 +175,23 @@ export default function TestLevelSelect() {
             },
           ]}
         >
-          <View style={[styles.cardAccent, { backgroundColor: item.accent }]} />
+          <View style={[styles.cardAccent, { backgroundColor: levelAccent }]} />
 
           <View style={styles.cardTop}>
             <View style={styles.levelBadge}>
-              <Text style={styles.levelBadgeText}>{item.id}</Text>
+              <Text style={styles.levelBadgeText}>{levelLabel}</Text>
             </View>
 
             <View style={styles.statusBadge}>
-              <Text style={styles.statusText}>Ready</Text>
+              <Text style={styles.statusText}>Available now</Text>
             </View>
           </View>
 
           <View style={styles.cardMiddle}>
-            <Text style={styles.level}>{item.title}</Text>
-            <Text style={styles.cardDesc}>{item.subtitle}</Text>
+            <Text style={styles.level}>{levelLabel}</Text>
+            <Text style={styles.cardDesc}>{levelSubtitle}</Text>
             <Text style={styles.subtitleText} numberOfLines={3}>
-              {item.description}
+              {levelDescription}
             </Text>
           </View>
 
@@ -140,7 +202,9 @@ export default function TestLevelSelect() {
                 size={13}
                 color={theme.colors.muted}
               />
-              <Text style={styles.metaText}>5 test types</Text>
+              <Text style={styles.metaText}>
+                {item.activeTypes.length} live exams
+              </Text>
             </View>
 
             <Ionicons name="arrow-forward" size={15} color={theme.colors.muted} />
@@ -152,10 +216,24 @@ export default function TestLevelSelect() {
 
   return (
     <SafeAreaView edges={["top"]} style={styles.container}>
+      {loading ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator color={theme.colors.text} />
+          <Text style={styles.loadingCopy}>Loading exam levels</Text>
+        </View>
+      ) : null}
+
+      {error ? (
+        <View style={styles.errorBanner}>
+          <Ionicons name="alert-circle-outline" size={16} color="#FCA5A5" />
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : null}
+
       <FlatList
         key="test-level-grid-2"
-        data={TEST_LEVELS}
-        keyExtractor={(item) => item.id}
+        data={levels}
+        keyExtractor={(item) => item.levelId}
         numColumns={2}
         renderItem={renderItem}
         showsVerticalScrollIndicator={false}
@@ -179,6 +257,38 @@ const createStyles = (theme: AppTheme) =>
       paddingHorizontal: 20,
       paddingTop: 10,
       paddingBottom: 28,
+    },
+    loadingWrap: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingTop: 12,
+    },
+    loadingCopy: {
+      color: theme.colors.muted,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    errorBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginHorizontal: 20,
+      marginTop: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 14,
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(127,29,29,0.28)" : "rgba(254,226,226,1)",
+      borderWidth: 1,
+      borderColor: "rgba(248,113,113,0.24)",
+    },
+    errorText: {
+      flex: 1,
+      color: theme.mode === "dark" ? "#FECACA" : "#991B1B",
+      fontSize: 12,
+      fontWeight: "600",
     },
 
     heroCard: {

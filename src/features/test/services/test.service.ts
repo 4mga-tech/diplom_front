@@ -1,8 +1,11 @@
 import { api } from "@/lib/api";
 
 import {
-  TestOption,
+  TestLevelSummary,
   TestQuestion,
+  TestQuestionSet,
+  TestTypeAvailabilityResponse,
+  TestOption,
   TestSubmitPayload,
   TestSubmitResult,
   TestType,
@@ -35,7 +38,7 @@ function normalizeOption(raw: any, index: number): TestOption {
 function normalizeQuestion(raw: any, levelId: string, testType: TestType): TestQuestion {
   return {
     id: String(raw?.id ?? raw?._id ?? ""),
-    levelId: String(raw?.levelId ?? levelId),
+    levelId: String(raw?.levelId ?? levelId).toLowerCase(),
     testType: (raw?.testType ?? testType) as TestType,
     question: String(raw?.question ?? raw?.prompt ?? raw?.text ?? ""),
     options: Array.isArray(raw?.options)
@@ -47,10 +50,7 @@ function normalizeQuestion(raw: any, levelId: string, testType: TestType): TestQ
   };
 }
 
-function normalizeSubmitResult(
-  raw: any,
-  payload: TestSubmitPayload,
-): TestSubmitResult {
+function normalizeSubmitResult(raw: any, payload: TestSubmitPayload): TestSubmitResult {
   return {
     levelId: payload.levelId,
     testType: payload.testType,
@@ -62,67 +62,108 @@ function normalizeSubmitResult(
   };
 }
 
-async function tryRequest<T>(requests: (() => Promise<T>)[]): Promise<T> {
-  let lastError: unknown;
+function normalizeLevelSummary(raw: any): TestLevelSummary {
+  return {
+    levelId: String(raw?.levelId ?? "").toLowerCase(),
+    title: String(raw?.title ?? raw?.levelId ?? "").toUpperCase(),
+    activeTypes: Array.isArray(raw?.activeTypes)
+      ? raw.activeTypes.filter(
+          (type: unknown): type is "vocabulary" | "grammar" =>
+            type === "vocabulary" || type === "grammar",
+        )
+      : [],
+    questionCounts: {
+      vocabulary: toNumber(raw?.questionCounts?.vocabulary),
+      grammar: toNumber(raw?.questionCounts?.grammar),
+    },
+  };
+}
 
-  for (const request of requests) {
-    try {
-      return await request();
-    } catch (error: any) {
-      lastError = error;
+function normalizeTypeAvailability(raw: any): TestTypeAvailabilityResponse {
+  const levelId = String(raw?.levelId ?? "").toLowerCase();
 
-      if (error?.response?.status === 404) {
-        continue;
-      }
+  return {
+    levelId,
+    types: Array.isArray(raw?.types)
+      ? raw.types
+          .map((item: any) => ({
+            testType: String(item?.testType ?? "").toLowerCase() as TestType,
+            title: String(item?.title ?? item?.testType ?? ""),
+            active: Boolean(item?.active),
+            status:
+              item?.status === "available" ? "available" : "coming_soon",
+            questionCount: toNumber(item?.questionCount),
+          }))
+          .filter(
+            (item) =>
+              item.testType === "vocabulary" ||
+              item.testType === "grammar" ||
+              item.testType === "listening" ||
+              item.testType === "speaking",
+          )
+      : [],
+  };
+}
 
-      throw error;
-    }
-  }
+function normalizeQuestionSet(raw: any, levelId: string, testType: TestType): TestQuestionSet {
+  const normalizedLevelId = String(raw?.levelId ?? levelId).toLowerCase();
+  const normalizedType = (raw?.testType ?? testType) as TestType;
+  const questions = Array.isArray(raw?.questions)
+    ? raw.questions.map((question: any) =>
+        normalizeQuestion(question, normalizedLevelId, normalizedType),
+      )
+    : [];
 
-  throw lastError;
+  return {
+    levelId: normalizedLevelId,
+    testType: normalizedType,
+    title: String(raw?.title ?? `${normalizedLevelId.toUpperCase()} ${normalizedType}`),
+    passingScore: toNumber(raw?.passingScore, 75),
+    totalQuestions: toNumber(raw?.totalQuestions, questions.length),
+    questions,
+  };
 }
 
 export const testService = {
-  async getQuestions(
+  async getLevels(): Promise<TestLevelSummary[]> {
+    const response = await api.get("/tests/levels");
+    const payload = extractData<any>(response.data);
+
+    return Array.isArray(payload)
+      ? payload.map((level) => normalizeLevelSummary(level))
+      : [];
+  },
+
+  async getTypes(levelId: string): Promise<TestTypeAvailabilityResponse> {
+    const normalizedLevelId = levelId.trim().toLowerCase();
+    const response = await api.get(
+      `/tests/${encodeURIComponent(normalizedLevelId)}/types`,
+    );
+    const payload = extractData<any>(response.data);
+    return normalizeTypeAvailability(payload);
+  },
+
+  async getQuestionSet(
     levelId: string,
     testType: TestType,
-  ): Promise<TestQuestion[]> {
-    const response = await tryRequest([
-      () =>
-        api.get("/tests/questions", {
-          params: { levelId, testType },
-        }),
-      () =>
-        api.get(
-          `/tests/${encodeURIComponent(levelId)}/${encodeURIComponent(testType)}/questions`,
-        ),
-      () =>
-        api.get("/tests", {
-          params: { levelId, testType },
-        }),
-    ]);
-
-    const payload = extractData<any>(response.data);
-    const questions = Array.isArray(payload)
-      ? payload
-      : Array.isArray(payload?.questions)
-        ? payload.questions
-        : Array.isArray(payload?.items)
-          ? payload.items
-          : [];
-
-    return questions.map((question) => normalizeQuestion(question, levelId, testType));
+  ): Promise<TestQuestionSet> {
+    const normalizedLevelId = levelId.trim().toLowerCase();
+    const response = await api.get(
+      `/tests/${encodeURIComponent(normalizedLevelId)}/${encodeURIComponent(testType)}/questions`,
+    );
+    return normalizeQuestionSet(
+      extractData<any>(response.data),
+      normalizedLevelId,
+      testType,
+    );
   },
 
   async submitTest(payload: TestSubmitPayload): Promise<TestSubmitResult> {
-    const response = await tryRequest([
-      () => api.post("/tests/submit", payload),
-      () =>
-        api.post(
-          `/tests/${encodeURIComponent(payload.levelId)}/${encodeURIComponent(payload.testType)}/submit`,
-          { answers: payload.answers },
-        ),
-    ]);
+    const normalizedLevelId = payload.levelId.trim().toLowerCase();
+    const response = await api.post(
+      `/tests/${encodeURIComponent(normalizedLevelId)}/${encodeURIComponent(payload.testType)}/submit`,
+      { answers: payload.answers },
+    );
 
     return normalizeSubmitResult(extractData<any>(response.data), payload);
   },

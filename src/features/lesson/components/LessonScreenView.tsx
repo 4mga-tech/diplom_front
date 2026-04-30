@@ -13,7 +13,7 @@ import {
   View,
 } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = {
   lesson: LessonDetail | null;
@@ -44,13 +44,19 @@ export default function LessonScreenView({
 }: Props) {
   const { theme } = useAppTheme();
   const styles = useThemedStyles(createLessonStyles);
+  const insets = useSafeAreaInsets();
   const sortedContents = React.useMemo(
     () => [...(lesson?.contents ?? [])].sort((a, b) => a.order - b.order),
     [lesson?.contents],
   );
   const [activeSectionId, setActiveSectionId] = React.useState<string | null>(null);
   const [viewedSectionIds, setViewedSectionIds] = React.useState<string[]>([]);
+  const [actionBarHeight, setActionBarHeight] = React.useState(0);
+  const [hasReachedBottomOnce, setHasReachedBottomOnce] = React.useState(false);
+  const [scrollViewportHeight, setScrollViewportHeight] = React.useState(0);
+  const [scrollContentHeight, setScrollContentHeight] = React.useState(0);
   const lessonState = lesson ? getLessonProgressState(lesson) : null;
+  const bottomThreshold = 32;
   const stateColor =
     lessonState === "completed"
       ? "#22C55E"
@@ -127,12 +133,28 @@ export default function LessonScreenView({
     : lessonState === "completed"
       ? "Restart Practice Quiz"
       : "Start Practice Quiz";
+  const shouldShowPrimaryQuizCtaInBar =
+    canOpenQuiz && lessonState !== "completed";
+  const hasLockedPrimaryForwardAction =
+    canManuallyCompleteLesson || shouldShowPrimaryQuizCtaInBar;
+  const primaryForwardActionEnabled =
+    !hasLockedPrimaryForwardAction || hasReachedBottomOnce;
   const resolvedNextActionLabel = canManuallyCompleteLesson
     ? "Complete Lesson"
     : nextActionLabel;
   const resolvedHeroNoticeText = canManuallyCompleteLesson
     ? "Finish the lesson, then press Complete Lesson to unlock the next lesson."
     : heroNoticeText;
+  const shouldShowStickyActionBar =
+    canManuallyCompleteLesson ||
+    shouldShowPrimaryQuizCtaInBar ||
+    (!canManuallyCompleteLesson && lessonState === "completed");
+  const scrollBottomPadding =
+    shouldShowStickyActionBar
+      ? Math.max(actionBarHeight + theme.s(1.5), theme.s(14))
+      : theme.s(4);
+  const showScrollToEndHelper =
+    hasLockedPrimaryForwardAction && !primaryForwardActionEnabled;
 
   React.useEffect(() => {
     const firstSectionId = sortedContents[0]?.id ?? null;
@@ -140,12 +162,48 @@ export default function LessonScreenView({
     setViewedSectionIds(firstSectionId ? [firstSectionId] : []);
   }, [lesson?.id, sortedContents]);
 
+  React.useEffect(() => {
+    setHasReachedBottomOnce(false);
+    setScrollViewportHeight(0);
+    setScrollContentHeight(0);
+  }, [lesson?.id]);
+
   const handleFocusSection = React.useCallback((sectionId: string) => {
     setActiveSectionId(sectionId);
     setViewedSectionIds((current) =>
       current.includes(sectionId) ? current : [...current, sectionId],
     );
   }, []);
+
+  const updateBottomReachState = React.useCallback(
+    (
+      offsetY: number,
+      layoutHeight: number,
+      contentHeight: number,
+    ) => {
+      if (layoutHeight <= 0 || contentHeight <= 0) {
+        return;
+      }
+
+      const contentFitsOnScreen = contentHeight <= layoutHeight + bottomThreshold;
+      const reachedBottom =
+        offsetY + layoutHeight >= contentHeight - bottomThreshold ||
+        contentFitsOnScreen;
+
+      if (reachedBottom) {
+        setHasReachedBottomOnce(true);
+      }
+    },
+    [bottomThreshold],
+  );
+
+  React.useEffect(() => {
+    if (scrollViewportHeight <= 0 || scrollContentHeight <= 0) {
+      return;
+    }
+
+    updateBottomReachState(0, scrollViewportHeight, scrollContentHeight);
+  }, [scrollContentHeight, scrollViewportHeight, updateBottomReachState]);
 
   if (loading) {
     return (
@@ -224,8 +282,30 @@ export default function LessonScreenView({
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: scrollBottomPadding },
+        ]}
         showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onLayout={(event) => {
+          const layoutHeight = event.nativeEvent.layout.height;
+          setScrollViewportHeight(layoutHeight);
+          updateBottomReachState(0, layoutHeight, scrollContentHeight);
+        }}
+        onContentSizeChange={(_width, height) => {
+          setScrollContentHeight(height);
+          updateBottomReachState(0, scrollViewportHeight, height);
+        }}
+        onScroll={(event) => {
+          const { contentOffset, contentSize, layoutMeasurement } =
+            event.nativeEvent;
+          updateBottomReachState(
+            contentOffset.y,
+            layoutMeasurement.height,
+            contentSize.height,
+          );
+        }}
       >
         <Animated.View entering={FadeIn.duration(240)} style={styles.heroCard}>
           <View style={styles.heroInner}>
@@ -419,47 +499,74 @@ export default function LessonScreenView({
         </View>
       </ScrollView>
 
-      <Animated.View entering={FadeIn.duration(240)} style={styles.actionBar}>
-        <LessonActionButton
-          label="Back to lessons"
-          onPress={onBack}
-          styles={styles}
-          icon="arrow-back"
-        />
-        {canManuallyCompleteLesson ? (
-          <LessonActionButton
-            label={completingLesson ? "Completing..." : "Complete Lesson"}
-            onPress={onCompleteLesson}
-            styles={styles}
-            variant="primary"
-            icon="checkmark-done"
-            disabled={completingLesson}
-          />
-        ) : null}
-        {canOpenQuiz ? (
-          <LessonActionButton
-            label={quizButtonLabel}
-            onPress={onOpenQuiz}
-            styles={styles}
-            variant="primary"
-            icon={
-              isFinalExamLesson
-                ? "school"
-                : lessonState === "completed"
-                  ? "refresh"
-                  : "play"
-            }
-          />
-        ) : null}
-        {!canManuallyCompleteLesson && lessonState === "completed" && hasNext ? (
-          <LessonActionButton
-            label="Next Lesson"
-            onPress={onOpenNextLesson}
-            styles={styles}
-            icon="arrow-forward"
-          />
-        ) : null}
-      </Animated.View>
+      {shouldShowStickyActionBar ? (
+        <Animated.View
+          entering={FadeIn.duration(240)}
+          style={styles.actionBarShell}
+          pointerEvents="box-none"
+        >
+          <View
+            onLayout={(event) => {
+              const nextHeight = Math.ceil(event.nativeEvent.layout.height);
+              if (nextHeight !== actionBarHeight) {
+                setActionBarHeight(nextHeight);
+              }
+            }}
+            style={[
+              styles.actionBar,
+              {
+                paddingBottom: Math.max(insets.bottom, theme.s(0.75)),
+              },
+            ]}
+          >
+            {showScrollToEndHelper ? (
+              <Text style={styles.actionHelperText}>
+                Scroll to the end to continue
+              </Text>
+            ) : null}
+            <LessonActionButton
+              label="Back to lessons"
+              onPress={onBack}
+              styles={styles}
+              icon="arrow-back"
+            />
+            {canManuallyCompleteLesson ? (
+              <LessonActionButton
+                label={completingLesson ? "Completing..." : "Complete Lesson"}
+                onPress={onCompleteLesson}
+                styles={styles}
+                variant="primary"
+                icon="checkmark-done"
+                disabled={completingLesson || !primaryForwardActionEnabled}
+              />
+            ) : null}
+            {shouldShowPrimaryQuizCtaInBar ? (
+              <LessonActionButton
+                label={quizButtonLabel}
+                onPress={onOpenQuiz}
+                styles={styles}
+                variant="primary"
+                disabled={!primaryForwardActionEnabled}
+                icon={
+                  isFinalExamLesson
+                    ? "school"
+                    : lessonState === "completed"
+                      ? "refresh"
+                      : "play"
+                }
+              />
+            ) : null}
+            {!canManuallyCompleteLesson && lessonState === "completed" && hasNext ? (
+              <LessonActionButton
+                label="Next Lesson"
+                onPress={onOpenNextLesson}
+                styles={styles}
+                icon="arrow-forward"
+              />
+            ) : null}
+          </View>
+        </Animated.View>
+      ) : null}
     </SafeAreaView>
   );
 }

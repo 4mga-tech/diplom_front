@@ -14,6 +14,7 @@ export default function TestResultScreen() {
     xpGained,
     score,
     passed,
+    title,
   } = useLocalSearchParams<{
     levelId?: string;
     testType?: string;
@@ -22,10 +23,14 @@ export default function TestResultScreen() {
     xpGained?: string;
     score?: string;
     passed?: string;
+    title?: string;
   }>();
 
   const safeLevel = normalizeTestLevelId(levelId) ?? "M1";
   const safeType = testType ?? "vocabulary";
+  const assessmentTitle =
+    title ??
+    `${safeLevel} ${safeType.charAt(0).toUpperCase()}${safeType.slice(1)} Exam`;
   const total = Number(totalQuestions ?? 0);
   const correct = Number(correctCount ?? 0);
   const wrong = Math.max(0, total - correct);
@@ -33,15 +38,15 @@ export default function TestResultScreen() {
   const didPass = passed === "true";
   const statusTitle = didPass ? "Passed" : "Not Passed";
   const statusText = didPass
-    ? "You passed the final exam. Your evaluated result has been recorded."
-    : "You did not pass this final exam yet. Review the lesson and retake it when you are ready.";
+    ? "You passed this level assessment. Your backend result has been recorded."
+    : "You did not pass this level assessment yet. Review the material and try again when you are ready.";
 
   return (
     <SafeAreaView edges={["top"]} style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>Final Lesson Exam</Text>
-        <Text style={styles.title}>Exam result</Text>
-        <Text style={styles.subtitle}>{`${safeLevel} - ${safeType}`}</Text>
+        <Text style={styles.eyebrow}>Level Assessment</Text>
+        <Text style={styles.title}>Assessment result</Text>
+        <Text style={styles.subtitle}>{`${safeLevel} - ${assessmentTitle}`}</Text>
       </View>
 
       <View style={styles.card}>
@@ -90,11 +95,11 @@ export default function TestResultScreen() {
           })
         }
       >
-        <Text style={styles.primaryBtnText}>Restart Final Exam</Text>
+        <Text style={styles.primaryBtnText}>Retake Assessment</Text>
       </Pressable>
 
       <Pressable style={styles.secondaryBtn} onPress={() => router.back()}>
-        <Text style={styles.secondaryBtnText}>Back to exams</Text>
+        <Text style={styles.secondaryBtnText}>Back to assessment tracks</Text>
       </Pressable>
     </SafeAreaView>
   );

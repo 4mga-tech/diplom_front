@@ -80,9 +80,13 @@ export function useTestSession(
       answers: questions
         .map((question) => ({
           questionId: question.id,
-          answer: answersMap[question.id],
+          selectedOptionId: answersMap[question.id],
         }))
-        .filter((answer) => typeof answer.answer === "string" && answer.answer.length > 0),
+        .filter(
+          (answer) =>
+            typeof answer.selectedOptionId === "string" &&
+            answer.selectedOptionId.length > 0,
+        ),
     };
   }
 

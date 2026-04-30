@@ -42,6 +42,12 @@ export type HintSpendResult = {
   amount: number | null;
 };
 
+export type LessonXpClaimResult = {
+  claimed: boolean;
+  amount: number | null;
+  status: "claimed" | "already_completed" | "already_rewarded";
+};
+
 const XP_SUMMARY_ENDPOINT = "/me/xp/summary";
 const XP_HISTORY_ENDPOINT = "/me/xp/history";
 const DAILY_LOGIN_CLAIM_ENDPOINT = "/me/xp/daily-login/claim";
@@ -359,20 +365,53 @@ function normalizeHintSpendResult(raw: any): HintSpendResult {
   };
 }
 
+function normalizeLessonXpClaimResult(raw: any): LessonXpClaimResult {
+  const claimed = extractClaimedFlag(raw);
+  const rawStatus = String(
+    raw?.status ?? raw?.reason ?? raw?.code ?? raw?.message ?? "",
+  )
+    .trim()
+    .toLowerCase();
+
+  if (!claimed) {
+    const status =
+      rawStatus.includes("reward") || rawStatus.includes("xp")
+        ? "already_rewarded"
+        : "already_completed";
+
+    return {
+      claimed: false,
+      amount: null,
+      status,
+    };
+  }
+
+  return {
+    claimed: true,
+    amount:
+      toPositiveNumber(raw?.amount) ??
+      toPositiveNumber(raw?.xp) ??
+      toPositiveNumber(raw?.xpGained),
+    status: "claimed",
+  };
+}
+
 export async function claimDailyLoginXpAction(): Promise<DailyXpClaimResult> {
   const response = await api.post(DAILY_LOGIN_CLAIM_ENDPOINT);
   return normalizeDailyXpClaimResult(extractData<any>(response.data));
 }
 
-export async function claimLessonXp(lessonId: string): Promise<boolean> {
+export async function claimLessonXp(
+  lessonId: string,
+): Promise<LessonXpClaimResult> {
   try {
     const response = await api.post(LESSON_XP_CLAIM_ENDPOINT(lessonId));
-    return extractClaimedFlag(extractData<any>(response.data));
+    return normalizeLessonXpClaimResult(extractData<any>(response.data));
   } catch (error: any) {
     const status = error?.response?.status;
 
     if (status === 400 || status === 409) {
-      return false;
+      return normalizeLessonXpClaimResult(error?.response?.data);
     }
 
     throw error;

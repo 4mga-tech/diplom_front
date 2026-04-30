@@ -106,6 +106,36 @@ export default function LessonScreen() {
     );
   }, [lesson?.nextLessonId, levelId, resolvedUnitId]);
 
+  const handleAdvanceAfterCompletion = useCallback(() => {
+    if (resolvedUnitId && lesson?.nextLessonId) {
+      router.replace(
+        getLessonDetailRoute(levelId, resolvedUnitId, lesson.nextLessonId),
+      );
+      return;
+    }
+
+    if (resolvedUnitId && lesson?.id && lesson?.hasQuiz) {
+      router.replace(
+        getLessonQuizRoute(levelId, resolvedUnitId, lesson.id, lesson.quizId),
+      );
+      return;
+    }
+
+    if (resolvedUnitId) {
+      router.replace(getLessonListRoute(levelId, resolvedUnitId));
+      return;
+    }
+
+    router.replace("/");
+  }, [
+    lesson?.hasQuiz,
+    lesson?.id,
+    lesson?.nextLessonId,
+    lesson?.quizId,
+    levelId,
+    resolvedUnitId,
+  ]);
+
   const handleCompleteLesson = useCallback(async () => {
     if (
       !lesson?.id ||
@@ -119,16 +149,14 @@ export default function LessonScreen() {
       setCompletingLesson(true);
       setCompletionMessage(null);
 
-      const claimed = await claimLessonXp(lesson.id);
+      const claimResult = await claimLessonXp(lesson.id);
 
-      if (claimed) {
+      if (claimResult.claimed) {
         notifyXpUpdated();
-        setCompletionMessage("Lesson completed");
+        handleAdvanceAfterCompletion();
       } else {
-        setCompletionMessage("Lesson completion was already recorded.");
+        handleAdvanceAfterCompletion();
       }
-
-      await loadLesson();
     } catch (completionError) {
       console.error("Error completing lesson:", completionError);
       setCompletionMessage("We could not complete this lesson right now.");
@@ -137,10 +165,10 @@ export default function LessonScreen() {
     }
   }, [
     completingLesson,
+    handleAdvanceAfterCompletion,
     lesson?.hasQuiz,
     lesson?.id,
     lesson?.isCompleted,
-    loadLesson,
   ]);
 
   return (

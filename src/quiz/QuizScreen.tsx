@@ -1,6 +1,9 @@
 import { api } from "@/lib/api";
 import { fetchLessonDetail, LessonDetail } from "@/lib/learning";
-import { claimLessonXp } from "@/src/features/achievements/achievements.service";
+import {
+  claimLessonXp,
+  LessonXpClaimResult,
+} from "@/src/features/achievements/achievements.service";
 import { notifyXpUpdated } from "@/src/features/achievements/xp-events";
 import {
   getLessonDetailRoute,
@@ -40,6 +43,12 @@ type QuizSubmitResult = {
   correctCount: number;
   totalQuestions: number;
   xpGained: number;
+};
+
+const DEFAULT_LESSON_XP_CLAIM_RESULT: LessonXpClaimResult = {
+  claimed: false,
+  amount: null,
+  status: "already_completed",
 };
 
 function extractData<T>(payload: unknown): T {
@@ -134,9 +143,11 @@ export default function QuizScreen() {
   const [quizResult, setQuizResult] = useState<QuizSubmitResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lessonXpReward, setLessonXpReward] = useState(0);
   const [lessonCompletionConfirmed, setLessonCompletionConfirmed] =
     useState(false);
+  const [lessonXpClaimResult, setLessonXpClaimResult] = useState<LessonXpClaimResult>(
+    DEFAULT_LESSON_XP_CLAIM_RESULT,
+  );
   const [quizId, setQuizId] = useState(routeQuizId);
   const [lessonDetail, setLessonDetail] = useState<LessonDetail | null>(null);
 
@@ -168,7 +179,6 @@ export default function QuizScreen() {
 
         setQuestions(nextQuestions);
         setLessonDetail(lessonDetail);
-        setLessonXpReward(lessonDetail?.xpReward ?? 0);
         setQuizId(resolvedQuizId);
 
         if (!resolvedQuizId) {
@@ -237,6 +247,7 @@ export default function QuizScreen() {
       setFinished(true);
       setError(null);
       setLessonCompletionConfirmed(false);
+      setLessonXpClaimResult(DEFAULT_LESSON_XP_CLAIM_RESULT);
       if (!lessonId || !quizId) {
         setError("We could not find this quiz right now.");
         return;
@@ -265,16 +276,13 @@ export default function QuizScreen() {
         notifyXpUpdated();
 
         if (result.passed) {
-          console.log(
-            "[QuizScreen] Completing passed lesson via XP claim route",
-            {
-              lessonId,
-              endpoint: `/me/xp/lessons/${lessonId}/claim`,
-            },
-          );
-          await claimLessonXp(lessonId);
+          const claimResult = await claimLessonXp(lessonId);
+          setLessonXpClaimResult(claimResult);
           setLessonCompletionConfirmed(true);
-          notifyXpUpdated();
+
+          if (claimResult.claimed) {
+            notifyXpUpdated();
+          }
         }
       } catch (submitError: any) {
         console.log(
@@ -382,6 +390,7 @@ export default function QuizScreen() {
     setQuizResult(null);
     setError(null);
     setLessonCompletionConfirmed(false);
+    setLessonXpClaimResult(DEFAULT_LESSON_XP_CLAIM_RESULT);
   }, []);
 
   React.useEffect(() => {
@@ -565,6 +574,35 @@ export default function QuizScreen() {
     const completed = passed && lessonCompletionConfirmed;
     const correctCount = quizResult?.correctCount ?? 0;
     const resolvedTotalQuestions = quizResult?.totalQuestions ?? totalQuestions;
+    const earnedXpAmount = quizResult?.xpGained ?? 0;
+    const showEarnedXp = passed && earnedXpAmount > 0;
+    const isRepeatCompletion =
+      completed &&
+      !showEarnedXp &&
+      lessonXpClaimResult.status !== "claimed";
+    const resultTitle = completed
+      ? isRepeatCompletion
+        ? "Already completed"
+        : "Lesson completed"
+      : passed
+        ? isFinalExam
+          ? "Final exam passed"
+          : "Practice passed"
+        : isFinalExam
+          ? "Final exam not passed yet"
+          : "Practice not passed yet";
+    const resultSubtitle = completed
+      ? isRepeatCompletion
+        ? "This lesson was already completed earlier. You can review or retake the exam, but no new XP is available."
+        : "Your lesson progress is updated. You can return to the lesson list and continue forward."
+      : passed
+        ? `Your ${quizModeLabel.toLowerCase()} result was recorded, but lesson progress still needs to finish updating.`
+        : isFinalExam
+          ? "Review the lesson content and try the final exam again when you are ready."
+          : "Review the lesson content and try the practice quiz again when you are ready.";
+    const completionBannerText = isRepeatCompletion
+      ? "This lesson was already marked as completed. Retakes do not award additional XP."
+      : "This lesson is now marked as completed.";
 
     return (
       <SafeAreaView
@@ -625,27 +663,13 @@ export default function QuizScreen() {
             entering={FadeInDown.delay(90).duration(260)}
             style={styles.resultTitle}
           >
-            {completed
-              ? "Lesson completed"
-              : passed
-                ? isFinalExam
-                  ? "Final exam passed"
-                  : "Practice passed"
-                : isFinalExam
-                  ? "Final exam not passed yet"
-                  : "Practice not passed yet"}
+            {resultTitle}
           </Animated.Text>
           <Animated.Text
             entering={FadeInDown.delay(120).duration(260)}
             style={styles.resultSubtitle}
           >
-            {completed
-              ? "Your lesson progress is updated. You can return to the lesson list and continue forward."
-              : passed
-                ? `Your ${quizModeLabel.toLowerCase()} result was recorded, but lesson progress still needs to finish updating.`
-                : isFinalExam
-                  ? "Review the lesson content and try the final exam again when you are ready."
-                  : "Review the lesson content and try the practice quiz again when you are ready."}
+            {resultSubtitle}
           </Animated.Text>
 
           {completed ? (
@@ -662,10 +686,10 @@ export default function QuizScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.completionBannerTitle}>
-                  Progress updated
+                  {isRepeatCompletion ? "Already completed" : "Progress updated"}
                 </Text>
                 <Text style={styles.completionBannerText}>
-                  This lesson is now marked as completed.
+                  {completionBannerText}
                 </Text>
               </View>
             </Animated.View>
@@ -682,13 +706,13 @@ export default function QuizScreen() {
               </Text>
               <Text style={styles.resultStatLabel}>Correct</Text>
             </View>
-            {passed ? (
+            {showEarnedXp ? (
               <Animated.View
                 entering={FadeInDown.delay(200).duration(280)}
                 style={[styles.resultStat, styles.xpStat]}
               >
                 <Text style={styles.resultStatValue}>
-                  +{quizResult?.xpGained ?? lessonXpReward}
+                  +{earnedXpAmount}
                 </Text>
                 <Text style={styles.resultStatLabel}>XP gained</Text>
               </Animated.View>

@@ -10,8 +10,8 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  View,
   useWindowDimensions,
+  View,
 } from "react-native";
 
 import { fetchLevels, LevelItem } from "@/lib/learning";
@@ -51,7 +51,9 @@ function isValidGradient(value: unknown): value is [string, string] {
   );
 }
 
-function getLevelGradient(gradient?: [string, string] | null): [string, string] {
+function getLevelGradient(
+  gradient?: [string, string] | null,
+): [string, string] {
   return isValidGradient(gradient)
     ? [gradient[0].trim(), gradient[1].trim()]
     : ["#334155", "#1E293B"];
@@ -127,6 +129,17 @@ export default function CoursesScreen() {
   const [claiming, setClaiming] = useState(false);
   const [claimMessage, setClaimMessage] = useState<string | null>(null);
 
+  const loadLevels = useCallback(async () => {
+    try {
+      const res = await fetchLevels();
+      setLevels(res);
+    } catch (e) {
+      console.log("Error loading levels", e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const interval = setInterval(() => {
       const fake = {
@@ -143,19 +156,8 @@ export default function CoursesScreen() {
   }, [addNotification]);
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetchLevels();
-        setLevels(res);
-      } catch (e) {
-        console.log("Error loading levels", e);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void load();
-  }, []);
+    void loadLevels();
+  }, [loadLevels]);
 
   const loadXpOverview = useCallback(async (clearMessage = false) => {
     try {
@@ -199,15 +201,17 @@ export default function CoursesScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      void loadLevels();
       void loadXpOverview(true);
-    }, [loadXpOverview]),
+    }, [loadLevels, loadXpOverview]),
   );
 
   useEffect(() => {
     return subscribeToXpUpdates(() => {
+      void loadLevels();
       void loadXpOverview();
     });
-  }, [loadXpOverview]);
+  }, [loadLevels, loadXpOverview]);
 
   const levelMeta = useMemo<Record<string, { shortInfo: string }>>(
     () => ({
@@ -233,16 +237,14 @@ export default function CoursesScreen() {
   const displayLevels = useMemo<DisplayLevel[]>(() => {
     const preferredOrder = ["B1", "M1", "M2", "M3", "M4"];
 
-    const sorted = [...levels].sort(
-      (a, b) => {
-        const aIndex = preferredOrder.indexOf(a.id);
-        const bIndex = preferredOrder.indexOf(b.id);
-        return (
-          (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) -
-          (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex)
-        );
-      },
-    );
+    const sorted = [...levels].sort((a, b) => {
+      const aIndex = preferredOrder.indexOf(a.id);
+      const bIndex = preferredOrder.indexOf(b.id);
+      return (
+        (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) -
+        (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex)
+      );
+    });
 
     return sorted.map((item) => ({
       ...item,
@@ -250,6 +252,12 @@ export default function CoursesScreen() {
       gradient: getLevelGradient(item.gradient),
     }));
   }, [levels, levelMeta]);
+
+  const activeLevel =
+    displayLevels.find((level) => level.isUnlocked && !level.isCompleted)?.id ??
+    displayLevels.find((level) => level.isUnlocked)?.id ??
+    displayLevels[0]?.id ??
+    "B1";
 
   const claimState = useMemo(
     () => getClaimStateCopy(xpOverview, claiming),
@@ -277,8 +285,6 @@ export default function CoursesScreen() {
       },
     ]);
   };
-
-  const activeLevel = displayLevels[0]?.id ?? "B1";
 
   return (
     <View style={styles.container}>
@@ -428,16 +434,16 @@ export default function CoursesScreen() {
         showsVerticalScrollIndicator={false}
         renderItem={({ item, index }) => (
           <Pressable
+            disabled={!item.isUnlocked}
             style={[
               styles.levelCardWrap,
               index % 2 === 0 ? { marginRight: 10 } : null,
             ]}
             onPress={() => {
-              // console.log("[learning][courses] level tapped", {
-              //   itemId: item.id,
-              //   route: getLevelRoute(item.id),
-              //   title: item.title,
-              // });
+              if (!item.isUnlocked) {
+                return;
+              }
+
               router.push(getLevelRoute(item.id));
             }}
           >
@@ -448,11 +454,17 @@ export default function CoursesScreen() {
             >
               <View style={styles.levelCardTop}>
                 <View style={styles.levelTag}>
-                  <Text style={styles.levelTagText}>Open</Text>
+                  <Text style={styles.levelTagText}>
+                    {item.isCompleted
+                      ? "Completed"
+                      : item.isUnlocked
+                        ? "Open"
+                        : "Locked"}
+                  </Text>
                 </View>
 
                 <Ionicons
-                  name="arrow-forward"
+                  name={item.isUnlocked ? "arrow-forward" : "lock-closed"}
                   size={16}
                   color="rgba(255,255,255,0.92)"
                 />

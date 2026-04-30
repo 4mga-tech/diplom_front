@@ -6,6 +6,8 @@ import {
   XpHistoryResult,
   XpOverview,
 } from "@/src/features/achievements/achievements.service";
+import XpHistoryBottomSheet from "@/src/features/achievements/components/XpHistoryBottomSheet";
+import XpHistoryRow from "@/src/features/achievements/components/XpHistoryRow";
 import {
   notifyXpUpdated,
   subscribeToXpUpdates,
@@ -41,24 +43,6 @@ type ClaimStateCopy = {
   disabled: boolean;
 };
 
-function formatAmount(amount: number) {
-  return `${amount > 0 ? "+" : ""}${amount} XP`;
-}
-
-function getHistoryDirectionLabel(amount: number) {
-  return amount >= 0 ? "Added" : "Spent";
-}
-
-function formatTimestamp(timestamp: string) {
-  const date = new Date(timestamp);
-
-  if (Number.isNaN(date.getTime())) {
-    return "Unknown time";
-  }
-
-  return date.toLocaleString();
-}
-
 function formatNextClaimTime(timestamp: string | null) {
   if (!timestamp) {
     return "Already claimed today";
@@ -73,7 +57,10 @@ function formatNextClaimTime(timestamp: string | null) {
   return `Next claim ${date.toLocaleString()}`;
 }
 
-function getClaimStateCopy(summary: XpOverview, claiming: boolean): ClaimStateCopy {
+function getClaimStateCopy(
+  summary: XpOverview,
+  claiming: boolean,
+): ClaimStateCopy {
   if (claiming) {
     return {
       buttonLabel: "Claiming XP...",
@@ -123,52 +110,6 @@ function SummaryCard({
   );
 }
 
-function HistoryRow({
-  item,
-  styles,
-  theme,
-}: {
-  item: XpHistoryEntry;
-  styles: ReturnType<typeof createStyles>;
-  theme: AppTheme;
-}) {
-  const positive = item.amount >= 0;
-  const accent = positive ? "#22C55E" : "#F87171";
-
-  return (
-    <View style={styles.historyCard}>
-      <View
-        style={[
-          styles.historyIconWrap,
-          {
-            backgroundColor:
-              theme.mode === "dark" ? `${accent}20` : `${accent}12`,
-            borderColor: theme.mode === "dark" ? `${accent}40` : `${accent}22`,
-          },
-        ]}
-      >
-        <Ionicons
-          name={positive ? "arrow-up-outline" : "arrow-down-outline"}
-          size={18}
-          color={accent}
-        />
-      </View>
-
-      <View style={styles.historyContent}>
-        <Text style={styles.historyReason}>{item.reason}</Text>
-        <Text style={[styles.historyDirection, { color: accent }]}>
-          {getHistoryDirectionLabel(item.amount)}
-        </Text>
-        <Text style={styles.historyTimestamp}>{formatTimestamp(item.timestamp)}</Text>
-      </View>
-
-      <Text style={[styles.historyAmount, { color: accent }]}>
-        {formatAmount(item.amount)}
-      </Text>
-    </View>
-  );
-}
-
 export default function AchievementsScreen() {
   const { theme } = useAppTheme();
   const styles = useThemedStyles(createStyles);
@@ -182,6 +123,7 @@ export default function AchievementsScreen() {
   const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [claimMessage, setClaimMessage] = useState<string | null>(null);
+  const [historySheetVisible, setHistorySheetVisible] = useState(false);
 
   const loadData = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
@@ -243,7 +185,7 @@ export default function AchievementsScreen() {
     });
   }, [loadData]);
 
-  const recentHistory = useMemo(() => history.slice(0, 20), [history]);
+  const previewHistory = useMemo(() => history.slice(0, 3), [history]);
   const claimState = useMemo(
     () => getClaimStateCopy(summary, claiming),
     [claiming, summary],
@@ -293,7 +235,12 @@ export default function AchievementsScreen() {
     );
   }
 
-  if (error && history.length === 0 && summary.totalXp === 0 && historyState !== "mapping_problem") {
+  if (
+    error &&
+    history.length === 0 &&
+    summary.totalXp === 0 &&
+    historyState !== "mapping_problem"
+  ) {
     return (
       <View style={styles.centerState}>
         <View style={styles.stateCard}>
@@ -311,154 +258,196 @@ export default function AchievementsScreen() {
   }
 
   return (
-    <FlatList
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      data={recentHistory}
-      keyExtractor={(item) => item.id}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={() => void loadData(true)}
-          tintColor={theme.colors.text}
-        />
-      }
-      ListHeaderComponent={
-        <View>
-          <View style={styles.heroCard}>
-            <View style={styles.heroHeader}>
-              <View>
-                <Text style={styles.heroEyebrow}>Achievements</Text>
-                <Text style={styles.heroTitle}>Your XP wallet</Text>
-                <Text style={styles.heroSubtitle}>
-                  XP is earned from claims, lessons, and quiz rewards. XP is spent only on hints.
+    <View style={styles.screen}>
+      <FlatList
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        data={previewHistory}
+        keyExtractor={(item) => item.id}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void loadData(true)}
+            tintColor={theme.colors.text}
+          />
+        }
+        ListHeaderComponent={
+          <View>
+            <View style={styles.heroCard}>
+              <View style={styles.heroHeader}>
+                {/* <View>
+                  <Text style={styles.heroEyebrow}>Achievements</Text>
+                  <Text style={styles.heroTitle}>Your XP wallet</Text>
+                  <Text style={styles.heroSubtitle}>
+                    XP is earned from claims, lessons, and quiz rewards. XP is
+                    spent only on hints.
+                  </Text>
+                </View> */}
+              </View>
+
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Available XP balance</Text>
+                <Text style={styles.totalValue}>{summary.totalXp}</Text>
+                <Text style={styles.totalHelper}>
+                  This is the XP you can use right now for hints.
+                </Text>
+                <Pressable
+                  disabled={claimState.disabled}
+                  onPress={() => {
+                    void handleClaimXp();
+                  }}
+                  style={[
+                    styles.claimButton,
+                    claimState.disabled && styles.claimButtonDisabled,
+                  ]}
+                >
+                  {claiming ? (
+                    <ActivityIndicator color="#0F172A" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="gift-outline" size={16} color="#0F172A" />
+                      <Text style={styles.claimButtonText}>
+                        {claimState.buttonLabel}
+                      </Text>
+                    </>
+                  )}
+                </Pressable>
+                <Text style={styles.claimStatusText}>
+                  {claimState.detailLabel}
+                </Text>
+                {claimMessage ? (
+                  <Text style={styles.claimMessageText}>{claimMessage}</Text>
+                ) : null}
+              </View>
+
+              <View style={styles.summaryGrid}>
+                <SummaryCard
+                  icon="flash"
+                  value={String(summary.totalXp)}
+                  label="Available XP"
+                  colors={["#2563EB", "#1D4ED8"]}
+                  styles={styles}
+                />
+                <SummaryCard
+                  icon="flame"
+                  value={String(summary.streak)}
+                  label="Streak"
+                  colors={["#F59E0B", "#EA580C"]}
+                  styles={styles}
+                />
+                <SummaryCard
+                  icon="checkmark-circle"
+                  value={String(summary.completedLessons)}
+                  label="Lessons"
+                  colors={["#14B8A6", "#0F766E"]}
+                  styles={styles}
+                />
+              </View>
+            </View>
+
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionHeaderContent}>
+                <Text style={styles.sectionTitle}>History</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Every XP gain and spend appears here, including hint use.
                 </Text>
               </View>
-              <View style={styles.heroBadge}>
-                <Ionicons name="sparkles" size={14} color="#FACC15" />
-                <Text style={styles.heroBadgeText}>Backend synced</Text>
-              </View>
-            </View>
-
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Available XP balance</Text>
-              <Text style={styles.totalValue}>{summary.totalXp}</Text>
-              <Text style={styles.totalHelper}>
-                This is the XP you can use right now for hints.
-              </Text>
               <Pressable
-                disabled={claimState.disabled}
-                onPress={() => {
-                  void handleClaimXp();
-                }}
-                style={[
-                  styles.claimButton,
-                  claimState.disabled && styles.claimButtonDisabled,
+                disabled={history.length === 0}
+                onPress={() => setHistorySheetVisible(true)}
+                style={({ pressed }) => [
+                  styles.showFullHistoryButton,
+                  pressed && history.length > 0 ? { opacity: 0.72 } : null,
+                  history.length === 0
+                    ? styles.showFullHistoryButtonDisabled
+                    : null,
                 ]}
               >
-                {claiming ? (
-                  <ActivityIndicator color="#0F172A" size="small" />
-                ) : (
-                  <>
-                    <Ionicons name="gift-outline" size={16} color="#0F172A" />
-                    <Text style={styles.claimButtonText}>{claimState.buttonLabel}</Text>
-                  </>
-                )}
+                <Text
+                  style={[
+                    styles.showFullHistoryText,
+                    history.length === 0
+                      ? styles.showFullHistoryTextDisabled
+                      : null,
+                  ]}
+                >
+                  Show full history
+                </Text>
               </Pressable>
-              <Text style={styles.claimStatusText}>{claimState.detailLabel}</Text>
-              {claimMessage ? (
-                <Text style={styles.claimMessageText}>{claimMessage}</Text>
-              ) : null}
             </View>
 
-            <View style={styles.summaryGrid}>
-              <SummaryCard
-                icon="flash"
-                value={String(summary.totalXp)}
-                label="Available XP"
-                colors={["#2563EB", "#1D4ED8"]}
-                styles={styles}
-              />
-              <SummaryCard
-                icon="flame"
-                value={String(summary.streak)}
-                label="Streak"
-                colors={["#F59E0B", "#EA580C"]}
-                styles={styles}
-              />
-              <SummaryCard
-                icon="checkmark-circle"
-                value={String(summary.completedLessons)}
-                label="Lessons"
-                colors={["#14B8A6", "#0F766E"]}
-                styles={styles}
-              />
-            </View>
+            {error ? <Text style={styles.inlineError}>{error}</Text> : null}
           </View>
-
-          <View style={styles.sectionHeader}>
-            <View>
-              <Text style={styles.sectionTitle}>History</Text>
-              <Text style={styles.sectionSubtitle}>
-                Every XP gain and spend appears here, including hint use.
+        }
+        renderItem={({ item }) => <XpHistoryRow item={item} />}
+        ItemSeparatorComponent={() => (
+          <View style={{ height: theme.s(1.25) }} />
+        )}
+        ListEmptyComponent={
+          historyState === "error" ? (
+            <View style={styles.emptyCard}>
+              <View style={styles.emptyIconWrap}>
+                <Ionicons
+                  name="cloud-offline-outline"
+                  size={20}
+                  color={theme.colors.text}
+                />
+              </View>
+              <Text style={styles.emptyTitle}>Could not load XP history</Text>
+              <Text style={styles.emptyText}>
+                Pull to refresh or try again after your next XP update.
               </Text>
             </View>
-          </View>
+          ) : historyState === "mapping_problem" ? (
+            <View style={styles.emptyCard}>
+              <View style={styles.emptyIconWrap}>
+                <Ionicons
+                  name="construct-outline"
+                  size={20}
+                  color={theme.colors.text}
+                />
+              </View>
+              <Text style={styles.emptyTitle}>XP history needs a refresh</Text>
+              <Text style={styles.emptyText}>
+                Your XP wallet loaded, but some history fields were not
+                recognized clearly yet.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.emptyCard}>
+              <View style={styles.emptyIconWrap}>
+                <Ionicons
+                  name="time-outline"
+                  size={20}
+                  color={theme.colors.text}
+                />
+              </View>
+              <Text style={styles.emptyTitle}>No XP history yet</Text>
+              <Text style={styles.emptyText}>
+                Daily claims, lesson completions, quiz rewards, and hint spends
+                will show here once you start earning or spending XP.
+              </Text>
+            </View>
+          )
+        }
+      />
 
-          {error ? <Text style={styles.inlineError}>{error}</Text> : null}
-        </View>
-      }
-      renderItem={({ item }) => (
-        <HistoryRow item={item} styles={styles} theme={theme} />
-      )}
-      ItemSeparatorComponent={() => <View style={{ height: theme.s(1.25) }} />}
-      ListEmptyComponent={
-        historyState === "error" ? (
-          <View style={styles.emptyCard}>
-            <View style={styles.emptyIconWrap}>
-              <Ionicons
-                name="cloud-offline-outline"
-                size={20}
-                color={theme.colors.text}
-              />
-            </View>
-            <Text style={styles.emptyTitle}>Could not load XP history</Text>
-            <Text style={styles.emptyText}>
-              Pull to refresh or try again after your next XP update.
-            </Text>
-          </View>
-        ) : historyState === "mapping_problem" ? (
-          <View style={styles.emptyCard}>
-            <View style={styles.emptyIconWrap}>
-              <Ionicons
-                name="construct-outline"
-                size={20}
-                color={theme.colors.text}
-              />
-            </View>
-            <Text style={styles.emptyTitle}>XP history needs a refresh</Text>
-            <Text style={styles.emptyText}>
-              Your XP wallet loaded, but some history fields were not recognized clearly yet.
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.emptyCard}>
-            <View style={styles.emptyIconWrap}>
-              <Ionicons name="time-outline" size={20} color={theme.colors.text} />
-            </View>
-            <Text style={styles.emptyTitle}>No XP history yet</Text>
-            <Text style={styles.emptyText}>
-              Daily claims, lesson completions, quiz rewards, and hint spends will show here once you start earning or spending XP.
-            </Text>
-          </View>
-        )
-      }
-    />
+      <XpHistoryBottomSheet
+        visible={historySheetVisible}
+        history={history}
+        historyState={historyState}
+        onClose={() => setHistorySheetVisible(false)}
+      />
+    </View>
   );
 }
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: theme.colors.bg,
+    },
     container: {
       flex: 1,
       backgroundColor: theme.colors.bg,
@@ -474,7 +463,9 @@ const createStyles = (theme: AppTheme) =>
       paddingVertical: theme.s(1.8),
       marginBottom: theme.s(2.5),
       backgroundColor:
-        theme.mode === "dark" ? "rgba(15,23,42,0.84)" : "rgba(255,255,255,0.98)",
+        theme.mode === "dark"
+          ? "rgba(15,23,42,0.84)"
+          : "rgba(255,255,255,0.98)",
       borderWidth: 1,
       borderColor:
         theme.mode === "dark"
@@ -517,10 +508,14 @@ const createStyles = (theme: AppTheme) =>
       paddingVertical: 7,
       borderRadius: 999,
       backgroundColor:
-        theme.mode === "dark" ? "rgba(250,204,21,0.12)" : "rgba(250,204,21,0.14)",
+        theme.mode === "dark"
+          ? "rgba(250,204,21,0.12)"
+          : "rgba(250,204,21,0.14)",
       borderWidth: 1,
       borderColor:
-        theme.mode === "dark" ? "rgba(250,204,21,0.18)" : "rgba(250,204,21,0.22)",
+        theme.mode === "dark"
+          ? "rgba(250,204,21,0.18)"
+          : "rgba(250,204,21,0.22)",
     },
     heroBadgeText: {
       color: theme.colors.text,
@@ -572,9 +567,13 @@ const createStyles = (theme: AppTheme) =>
     },
     claimButtonDisabled: {
       backgroundColor:
-        theme.mode === "dark" ? "rgba(148,163,184,0.22)" : "rgba(148,163,184,0.18)",
+        theme.mode === "dark"
+          ? "rgba(148,163,184,0.22)"
+          : "rgba(148,163,184,0.18)",
       borderColor:
-        theme.mode === "dark" ? "rgba(148,163,184,0.16)" : "rgba(148,163,184,0.22)",
+        theme.mode === "dark"
+          ? "rgba(148,163,184,0.16)"
+          : "rgba(148,163,184,0.22)",
     },
     claimButtonText: {
       color: "#0F172A",
@@ -626,7 +625,14 @@ const createStyles = (theme: AppTheme) =>
       marginTop: 4,
     },
     sectionHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
       marginBottom: theme.s(1.5),
+      gap: theme.s(1),
+    },
+    sectionHeaderContent: {
+      flex: 1,
     },
     sectionTitle: {
       color: theme.colors.text,
@@ -640,62 +646,38 @@ const createStyles = (theme: AppTheme) =>
       marginTop: 4,
       lineHeight: 19,
     },
-    historyCard: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: theme.s(1.5),
-      borderRadius: 22,
-      padding: theme.s(2),
+    showFullHistoryButton: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
       backgroundColor:
-        theme.mode === "dark" ? "rgba(15,23,42,0.84)" : "rgba(255,255,255,0.98)",
+        theme.mode === "dark" ? "rgba(37,99,235,0.12)" : "rgba(37,99,235,0.08)",
       borderWidth: 1,
       borderColor:
         theme.mode === "dark"
-          ? "rgba(51,65,85,0.52)"
-          : "rgba(148,163,184,0.18)",
+          ? "rgba(96,165,250,0.18)"
+          : "rgba(59,130,246,0.14)",
     },
-    historyIconWrap: {
-      width: 44,
-      height: 44,
-      borderRadius: 16,
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 1,
+    showFullHistoryButtonDisabled: {
+      opacity: 0.55,
     },
-    historyContent: {
-      flex: 1,
-    },
-    historyReason: {
-      color: theme.colors.text,
-      fontSize: 14,
-      fontWeight: "800",
-      lineHeight: 20,
-    },
-    historyDirection: {
+    showFullHistoryText: {
+      color: theme.mode === "dark" ? "#BFDBFE" : "#1D4ED8",
       fontSize: 11,
       fontWeight: "800",
-      textTransform: "uppercase",
-      letterSpacing: 0.45,
-      marginTop: 4,
+      textAlign: "center",
     },
-    historyTimestamp: {
+    showFullHistoryTextDisabled: {
       color: theme.colors.muted,
-      fontSize: 12,
-      fontWeight: "600",
-      marginTop: 4,
-    },
-    historyAmount: {
-      fontSize: 13,
-      fontWeight: "900",
-      textAlign: "right",
-      maxWidth: 84,
     },
     emptyCard: {
       alignItems: "center",
       padding: theme.s(3),
       borderRadius: 24,
       backgroundColor:
-        theme.mode === "dark" ? "rgba(15,23,42,0.84)" : "rgba(255,255,255,0.98)",
+        theme.mode === "dark"
+          ? "rgba(15,23,42,0.84)"
+          : "rgba(255,255,255,0.98)",
       borderWidth: 1,
       borderColor:
         theme.mode === "dark"
@@ -746,7 +728,9 @@ const createStyles = (theme: AppTheme) =>
       alignItems: "center",
       gap: theme.s(1.25),
       backgroundColor:
-        theme.mode === "dark" ? "rgba(15,23,42,0.84)" : "rgba(255,255,255,0.98)",
+        theme.mode === "dark"
+          ? "rgba(15,23,42,0.84)"
+          : "rgba(255,255,255,0.98)",
       borderWidth: 1,
       borderColor:
         theme.mode === "dark"

@@ -8,7 +8,7 @@ export const createLessonStyles = (theme: AppTheme) =>
       backgroundColor: theme.colors.bg,
       paddingHorizontal: theme.s(3),
       paddingTop: theme.s(1.5),
-      paddingBottom: theme.s(3),
+      paddingBottom: 0,
     },
     header: {
       gap: theme.s(1),
@@ -719,25 +719,42 @@ export const createLessonStyles = (theme: AppTheme) =>
       textTransform: "uppercase",
       letterSpacing: 0.45,
     },
+    actionBarShell: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: theme.colors.bg,
+      paddingHorizontal: theme.s(3),
+      paddingBottom: theme.s(1),
+      paddingTop: theme.s(1),
+    },
     actionBar: {
-      marginTop: theme.s(1.25),
+      gap: theme.s(0.75),
       padding: theme.s(1),
-      gap: theme.s(0.9),
       borderRadius: 18,
       backgroundColor:
         theme.mode === "dark"
-          ? "rgba(15,23,42,0.82)"
-          : "rgba(255,255,255,0.96)",
+          ? "rgba(15,23,42,0.92)"
+          : "rgba(255,255,255,0.98)",
       borderWidth: 1,
       borderColor:
         theme.mode === "dark"
           ? "rgba(51,65,85,0.58)"
           : "rgba(148,163,184,0.18)",
       shadowColor: theme.colors.shadow,
-      shadowOpacity: theme.mode === "dark" ? 0 : 0.06,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 6 },
-      elevation: theme.mode === "dark" ? 0 : 2,
+      shadowOpacity: theme.mode === "dark" ? 0 : 0.1,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: -4 },
+      elevation: theme.mode === "dark" ? 0 : 6,
+    },
+    actionHelperText: {
+      color: theme.colors.muted,
+      fontSize: 11,
+      fontWeight: "700",
+      textAlign: "center",
+      lineHeight: 16,
+      marginBottom: theme.s(0.25),
     },
     actionButton: {
       borderRadius: theme.r.xl,

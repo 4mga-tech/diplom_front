@@ -309,6 +309,8 @@ export type LevelItem = {
   vocabularyReady: boolean;
   vocabularyCount: number;
   gradient: [string, string];
+  isUnlocked: boolean;
+  isCompleted: boolean;
 };
 
 function isValidGradient(value: unknown): value is [string, string] {
@@ -322,24 +324,92 @@ function isValidGradient(value: unknown): value is [string, string] {
   );
 }
 
+const LEVEL_UNLOCK_PREREQUISITES: Partial<
+  Record<Uppercase<NormalizedLevelId>, Uppercase<NormalizedLevelId> | null>
+> = {
+  B1: null,
+  M1: "B1",
+  M2: "M1",
+  M3: "M2",
+  M4: "M3",
+};
+
+function getLevelCompletion(units: UnitListItem[]): boolean {
+  const existingUnits = units.filter((unit) => unit.id);
+  return (
+    existingUnits.length > 0 &&
+    existingUnits.every((unit) => unit.isCompleted === true)
+  );
+}
+
 export async function fetchLevels(): Promise<LevelItem[]> {
   try {
     const res = await api.get("/content/levels");
     const data = extractData<any[]>(res.data);
 
-    return Array.isArray(data)
-      ? data.map((item) => ({
-          id: String(item?.id ?? "").trim().toUpperCase(),
-          title: String(item?.title ?? ""),
-          subtitle: String(item?.subtitle ?? ""),
-          description: String(item?.description ?? ""),
-          vocabularyReady: Boolean(item?.vocabularyReady),
-          vocabularyCount: Number(item?.vocabularyCount ?? 0),
-          gradient: isValidGradient(item?.gradient)
-            ? [item.gradient[0].trim(), item.gradient[1].trim()]
-            : ["#334155", "#1E293B"],
-        }))
-      : [];
+    if (!Array.isArray(data)) {
+      return [];
+    }
+
+    const baseLevels = data.map((item) => ({
+      id: String(item?.id ?? "").trim().toUpperCase(),
+      title: String(item?.title ?? ""),
+      subtitle: String(item?.subtitle ?? ""),
+      description: String(item?.description ?? ""),
+      vocabularyReady: Boolean(item?.vocabularyReady),
+      vocabularyCount: Number(item?.vocabularyCount ?? 0),
+      gradient: (
+        isValidGradient(item?.gradient)
+          ? [item.gradient[0].trim(), item.gradient[1].trim()]
+          : ["#334155", "#1E293B"]
+      ) as [string, string],
+      fallbackIsUnlocked: Boolean(item?.isUnlocked ?? item?.unlocked),
+      fallbackIsCompleted: Boolean(item?.isCompleted ?? item?.completed),
+    }));
+
+    const levelsWithCompletion = await Promise.all(
+      baseLevels.map(async (level) => {
+        const normalizedLevelId = normalizeCourseId(level.id) as NormalizedLevelId;
+
+        try {
+          const units = await fetchCourseUnits(normalizedLevelId);
+
+          return {
+            ...level,
+            isCompleted: getLevelCompletion(units),
+          };
+        } catch {
+          return {
+            ...level,
+            isCompleted: level.fallbackIsCompleted,
+          };
+        }
+      }),
+    );
+
+    const completionByLevelId = new Map(
+      levelsWithCompletion.map((level) => [level.id, level.isCompleted]),
+    );
+
+    return levelsWithCompletion.map(
+      ({ fallbackIsUnlocked, fallbackIsCompleted: _unusedCompleted, ...level }) => {
+        const prerequisiteLevelId = LEVEL_UNLOCK_PREREQUISITES[
+          level.id as Uppercase<NormalizedLevelId>
+        ];
+
+        const isUnlocked =
+          prerequisiteLevelId === null
+            ? true
+            : prerequisiteLevelId
+              ? Boolean(completionByLevelId.get(prerequisiteLevelId))
+              : fallbackIsUnlocked;
+
+        return {
+          ...level,
+          isUnlocked,
+        };
+      },
+    );
   } catch (err) {
     console.error("LEVELS API FAILED", err);
     return [];
