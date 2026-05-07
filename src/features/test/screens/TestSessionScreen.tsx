@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import {
   fetchXpWalletSummary,
   spendXpForHint,
@@ -12,6 +11,7 @@ import {
   TestQuestion,
   TestType,
 } from "@/src/features/test/types/test.types";
+import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -23,8 +23,10 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 type HintFeedbackTone = "info" | "warning" | "success";
 
 type HintFeedback = {
@@ -43,7 +45,7 @@ export default function TestSessionScreen() {
     levelId?: string;
     testType?: TestType;
   }>();
-
+  const insets = useSafeAreaInsets();
   const safeLevel = normalizeTestLevelId(levelId) ?? "M1";
   const safeType = (testType ?? "vocabulary") as TestType;
 
@@ -143,6 +145,7 @@ export default function TestSessionScreen() {
     clearSelectedOption,
     saveCurrentAnswer,
     goNext,
+    goPrevious,
     isLastQuestion,
     buildSubmitPayload,
     progress,
@@ -156,7 +159,10 @@ export default function TestSessionScreen() {
   }, [currentIndex]);
 
   const currentHiddenOptionIds = useMemo(
-    () => (currentQuestion ? hiddenOptionIdsByQuestion[currentQuestion.id] ?? [] : []),
+    () =>
+      currentQuestion
+        ? (hiddenOptionIdsByQuestion[currentQuestion.id] ?? [])
+        : [],
     [currentQuestion, hiddenOptionIdsByQuestion],
   );
 
@@ -172,12 +178,14 @@ export default function TestSessionScreen() {
 
   const isMultipleChoiceQuestion = Boolean(
     currentQuestion &&
-      Array.isArray(currentQuestion.options) &&
-      currentQuestion.options.length > 0,
+    Array.isArray(currentQuestion.options) &&
+    currentQuestion.options.length > 0,
   );
   const hintCostKnown = typeof hintXpCost === "number" && hintXpCost > 0;
   const hasEnoughOptionsForHint = (currentQuestion?.options.length ?? 0) >= 4;
-  const hintAlreadyUsed = Boolean(currentQuestion && currentHiddenOptionIds.length > 0);
+  const hintAlreadyUsed = Boolean(
+    currentQuestion && currentHiddenOptionIds.length > 0,
+  );
   const hasEnoughXpForHint = hintCostKnown && walletXp >= hintXpCost;
   const canUseHint =
     Boolean(currentQuestion) &&
@@ -372,11 +380,17 @@ export default function TestSessionScreen() {
   function handleQuit() {
     Alert.alert("Leave exam?", "Your current exam progress will be lost.", [
       { text: "Cancel", style: "cancel" },
-      { text: "Leave exam", style: "destructive", onPress: () => router.back() },
+      {
+        text: "Leave exam",
+        style: "destructive",
+        onPress: () => router.back(),
+      },
     ]);
   }
 
-  const hintButtonLabel = hintCostKnown ? `Use Hint (${hintXpCost} XP)` : "Hint unavailable";
+  const hintButtonLabel = hintCostKnown
+    ? `Use Hint (${hintXpCost} XP)`
+    : "Hint unavailable";
   const hintHelperText = hintAlreadyUsed
     ? "Hint already used on this question."
     : hintCostKnown
@@ -509,11 +523,12 @@ export default function TestSessionScreen() {
           </View>
         </ScrollView>
 
-        <View style={styles.footerFixed}>
+        <View
+          style={[styles.footerFixed, { paddingBottom: insets.bottom + 12 }]}
+        >
           <Pressable style={styles.secondaryBtn} onPress={handleQuit}>
             <Text style={styles.secondaryBtnText}>Back to exams</Text>
           </Pressable>
-
           <Pressable
             style={styles.primaryBtn}
             onPress={() => setExamStarted(true)}
@@ -550,7 +565,9 @@ export default function TestSessionScreen() {
         </Text>
 
         <View style={styles.progressWrap}>
-          <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+          <View
+            style={[styles.progressFill, { width: `${progress * 100}%` }]}
+          />
         </View>
       </View>
 
@@ -560,11 +577,7 @@ export default function TestSessionScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.examNotice}>
-          <Ionicons
-            name="shield-checkmark-outline"
-            size={15}
-            color="#F59E0B"
-          />
+          <Ionicons name="shield-checkmark-outline" size={15} color="#F59E0B" />
           <Text style={styles.examNoticeText}>
             This is a backend-scored level exam. Read carefully and submit your
             best answer.
@@ -576,8 +589,12 @@ export default function TestSessionScreen() {
             <Ionicons name="flash" size={15} color="#FCD34D" />
           </View>
           <View style={styles.walletBannerTextWrap}>
-            <Text style={styles.walletBannerTitle}>{walletSummaryCopy.title}</Text>
-            <Text style={styles.walletBannerText}>{walletSummaryCopy.subtitle}</Text>
+            <Text style={styles.walletBannerTitle}>
+              {walletSummaryCopy.title}
+            </Text>
+            <Text style={styles.walletBannerText}>
+              {walletSummaryCopy.subtitle}
+            </Text>
           </View>
         </View>
 
@@ -593,7 +610,10 @@ export default function TestSessionScreen() {
                 <Pressable
                   key={option.id}
                   onPress={() => selectOption(option.id)}
-                  style={[styles.optionBtn, selected && styles.optionBtnSelected]}
+                  style={[
+                    styles.optionBtn,
+                    selected && styles.optionBtnSelected,
+                  ]}
                 >
                   <View
                     style={[
@@ -700,12 +720,29 @@ export default function TestSessionScreen() {
         ) : null}
 
         <View style={styles.footerActions}>
-          <Pressable style={styles.secondaryBtn} onPress={handleQuit}>
-            <Text style={styles.secondaryBtnText}>Exit</Text>
+          <Pressable
+            style={[
+              styles.secondaryBtn,
+              currentIndex === 0 && styles.secondaryBtnDisabled,
+            ]}
+            onPress={goPrevious}
+            disabled={currentIndex === 0}
+          >
+            <Text
+              style={[
+                styles.secondaryBtnText,
+                currentIndex === 0 && styles.secondaryBtnTextDisabled,
+              ]}
+            >
+              Previous
+            </Text>
           </Pressable>
 
           <Pressable
-            style={[styles.primaryBtn, submittingTest && styles.primaryBtnDisabled]}
+            style={[
+              styles.primaryBtn,
+              submittingTest && styles.primaryBtnDisabled,
+            ]}
             onPress={() => {
               void handleNext();
             }}
@@ -1098,6 +1135,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "900",
   },
+  secondaryBtnDisabled: {
+    opacity: 0.45,
+  },
+
+  secondaryBtnTextDisabled: {
+    color: "#64748B",
+  },
   hintFeedback: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -1129,7 +1173,6 @@ const styles = StyleSheet.create({
   footerFixed: {
     gap: 10,
     paddingTop: 10,
-    paddingBottom: 14,
     backgroundColor: "#0F172A",
   },
   footerActions: {
@@ -1164,32 +1207,36 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     flex: 1,
+    minHeight: 56,
     backgroundColor: "#F59E0B",
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 18,
     alignItems: "center",
+    justifyContent: "center",
   },
   primaryBtnDisabled: {
     opacity: 0.7,
   },
   primaryBtnText: {
-    color: "white",
-    fontSize: 15,
-    fontWeight: "800",
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "900",
   },
   secondaryBtn: {
     flex: 1,
+    minHeight: 52,
     backgroundColor: "rgba(255,255,255,0.06)",
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 18,
     alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: "rgba(255,255,255,0.10)",
   },
   secondaryBtnText: {
-    color: "white",
+    color: "#E2E8F0",
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "800",
   },
   emptyTitle: {
     color: "white",

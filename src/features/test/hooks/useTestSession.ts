@@ -1,10 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import {
-  TestQuestion,
-  TestSubmitPayload,
-  TestType,
-} from "../types/test.types";
+import { TestQuestion, TestSubmitPayload, TestType } from "../types/test.types";
 
 export function useTestSession(
   questions: TestQuestion[],
@@ -70,7 +66,9 @@ export function useTestSession(
 
     setCurrentIndex((prev) => prev + 1);
   }
-
+  function goPrevious() {
+    setCurrentIndex((prev) => Math.max(prev - 1, 0));
+  }
   function buildSubmitPayload(
     answersMap = answersByQuestionId,
   ): TestSubmitPayload {
@@ -101,6 +99,7 @@ export function useTestSession(
     clearSelectedOption,
     saveCurrentAnswer,
     goNext,
+    goPrevious,
     buildSubmitPayload,
     hasQuestions: questions.length > 0,
     totalQuestions: questions.length,

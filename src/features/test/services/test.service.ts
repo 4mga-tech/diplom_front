@@ -2,13 +2,13 @@ import { api } from "@/lib/api";
 
 import {
   TestLevelSummary,
+  TestOption,
   TestQuestion,
   TestQuestionSet,
-  TestTypeAvailabilityResponse,
-  TestOption,
   TestSubmitPayload,
   TestSubmitResult,
   TestType,
+  TestTypeAvailabilityResponse,
 } from "../types/test.types";
 
 function extractData<T>(payload: unknown): T {
@@ -35,7 +35,11 @@ function normalizeOption(raw: any, index: number): TestOption {
   };
 }
 
-function normalizeQuestion(raw: any, levelId: string, testType: TestType): TestQuestion {
+function normalizeQuestion(
+  raw: any,
+  levelId: string,
+  testType: TestType,
+): TestQuestion {
   return {
     id: String(raw?.id ?? raw?._id ?? ""),
     levelId: String(raw?.levelId ?? levelId).toLowerCase(),
@@ -50,7 +54,10 @@ function normalizeQuestion(raw: any, levelId: string, testType: TestType): TestQ
   };
 }
 
-function normalizeSubmitResult(raw: any, payload: TestSubmitPayload): TestSubmitResult {
+function normalizeSubmitResult(
+  raw: any,
+  payload: TestSubmitPayload,
+): TestSubmitResult {
   return {
     levelId: payload.levelId,
     testType: payload.testType,
@@ -86,16 +93,15 @@ function normalizeTypeAvailability(raw: any): TestTypeAvailabilityResponse {
     levelId,
     types: Array.isArray(raw?.types)
       ? raw.types
-          .map((item: any) => ({
+          .map((item: Record<string, unknown>) => ({
             testType: String(item?.testType ?? "").toLowerCase() as TestType,
             title: String(item?.title ?? item?.testType ?? ""),
             active: Boolean(item?.active),
-            status:
-              item?.status === "available" ? "available" : "coming_soon",
+            status: item?.status === "available" ? "available" : "coming_soon",
             questionCount: toNumber(item?.questionCount),
           }))
           .filter(
-            (item) =>
+            (item: { testType: TestType }) =>
               item.testType === "vocabulary" ||
               item.testType === "grammar" ||
               item.testType === "listening" ||
@@ -105,7 +111,11 @@ function normalizeTypeAvailability(raw: any): TestTypeAvailabilityResponse {
   };
 }
 
-function normalizeQuestionSet(raw: any, levelId: string, testType: TestType): TestQuestionSet {
+function normalizeQuestionSet(
+  raw: any,
+  levelId: string,
+  testType: TestType,
+): TestQuestionSet {
   const normalizedLevelId = String(raw?.levelId ?? levelId).toLowerCase();
   const normalizedType = (raw?.testType ?? testType) as TestType;
   const questions = Array.isArray(raw?.questions)
@@ -117,7 +127,9 @@ function normalizeQuestionSet(raw: any, levelId: string, testType: TestType): Te
   return {
     levelId: normalizedLevelId,
     testType: normalizedType,
-    title: String(raw?.title ?? `${normalizedLevelId.toUpperCase()} ${normalizedType}`),
+    title: String(
+      raw?.title ?? `${normalizedLevelId.toUpperCase()} ${normalizedType}`,
+    ),
     passingScore: toNumber(raw?.passingScore, 75),
     totalQuestions: toNumber(raw?.totalQuestions, questions.length),
     questions,
