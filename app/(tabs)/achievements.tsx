@@ -1,5 +1,5 @@
-import AchievementsScreen from "@/src/features/achievements/screens/AchievementsScreen";
+import GameHubScreen from "@/src/features/games/screens/GameHubScreen";
 
 export default function AchievementsRoute() {
-  return <AchievementsScreen />;
+  return <GameHubScreen />;
 }
