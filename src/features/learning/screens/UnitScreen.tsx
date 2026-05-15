@@ -11,16 +11,14 @@ import {
   getCanonicalLevelId,
   getLessonDetailRoute,
   getLevelRoute,
-  getNormalizedLearningParams,
+  getNormalizedLearningParams
 } from "@/src/features/learning/routes";
 import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import {
   router,
   useFocusEffect,
   useLocalSearchParams,
-  useNavigation,
 } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {
@@ -85,7 +83,6 @@ function StateChip({
 export default function UnitOverviewScreen() {
   const { theme } = useAppTheme();
   const styles = useThemedStyles(createStyles);
-  const navigation = useNavigation();
   const params = useLocalSearchParams<{
     levelId?: string | string[];
     unitId?: string;
@@ -133,13 +130,8 @@ export default function UnitOverviewScreen() {
   );
 
   const handleBack = useCallback(() => {
-    if (navigation.canGoBack()) {
-      router.back();
-      return;
-    }
-
     router.replace(getLevelRoute(safeLevelId));
-  }, [navigation, safeLevelId]);
+  }, [safeLevelId]);
 
   if (!levelMeta) {
     return (
@@ -208,45 +200,9 @@ export default function UnitOverviewScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <LinearGradient colors={unit.gradient} style={styles.heroCard}>
-          <View style={styles.heroTop}>
-            <View style={styles.heroTitleWrap}>
-              <Text style={styles.heroEyebrow}>{levelMeta.title}</Text>
-              <Text style={styles.heroTitle}>{unit.subtitle || unit.title}</Text>
-              <Text style={styles.heroDescription} numberOfLines={1}>
-                {unit.description || "Unit overview"}
-              </Text>
-            </View>
-            <StateChip label={UNIT_STATE_LABELS[unitState]} color="#FFFFFF" theme={theme} />
-          </View>
+        
 
-          <View style={styles.heroSummaryRow}>
-            <View style={styles.heroSummaryItem}>
-              <Text style={styles.heroSummaryLabel}>Lessons</Text>
-              <Text style={styles.heroSummaryValue}>
-                {unit.completedLessonsCount}/{unit.lessonsCount}
-              </Text>
-            </View>
-            <View style={styles.heroSummaryDivider} />
-            <View style={styles.heroSummaryItem}>
-              <Text style={styles.heroSummaryLabel}>Unlocked</Text>
-              <Text style={styles.heroSummaryValue}>{unit.unlockedLessonsCount}</Text>
-            </View>
-            <View style={styles.heroSummaryDivider} />
-            <View style={styles.heroSummaryItem}>
-              <Text style={styles.heroSummaryLabel}>Progress</Text>
-              <Text style={styles.heroSummaryValue}>{unit.progress}%</Text>
-            </View>
-          </View>
-        </LinearGradient>
-
-        <View style={styles.callout}>
-          <Ionicons name="information-circle-outline" size={18} color="#60A5FA" />
-          <Text style={styles.calloutText}>
-            Only unlocked lessons can be opened.
-          </Text>
-        </View>
-
+       
         {currentLesson ? (
           <Pressable
             onPress={() =>
@@ -284,96 +240,55 @@ export default function UnitOverviewScreen() {
 
         <View style={styles.lessonStack}>
           {unit.lessons.map((lesson) => {
-            const lessonState = getLessonProgressState(
-              lesson,
-              unit.currentLessonId,
-            );
-            const locked = lessonState === "locked";
-            const isCurrent = lessonState === "current";
-            const stateLabel = LESSON_STATE_LABELS[lessonState];
-            const stateColor =
-              lessonState === "completed"
-                ? "#22C55E"
-                : lessonState === "locked"
-                  ? theme.colors.muted
-                  : lessonState === "current"
-                    ? "#60A5FA"
-                    : "#0EA5E9";
+  const lessonState = getLessonProgressState(lesson, unit.currentLessonId);
+  const locked = lessonState === "locked";
+  const isCurrent = lessonState === "current";
+  const stateColor =
+    lessonState === "completed" ? "#22C55E"
+    : lessonState === "locked"  ? theme.colors.muted
+    : lessonState === "current" ? "#60A5FA"
+    : "#0EA5E9";
 
-            return (
-              <Pressable
-                key={lesson.id}
-                disabled={locked}
-                onPress={() =>
-                  router.push(getLessonDetailRoute(safeLevelId, unit.id, lesson.id))
-                }
-                style={({ pressed }) => [
-                  styles.lessonCard,
-                  pressed && !locked && { opacity: 0.92 },
-                  locked && styles.lessonCardLocked,
-                ]}
-              >
-                <View style={styles.lessonCardTop}>
-                  <StateChip label={stateLabel} color={stateColor} theme={theme} />
-                  <Text style={styles.lessonOrder}>Lesson {lesson.order}</Text>
-                </View>
-                <View style={styles.lessonBody}>
-                  <View
-                    style={[
-                      styles.lessonIcon,
-                      lessonState === "completed"
-                        ? styles.lessonIconDone
-                        : locked
-                          ? styles.lessonIconLocked
-                          : styles.lessonIconReady,
-                    ]}
-                  >
-                    <Ionicons
-                      name={
-                        lessonState === "completed"
-                          ? "checkmark"
-                          : locked
-                            ? "lock-closed"
-                            : isCurrent
-                              ? "play"
-                              : "lock-open"
-                      }
-                      size={18}
-                      color={
-                        lessonState === "completed"
-                          ? "#22C55E"
-                          : theme.colors.text
-                      }
-                    />
-                  </View>
+  const stateIcon =
+    lessonState === "completed" ? "checkmark-circle"
+    : locked                   ? "lock-closed"
+    : isCurrent                ? "play-circle"
+    : "ellipse-outline";
 
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.lessonTitle}>{lesson.title}</Text>
-                    <Text style={styles.lessonSubtitle}>{lesson.subtitle}</Text>
-                  </View>
-                  <View style={styles.lessonTrailing}>
-                    <Ionicons
-                      name={
-                        lessonState === "completed"
-                          ? "checkmark-circle"
-                          : locked
-                            ? "lock-closed"
-                            : "arrow-forward"
-                      }
-                      size={18}
-                      color={
-                        lessonState === "completed"
-                          ? "#22C55E"
-                          : locked
-                            ? theme.colors.muted
-                            : "#60A5FA"
-                      }
-                    />
-                  </View>
-                </View>
-              </Pressable>
-            );
-          })}
+  return (
+    <Pressable
+      key={lesson.id}
+      disabled={locked}
+      onPress={() => router.push(getLessonDetailRoute(safeLevelId, unit.id, lesson.id))}
+      style={({ pressed }) => [
+        styles.lessonCard,
+        pressed && !locked && { opacity: 0.88 },
+        locked && styles.lessonCardLocked,
+      ]}
+    >
+      {/* Accent bar */}
+      <View style={[styles.lessonAccentBar, { backgroundColor: stateColor }]} />
+
+      <View style={styles.lessonBody}>
+        {/* Top row */}
+        <View style={styles.lessonCardTop}>
+          <Ionicons name={stateIcon} size={14} color={stateColor} />
+          <Text style={[styles.cardStateText, { color: stateColor }]}>
+            {LESSON_STATE_LABELS[lessonState]}
+          </Text>
+        </View>
+
+        {/* Title */}
+        <Text style={styles.lessonTitle} numberOfLines={2}>
+          {lesson.title}
+        </Text>
+
+        {/* Order meta */}
+        <Text style={styles.lessonOrder}>Lesson {lesson.order}</Text>
+      </View>
+    </Pressable>
+  );
+})}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -542,6 +457,12 @@ const createStyles = (theme: AppTheme) =>
           : "rgba(59,130,246,0.16)",
       gap: theme.s(1.25),
     },
+    cardStateText: {
+  fontSize: 10,
+  fontWeight: "800",
+  textTransform: "uppercase",
+  letterSpacing: 0.4,
+},
     currentCardHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -612,55 +533,60 @@ const createStyles = (theme: AppTheme) =>
       fontWeight: "900",
     },
     lessonStack: {
-      gap: theme.s(1.5),
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: theme.s(1),
     },
-    lessonCard: {
-      borderRadius: 22,
-      paddingHorizontal: theme.s(2),
-      paddingVertical: theme.s(2.1),
-      backgroundColor:
-        theme.mode === "dark" ? "rgba(15,23,42,0.84)" : "rgba(255,255,255,0.98)",
-      borderWidth: 1,
-      borderColor:
-        theme.mode === "dark"
-          ? "rgba(51,65,85,0.52)"
-          : "rgba(148,163,184,0.18)",
-      gap: theme.s(1.5),
-    },
-    lessonCardLocked: {
-      opacity: 0.65,
-    },
-    lessonCardTop: {
+   lessonCard: {
+  width: "48%",
+  borderRadius: 14,
+  overflow: "hidden",
+  backgroundColor:
+    theme.mode === "dark" ? "rgba(15,23,42,0.84)" : "rgba(255,255,255,0.98)",
+  borderWidth: 1,
+  borderColor:
+    theme.mode === "dark" ? "rgba(51,65,85,0.52)" : "rgba(148,163,184,0.18)",
+},
+lessonCardLocked: {
+  opacity: 0.5,
+},
+lessonAccentBar: {
+  height: 3,
+  width: "100%",
+},
+lessonBody: {
+  padding: theme.s(1.5),
+  gap: theme.s(0.75),
+},
+   lessonCardTop: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 4,
+},
+    lessonIconRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      gap: theme.s(1),
     },
-    lessonOrder: {
-      color: theme.colors.muted,
-      fontSize: 11,
-      fontWeight: "800",
-      textTransform: "uppercase",
-      letterSpacing: 0.5,
-    },
-    lessonBody: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: theme.s(1.5),
-    },
+   lessonOrder: {
+  color: theme.colors.muted,
+  fontSize: 10,
+  fontWeight: "700",
+},
+  
     lessonTrailing: {
       width: 28,
       alignItems: "flex-end",
       justifyContent: "center",
     },
     lessonIcon: {
-      width: 44,
-      height: 44,
-      borderRadius: 16,
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 1,
-    },
+  width: 34,                    
+  height: 34,                    
+  borderRadius: 12,              
+  alignItems: "center",
+  justifyContent: "center",
+  borderWidth: 1,
+},
     lessonIconDone: {
       backgroundColor:
         theme.mode === "dark" ? "rgba(34,197,94,0.14)" : "rgba(34,197,94,0.08)",
@@ -677,18 +603,18 @@ const createStyles = (theme: AppTheme) =>
       borderColor: "rgba(59,130,246,0.18)",
     },
     lessonTitle: {
-      color: theme.colors.text,
-      fontSize: 17,
-      fontWeight: "900",
-      lineHeight: 22,
-    },
+  color: theme.colors.text,
+  fontSize: 12,
+  fontWeight: "800",
+  lineHeight: 17,
+},
     lessonSubtitle: {
-      color: theme.colors.muted,
-      fontSize: 12,
-      fontWeight: "700",
-      marginTop: 4,
-      lineHeight: 19,
-    },
+  color: theme.colors.muted,
+  fontSize: 11,                  // 12 → 11
+  fontWeight: "700",
+  marginTop: 2,                  // 4 → 2
+  lineHeight: 16,                // 19 → 16
+},
     stateCard: {
       width: "100%",
       maxWidth: 360,

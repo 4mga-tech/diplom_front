@@ -55,13 +55,8 @@ export default function LessonScreen() {
   );
 
   const handleBack = useCallback(() => {
-    if (unitId) {
-      router.replace(getLessonListRoute(levelId, unitId));
-      return;
-    }
-
-    router.replace("/");
-  }, [levelId, unitId]);
+    router.back();
+  }, []);
 
   const handleOpenQuiz = useCallback(() => {
     if (!lesson?.id || !lesson.isUnlocked || !lesson.hasQuiz) return;

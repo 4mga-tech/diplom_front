@@ -25,9 +25,9 @@ import {
 } from "react-native";
 
 const UNIT_STATE_LABELS: Record<UnitProgressState, string> = {
-  completed: "Completed",
-  in_progress: "In progress",
-  unlocked: "Unlocked",
+  completed: "Done",
+  in_progress: "Active",
+  unlocked: "Open",
   locked: "Locked",
 };
 
@@ -41,21 +41,16 @@ function UnitCard({
   theme: AppTheme;
 }) {
   const progressState = getUnitProgressState(unit);
-  const stateLabel = UNIT_STATE_LABELS[progressState];
   const stateColor =
-    progressState === "completed"
-      ? "#22C55E"
-      : progressState === "locked"
-        ? theme.colors.muted
-        : "#60A5FA";
+    progressState === "completed" ? "#22C55E"
+    : progressState === "locked"  ? theme.colors.muted
+    : "#60A5FA";
+
   const stateIcon =
-    progressState === "completed"
-      ? "checkmark-circle"
-      : progressState === "locked"
-        ? "lock-closed"
-        : progressState === "in_progress"
-          ? "play-circle"
-          : "lock-open";
+    progressState === "completed"     ? "checkmark-circle"
+    : progressState === "locked"      ? "lock-closed"
+    : progressState === "in_progress" ? "play-circle"
+    : "ellipse-outline";
 
   return (
     <Pressable
@@ -63,79 +58,39 @@ function UnitCard({
       onPress={() => router.push(getUnitRoute(unit.levelId, unit.id))}
       style={({ pressed }) => [
         styles.cardPress,
-        pressed && unit.isUnlocked && { opacity: 0.94 },
+        pressed && unit.isUnlocked && { opacity: 0.88 },
         !unit.isUnlocked && styles.cardPressLocked,
       ]}
     >
-      <LinearGradient colors={unit.gradient} style={styles.cardAccent} />
-      <LinearGradient
-        colors={
-          theme.mode === "dark"
-            ? ["rgba(255,255,255,0.05)", "rgba(255,255,255,0)"]
-            : ["rgba(255,255,255,0.42)", "rgba(255,255,255,0)"]
-        }
-        style={styles.cardSheen}
-      />
+      <View style={[styles.cardAccentBar, { backgroundColor: stateColor }]} />
 
       <View style={styles.cardBody}>
         <View style={styles.cardTop}>
-          <View style={styles.cardStateRow}>
-            <View
-              style={[
-                styles.cardIcon,
-                {
-                  borderColor: `${stateColor}2C`,
-                  backgroundColor:
-                    theme.mode === "dark" ? `${stateColor}16` : `${stateColor}10`,
-                },
-              ]}
-            >
-              <Ionicons name={stateIcon} size={17} color={stateColor} />
-            </View>
-            <View
-              style={[
-                styles.statePill,
-                {
-                  borderColor: `${stateColor}33`,
-                  backgroundColor:
-                    theme.mode === "dark" ? `${stateColor}14` : `${stateColor}10`,
-                },
-              ]}
-            >
-              <Text style={[styles.statePillText, { color: stateColor }]}>
-                {stateLabel}
-              </Text>
-            </View>
-          </View>
-
-          <Ionicons
-            name={unit.isUnlocked ? "arrow-forward" : "lock-closed"}
-            size={18}
-            color={unit.isUnlocked ? theme.colors.text : theme.colors.muted}
-          />
-        </View>
-
-        <View style={styles.cardText}>
-          <Text style={styles.cardTitle}>{unit.title}</Text>
-          <Text style={styles.cardSubtitle}>{unit.subtitle}</Text>
-          <Text style={styles.cardDescription}>{unit.description}</Text>
-        </View>
-
-        <View style={styles.metaRow}>
-          <Text style={styles.metaText}>
-            {unit.completedLessonsCount}/{unit.lessonsCount} lessons
-          </Text>
-          <Text style={styles.metaText}>
-            {unit.isCompleted ? "Done" : `${unit.unlockedLessonsCount} unlocked`}
+          <Ionicons name={stateIcon} size={14} color={stateColor} />
+          <Text style={[styles.cardStateText, { color: stateColor }]}>
+            {UNIT_STATE_LABELS[progressState]}
           </Text>
         </View>
+
+        <Text style={styles.cardTitle} numberOfLines={2}>
+          {unit.title}
+        </Text>
 
         <View style={styles.progressRow}>
           <View style={styles.track}>
-            <View style={[styles.fill, { width: `${unit.progress}%` }]} />
+            <View
+              style={[
+                styles.fill,
+                { width: `${unit.progress}%`, backgroundColor: stateColor },
+              ]}
+            />
           </View>
           <Text style={styles.progressText}>{unit.progress}%</Text>
         </View>
+
+        <Text style={styles.metaText}>
+          {unit.completedLessonsCount}/{unit.lessonsCount} lessons
+        </Text>
       </View>
     </Pressable>
   );
@@ -177,11 +132,11 @@ export default function UnitsScreen() {
   );
 
   const totalLessons = useMemo(
-    () => units.reduce((sum, unit) => sum + unit.lessonsCount, 0),
+    () => units.reduce((sum, u) => sum + u.lessonsCount, 0),
     [units],
   );
   const completedLessons = useMemo(
-    () => units.reduce((sum, unit) => sum + unit.completedLessonsCount, 0),
+    () => units.reduce((sum, u) => sum + u.completedLessonsCount, 0),
     [units],
   );
   const overallProgress = useMemo(() => {
@@ -204,6 +159,7 @@ export default function UnitsScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <Pressable
           onPress={() => router.back()}
@@ -211,66 +167,72 @@ export default function UnitsScreen() {
         >
           <Ionicons name="chevron-back" size={22} color={theme.colors.text} />
         </Pressable>
-
         <View style={{ flex: 1 }}>
           <Text style={styles.h1}>{levelMeta.title}</Text>
-          <Text style={styles.h2}>{levelMeta.description}</Text>
+          {levelMeta.description ? (
+            <Text style={styles.h2}>{levelMeta.description}</Text>
+          ) : null}
         </View>
       </View>
 
+      {/* Hero */}
       <LinearGradient
-        colors={["rgba(37,99,235,0.18)", "rgba(14,165,233,0.10)"]}
+        colors={
+          theme.mode === "dark"
+            ? ["rgba(37,99,235,0.22)", "rgba(14,165,233,0.08)"]
+            : ["rgba(37,99,235,0.12)", "rgba(14,165,233,0.04)"]
+        }
         style={styles.hero}
       >
-        <View style={styles.heroTop}>
-          <View>
+        <View style={styles.heroInner}>
+          <View style={{ flex: 1, gap: 4 }}>
             <Text style={styles.heroEyebrow}>Level track</Text>
             <Text style={styles.heroTitle}>{levelMeta.title}</Text>
           </View>
           <View style={styles.heroIconWrap}>
-            <Ionicons name="language-outline" size={22} color={theme.colors.text} />
+            <Ionicons name="layers-outline" size={20} color="#60A5FA" />
           </View>
         </View>
 
-        <Text style={styles.heroText}>
-          Move unit by unit. Backend progress unlocks the next step only after the
-          current unit is fully completed.
-        </Text>
-
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
+          <View style={styles.statItem}>
             <Text style={styles.statValue}>{units.length}</Text>
             <Text style={styles.statLabel}>Units</Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>
-              {completedLessons}/{totalLessons}
-            </Text>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{completedLessons}/{totalLessons}</Text>
             <Text style={styles.statLabel}>Lessons</Text>
           </View>
-          <View style={styles.statCard}>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
             <Text style={styles.statValue}>{overallProgress}%</Text>
-            <Text style={styles.statLabel}>Complete</Text>
+            <Text style={styles.statLabel}>Done</Text>
           </View>
+        </View>
+
+        <View style={styles.heroTrack}>
+          <View style={[styles.heroFill, { width: `${overallProgress}%` }]} />
         </View>
       </LinearGradient>
 
+      {/* Content */}
       {loading ? (
         <View style={styles.centerState}>
           <View style={styles.stateCard}>
             <View style={styles.stateIconWrap}>
               <ActivityIndicator color={theme.colors.text} />
             </View>
-            <Text style={styles.stateTitle}>Loading level</Text>
-            <Text style={styles.stateText}>Pulling the latest unit structure from the backend.</Text>
+            <Text style={styles.stateTitle}>Loading…</Text>
           </View>
         </View>
       ) : (
         <FlatList
           data={units}
-          keyExtractor={(unit) => unit.id}
+          keyExtractor={(u) => u.id}
+          numColumns={2}
+          columnWrapperStyle={styles.row}
           contentContainerStyle={styles.listContent}
-          ItemSeparatorComponent={() => <View style={{ height: theme.s(1.5) }} />}
           renderItem={({ item }) => (
             <UnitCard unit={item} styles={styles} theme={theme} />
           )}
@@ -304,221 +266,182 @@ const createStyles = (theme: AppTheme) =>
       paddingHorizontal: theme.s(3),
       paddingTop: theme.s(6),
     },
+
+    // Header
     header: {
       flexDirection: "row",
       alignItems: "center",
-      gap: theme.s(2),
-      marginBottom: theme.s(2.25),
+      gap: theme.s(1.5),
+      marginBottom: theme.s(1.75),
     },
     backBtn: {
-      width: 44,
-      height: 44,
-      borderRadius: 14,
+      width: 40,
+      height: 40,
+      borderRadius: 13,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor:
         theme.mode === "dark" ? "rgba(15,23,42,0.72)" : "rgba(255,255,255,0.96)",
       borderWidth: 1,
       borderColor:
-        theme.mode === "dark"
-          ? "rgba(51,65,85,0.55)"
-          : "rgba(148,163,184,0.18)",
+        theme.mode === "dark" ? "rgba(51,65,85,0.55)" : "rgba(148,163,184,0.18)",
     },
     h1: {
       color: theme.colors.text,
-      fontSize: 22,
+      fontSize: 20,
       fontWeight: "900",
     },
     h2: {
       color: theme.colors.muted,
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: "700",
-      marginTop: 4,
+      marginTop: 2,
     },
+
+    // Hero
     hero: {
-      borderRadius: 28,
-      padding: theme.s(2.75),
+      borderRadius: 20,
+      padding: theme.s(2),
       borderWidth: 1,
       borderColor:
         theme.mode === "dark"
           ? "rgba(96,165,250,0.14)"
           : "rgba(59,130,246,0.12)",
-      marginBottom: theme.s(2.75),
-      gap: theme.s(2.25),
+      marginBottom: theme.s(1.75),
+      gap: theme.s(1.25),
       overflow: "hidden",
     },
-    heroTop: {
+    heroInner: {
       flexDirection: "row",
-      justifyContent: "space-between",
       alignItems: "flex-start",
-      gap: theme.s(2),
+      gap: theme.s(1),
     },
     heroEyebrow: {
       color: "#60A5FA",
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: "800",
       textTransform: "uppercase",
       letterSpacing: 0.6,
     },
     heroTitle: {
       color: theme.colors.text,
-      fontSize: 28,
+      fontSize: 22,
       fontWeight: "900",
-      marginTop: 6,
-      lineHeight: 34,
+      lineHeight: 28,
     },
     heroIconWrap: {
-      width: 46,
-      height: 46,
-      borderRadius: 16,
+      width: 38,
+      height: 38,
+      borderRadius: 12,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor:
-        theme.mode === "dark" ? "rgba(15,23,42,0.48)" : "rgba(255,255,255,0.7)",
-    },
-    heroText: {
-      color: theme.mode === "dark" ? "rgba(226,232,240,0.92)" : "#334155",
-      fontSize: 14,
-      lineHeight: 21,
-      fontWeight: "600",
+        theme.mode === "dark" ? "rgba(37,99,235,0.18)" : "rgba(37,99,235,0.08)",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark" ? "rgba(96,165,250,0.2)" : "rgba(59,130,246,0.14)",
     },
     statsRow: {
       flexDirection: "row",
-      gap: theme.s(1.5),
-    },
-    statCard: {
-      flex: 1,
-      borderRadius: 18,
-      paddingHorizontal: theme.s(1.5),
-      paddingVertical: theme.s(1.75),
+      alignItems: "center",
       backgroundColor:
-        theme.mode === "dark" ? "rgba(15,23,42,0.52)" : "rgba(255,255,255,0.78)",
-      borderWidth: 1,
-      borderColor:
-        theme.mode === "dark"
-          ? "rgba(51,65,85,0.42)"
-          : "rgba(148,163,184,0.16)",
+        theme.mode === "dark" ? "rgba(15,23,42,0.45)" : "rgba(255,255,255,0.65)",
+      borderRadius: 12,
+      paddingVertical: theme.s(1),
+      paddingHorizontal: theme.s(1.25),
+    },
+    statItem: {
+      flex: 1,
+      alignItems: "center",
+      gap: 3,
     },
     statValue: {
       color: theme.colors.text,
-      fontSize: 18,
+      fontSize: 16,
       fontWeight: "900",
     },
     statLabel: {
       color: theme.colors.muted,
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: "700",
-      marginTop: 6,
       textTransform: "uppercase",
-      letterSpacing: 0.5,
+      letterSpacing: 0.4,
+    },
+    statDivider: {
+      width: 1,
+      height: 28,
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(51,65,85,0.6)" : "rgba(148,163,184,0.25)",
+    },
+    heroTrack: {
+      height: 3,
+      borderRadius: 999,
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(51,65,85,0.5)" : "rgba(226,232,240,0.9)",
+      overflow: "hidden",
+    },
+    heroFill: {
+      height: "100%",
+      borderRadius: 999,
+      backgroundColor: "#60A5FA",
+    },
+
+    // Grid
+    row: {
+      gap: theme.s(1),
+      marginBottom: theme.s(1),
     },
     listContent: {
       paddingBottom: theme.s(4),
     },
+
+    // Unit card
     cardPress: {
+      flex: 1,
+      borderRadius: 14,
       overflow: "hidden",
-      borderRadius: 24,
       backgroundColor:
-        theme.mode === "dark" ? "rgba(15,23,42,0.88)" : "rgba(255,255,255,0.98)",
+        theme.mode === "dark" ? "rgba(15,23,42,0.84)" : "rgba(255,255,255,0.98)",
       borderWidth: 1,
       borderColor:
-        theme.mode === "dark"
-          ? "rgba(51,65,85,0.55)"
-          : "rgba(148,163,184,0.18)",
-      position: "relative",
+        theme.mode === "dark" ? "rgba(51,65,85,0.52)" : "rgba(148,163,184,0.18)",
     },
     cardPressLocked: {
-      opacity: 0.62,
+      opacity: 0.5,
     },
-    cardAccent: {
-      height: 6,
+    cardAccentBar: {
+      height: 3,
       width: "100%",
     },
-    cardSheen: {
-      position: "absolute",
-      top: 6,
-      right: -30,
-      width: 140,
-      height: 120,
-      borderRadius: 999,
-      transform: [{ rotate: "18deg" }],
-    },
     cardBody: {
-      paddingHorizontal: theme.s(2),
-      paddingVertical: theme.s(2.1),
-      gap: theme.s(1.6),
+      padding: theme.s(1.5),
+      gap: theme.s(0.75),
     },
     cardTop: {
       flexDirection: "row",
-      justifyContent: "space-between",
       alignItems: "center",
-      gap: theme.s(1),
+      gap: 4,
     },
-    cardStateRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: theme.s(1),
-    },
-    cardIcon: {
-      width: 34,
-      height: 34,
-      borderRadius: 12,
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 1,
-    },
-    statePill: {
-      borderRadius: 999,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderWidth: 1,
-    },
-    statePillText: {
-      fontSize: 11,
-      fontWeight: "800",
-      textTransform: "uppercase",
-      letterSpacing: 0.5,
-    },
-    cardText: {
-      gap: 7,
-    },
-    cardTitle: {
-      color: theme.colors.text,
-      fontSize: 19,
-      fontWeight: "900",
-      lineHeight: 24,
-    },
-    cardSubtitle: {
-      color: "#93C5FD",
-      fontSize: 13,
-      fontWeight: "800",
-    },
-    cardDescription: {
-      color: theme.colors.muted,
-      fontSize: 13,
-      fontWeight: "700",
-      lineHeight: 19,
-    },
-    metaRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      gap: theme.s(1),
-    },
-    metaText: {
-      color: theme.colors.muted,
-      fontSize: 11,
+    cardStateText: {
+      fontSize: 10,
       fontWeight: "800",
       textTransform: "uppercase",
       letterSpacing: 0.4,
     },
+    cardTitle: {
+      color: theme.colors.text,
+      fontSize: 12,
+      fontWeight: "800",
+      lineHeight: 17,
+    },
     progressRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: theme.s(1),
+      gap: theme.s(0.5),
     },
     track: {
-      height: 11,
       flex: 1,
+      height: 3,
       borderRadius: 999,
       backgroundColor:
         theme.mode === "dark" ? "rgba(51,65,85,0.48)" : "rgba(226,232,240,0.9)",
@@ -527,15 +450,21 @@ const createStyles = (theme: AppTheme) =>
     fill: {
       height: "100%",
       borderRadius: 999,
-      backgroundColor: "#60A5FA",
     },
     progressText: {
-      minWidth: 38,
+      color: theme.colors.muted,
+      fontSize: 10,
+      fontWeight: "800",
+      minWidth: 28,
       textAlign: "right",
-      color: theme.colors.text,
-      fontSize: 12,
-      fontWeight: "900",
     },
+    metaText: {
+      color: theme.colors.muted,
+      fontSize: 10,
+      fontWeight: "700",
+    },
+
+    // States
     centerState: {
       flex: 1,
       alignItems: "center",
@@ -552,7 +481,7 @@ const createStyles = (theme: AppTheme) =>
     stateCard: {
       width: "100%",
       maxWidth: 360,
-      borderRadius: 24,
+      borderRadius: 20,
       padding: theme.s(3),
       alignItems: "center",
       gap: theme.s(1.25),
@@ -560,27 +489,23 @@ const createStyles = (theme: AppTheme) =>
         theme.mode === "dark" ? "rgba(15,23,42,0.84)" : "rgba(255,255,255,0.98)",
       borderWidth: 1,
       borderColor:
-        theme.mode === "dark"
-          ? "rgba(51,65,85,0.52)"
-          : "rgba(148,163,184,0.18)",
+        theme.mode === "dark" ? "rgba(51,65,85,0.52)" : "rgba(148,163,184,0.18)",
     },
     stateIconWrap: {
-      width: 52,
-      height: 52,
-      borderRadius: 18,
+      width: 48,
+      height: 48,
+      borderRadius: 16,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor:
         theme.mode === "dark" ? "rgba(37,99,235,0.16)" : "rgba(37,99,235,0.08)",
       borderWidth: 1,
       borderColor:
-        theme.mode === "dark"
-          ? "rgba(96,165,250,0.2)"
-          : "rgba(59,130,246,0.14)",
+        theme.mode === "dark" ? "rgba(96,165,250,0.2)" : "rgba(59,130,246,0.14)",
     },
     stateTitle: {
       color: theme.colors.text,
-      fontSize: 20,
+      fontSize: 18,
       fontWeight: "900",
       textAlign: "center",
     },
@@ -599,8 +524,8 @@ const createStyles = (theme: AppTheme) =>
       borderColor: "rgba(245,158,11,0.35)",
       borderWidth: 1,
       padding: theme.s(1.5),
-      borderRadius: theme.r.lg,
-      marginBottom: theme.s(2),
+      borderRadius: 12,
+      marginBottom: theme.s(1.5),
     },
     errorText: {
       color: "#FDE68A",

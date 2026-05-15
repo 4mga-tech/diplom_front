@@ -311,6 +311,7 @@ export type LevelItem = {
   gradient: [string, string];
   isUnlocked: boolean;
   isCompleted: boolean;
+  progress: number;
 };
 
 function isValidGradient(value: unknown): value is [string, string] {
@@ -373,15 +374,20 @@ export async function fetchLevels(): Promise<LevelItem[]> {
 
         try {
           const units = await fetchCourseUnits(normalizedLevelId);
+          const completedUnits = units.filter((unit) => unit.isCompleted).length;
+          const totalUnits = units.length;
+          const progress = totalUnits > 0 ? Math.round((completedUnits / totalUnits) * 100) : 0;
 
           return {
             ...level,
             isCompleted: getLevelCompletion(units),
+            progress,
           };
         } catch {
           return {
             ...level,
             isCompleted: level.fallbackIsCompleted,
+            progress: level.fallbackIsCompleted ? 100 : 0,
           };
         }
       }),

@@ -8,8 +8,7 @@ import { getLevelById } from "@/src/data/curriculum";
 import {
   getCanonicalLevelId,
   getLessonDetailRoute,
-  getNormalizedLearningParams,
-  getUnitRoute,
+  getNormalizedLearningParams
 } from "@/src/features/learning/routes";
 import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,7 +17,6 @@ import {
   router,
   useFocusEffect,
   useLocalSearchParams,
-  useNavigation,
 } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {
@@ -41,7 +39,6 @@ const LESSON_STATE_LABELS: Record<LessonProgressState, string> = {
 export default function LessonListScreen() {
   const { theme } = useAppTheme();
   const styles = useThemedStyles(createStyles);
-  const navigation = useNavigation();
   const params = useLocalSearchParams<{
     levelId?: string | string[];
     unitId?: string;
@@ -100,13 +97,8 @@ export default function LessonListScreen() {
   );
 
   const handleBack = useCallback(() => {
-    if (navigation.canGoBack()) {
-      router.back();
-      return;
-    }
-
-    router.replace(getUnitRoute(safeLevelId, safeUnitId));
-  }, [navigation, safeLevelId, safeUnitId]);
+    router.back();
+  }, []);
 
   if (!levelMeta) {
     return (

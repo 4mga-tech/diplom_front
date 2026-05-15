@@ -3,26 +3,26 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    Pressable,
+    StyleSheet,
+    Text,
+    useWindowDimensions,
+    View,
 } from "react-native";
 
 import { fetchLevels, LevelItem } from "@/lib/learning";
 import {
-  claimDailyLoginXpAction,
-  fetchXpOverview,
-  XpOverview,
+    claimDailyLoginXpAction,
+    fetchXpOverview,
+    XpOverview,
 } from "@/src/features/achievements/achievements.service";
 import {
-  notifyXpUpdated,
-  subscribeToXpUpdates,
+    notifyXpUpdated,
+    subscribeToXpUpdates,
 } from "@/src/features/achievements/xp-events";
 import { getLevelRoute } from "@/src/features/learning/routes";
 import { clearAuthSession } from "@/src/store/authStore";
@@ -478,9 +478,15 @@ export default function CoursesScreen() {
               </View>
 
               <View style={styles.levelFooter}>
-                <Text style={styles.levelCount}>
-                  {item.vocabularyCount ?? 0} words
-                </Text>
+                <View style={styles.progressBar}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      { width: `${item.progress}%` },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.progressText}>{item.progress}%</Text>
               </View>
             </LinearGradient>
           </Pressable>
@@ -841,7 +847,22 @@ const createStyles = (theme: AppTheme) =>
       marginTop: 12,
     },
 
-    levelCount: {
+    progressBar: {
+      flex: 1,
+      height: 4,
+      backgroundColor: "rgba(255,255,255,0.20)",
+      borderRadius: 2,
+      marginRight: 8,
+      overflow: "hidden",
+    },
+
+    progressFill: {
+      height: "100%",
+      backgroundColor: "rgba(255,255,255,0.80)",
+      borderRadius: 2,
+    },
+
+    progressText: {
       color: "rgba(255,255,255,0.70)",
       fontSize: 10,
       fontWeight: "600",

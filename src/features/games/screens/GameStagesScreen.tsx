@@ -441,10 +441,11 @@ const getProgressColor = (progress: number) => {
 };
 
 export default function GameStagesScreen() {
-  const { gameId } = useLocalSearchParams();
-  const game = gamesData[gameId as keyof typeof gamesData];
+  const searchParams = useLocalSearchParams<{ gameId?: string }>();
+  const gameId = searchParams.gameId as keyof typeof gamesData | undefined;
+  const game = gameId ? gamesData[gameId] : null;
 
-  if (!game) {
+  if (!game || !gameId) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centerContent}>

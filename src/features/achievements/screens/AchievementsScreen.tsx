@@ -6,12 +6,18 @@ import {
   XpHistoryResult,
   XpOverview,
 } from "@/src/features/achievements/achievements.service";
+import LeaderboardModal from "@/src/features/achievements/components/LeaderboardModal";
 import XpHistoryBottomSheet from "@/src/features/achievements/components/XpHistoryBottomSheet";
 import XpHistoryRow from "@/src/features/achievements/components/XpHistoryRow";
+import {
+  fetchLeaderboardSummary,
+  LeaderboardSummary,
+} from "@/src/features/achievements/leaderboard.service";
 import {
   notifyXpUpdated,
   subscribeToXpUpdates,
 } from "@/src/features/achievements/xp-events";
+import { useAuthState } from "@/src/store/authStore";
 import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -26,7 +32,6 @@ import {
   Text,
   View,
 } from "react-native";
-
 const EMPTY_SUMMARY: XpOverview = {
   totalXp: 0,
   streak: 0,
@@ -124,7 +129,14 @@ export default function AchievementsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [claimMessage, setClaimMessage] = useState<string | null>(null);
   const [historySheetVisible, setHistorySheetVisible] = useState(false);
+  const [leaderboardVisible, setLeaderboardVisible] = useState(false);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
+  const [leaderboardData, setLeaderboardData] =
+    useState<LeaderboardSummary | null>(null);
 
+  const { user } = useAuthState();
+  const userId = user?.id ?? user?._id ?? null;
   const loadData = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
       setRefreshing(true);
@@ -190,7 +202,27 @@ export default function AchievementsScreen() {
     () => getClaimStateCopy(summary, claiming),
     [claiming, summary],
   );
+  const handleShowRanking = useCallback(async () => {
+    setLeaderboardVisible(true);
+    setLeaderboardLoading(true);
+    setLeaderboardError(null);
 
+    if (!userId) {
+      setLeaderboardError("We could not identify your account for ranking.");
+      setLeaderboardLoading(false);
+      return;
+    }
+
+    try {
+      const result = await fetchLeaderboardSummary(userId);
+      setLeaderboardData(result);
+    } catch (rankError) {
+      console.log("Error loading leaderboard:", rankError);
+      setLeaderboardError("Could not load leaderboard right now.");
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  }, [userId]);
   const handleClaimXp = useCallback(async () => {
     try {
       setClaiming(true);
@@ -286,11 +318,19 @@ export default function AchievementsScreen() {
               </View>
 
               <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Available XP balance</Text>
-                <Text style={styles.totalValue}>{summary.totalXp}</Text>
-                <Text style={styles.totalHelper}>
-                  This is the XP you can use right now for hints.
-                </Text>
+                <View style={styles.totalHeaderRow}>
+                  <View style={styles.totalLeft}>
+                    <Text style={styles.totalLabel}>Available XP balance</Text>
+                    <Text style={styles.totalValue}>{summary.totalXp}</Text>
+                  </View>
+
+                  <Pressable
+                    onPress={() => void handleShowRanking()}
+                    style={styles.rankingButton}
+                  >
+                    <Text style={styles.rankingButtonText}>Show Ranking</Text>
+                  </Pressable>
+                </View>
                 <Pressable
                   disabled={claimState.disabled}
                   onPress={() => {
@@ -431,7 +471,14 @@ export default function AchievementsScreen() {
           )
         }
       />
-
+      <LeaderboardModal
+        visible={leaderboardVisible}
+        loading={leaderboardLoading}
+        error={leaderboardError}
+        data={leaderboardData}
+        currentUserName={user?.name}
+        onClose={() => setLeaderboardVisible(false)}
+      />
       <XpHistoryBottomSheet
         visible={historySheetVisible}
         history={history}
@@ -459,25 +506,48 @@ const createStyles = (theme: AppTheme) =>
     },
     heroCard: {
       borderRadius: 28,
-      paddingHorizontal: theme.s(2),
-      paddingVertical: theme.s(1.8),
-      marginBottom: theme.s(2.5),
+      paddingHorizontal: theme.s(2.5),
+      paddingVertical: theme.s(2.2),
+      marginBottom: theme.s(3),
       backgroundColor:
         theme.mode === "dark"
-          ? "rgba(15,23,42,0.84)"
-          : "rgba(255,255,255,0.98)",
-      borderWidth: 1,
+          ? "rgba(15,23,42,0.7)"
+          : "rgba(255,255,255,0.99)",
+      borderWidth: 1.5,
       borderColor:
         theme.mode === "dark"
-          ? "rgba(51,65,85,0.52)"
-          : "rgba(148,163,184,0.18)",
-      gap: theme.s(1.4),
+          ? "rgba(96,165,250,0.15)"
+          : "rgba(96,165,250,0.2)",
+      gap: theme.s(1.8),
+      shadowColor: theme.colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: theme.mode === "dark" ? 0.2 : 0.08,
+      shadowRadius: 8,
+      elevation: 3,
     },
     heroHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "flex-start",
       gap: theme.s(1),
+    },
+    rankingButton: {
+      backgroundColor: theme.colors.primary,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: "rgba(96,165,250,0.3)",
+      shadowColor: theme.colors.primary,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 6,
+      elevation: 2,
+    },
+    rankingButtonText: {
+      color: "#EFF6FF",
+      fontSize: 13,
+      fontWeight: "800",
     },
     heroEyebrow: {
       color: theme.colors.muted,
@@ -523,147 +593,179 @@ const createStyles = (theme: AppTheme) =>
       fontWeight: "800",
     },
     totalRow: {
-      paddingHorizontal: theme.s(1.5),
-      paddingVertical: theme.s(1.35),
-      borderRadius: 18,
+      paddingHorizontal: theme.s(1.8),
+      paddingVertical: theme.s(1.6),
+      borderRadius: 20,
       backgroundColor:
-        theme.mode === "dark" ? "rgba(37,99,235,0.12)" : "rgba(37,99,235,0.08)",
-      borderWidth: 1,
+        theme.mode === "dark" ? "rgba(37,99,235,0.1)" : "rgba(37,99,235,0.06)",
+      borderWidth: 1.2,
       borderColor:
         theme.mode === "dark"
-          ? "rgba(96,165,250,0.18)"
-          : "rgba(59,130,246,0.14)",
+          ? "rgba(96,165,250,0.2)"
+          : "rgba(59,130,246,0.15)",
+      gap: theme.s(1.2),
     },
     totalLabel: {
       color: theme.colors.muted,
-      fontSize: 12,
+      fontSize: 13,
       fontWeight: "700",
+      letterSpacing: 0.2,
     },
     totalValue: {
       color: theme.colors.text,
-      fontSize: 30,
+      fontSize: 32,
       fontWeight: "900",
-      marginTop: 4,
+      letterSpacing: -0.5,
+      marginTop: 6,
     },
     totalHelper: {
       color: theme.colors.muted,
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: "700",
       marginTop: 4,
       lineHeight: 16,
     },
     claimButton: {
-      marginTop: theme.s(1),
+      marginTop: theme.s(1.2),
       alignSelf: "flex-start",
       flexDirection: "row",
       alignItems: "center",
-      gap: 8,
-      paddingHorizontal: 14,
-      paddingVertical: 11,
-      borderRadius: 999,
+      gap: 9,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 12,
       backgroundColor: "#FACC15",
-      borderWidth: 1,
-      borderColor: "rgba(250,204,21,0.3)",
+      borderWidth: 1.5,
+      borderColor: "rgba(250,204,21,0.4)",
+      shadowColor: "#FACC15",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 6,
+      elevation: 3,
     },
     claimButtonDisabled: {
       backgroundColor:
         theme.mode === "dark"
-          ? "rgba(148,163,184,0.22)"
-          : "rgba(148,163,184,0.18)",
+          ? "rgba(148,163,184,0.18)"
+          : "rgba(148,163,184,0.12)",
       borderColor:
         theme.mode === "dark"
-          ? "rgba(148,163,184,0.16)"
-          : "rgba(148,163,184,0.22)",
+          ? "rgba(148,163,184,0.15)"
+          : "rgba(148,163,184,0.18)",
+      shadowOpacity: 0,
+      elevation: 0,
     },
     claimButtonText: {
       color: "#0F172A",
-      fontSize: 12,
+      fontSize: 13,
       fontWeight: "900",
+      letterSpacing: 0.1,
     },
     claimStatusText: {
       color: theme.colors.muted,
       fontSize: 12,
       fontWeight: "700",
-      marginTop: theme.s(1),
+      marginTop: theme.s(0.8),
     },
     claimMessageText: {
       color: "#93C5FD",
       fontSize: 12,
       fontWeight: "700",
-      marginTop: 6,
+      marginTop: 8,
     },
     summaryGrid: {
       flexDirection: "row",
-      gap: theme.s(1.25),
+      gap: theme.s(1.4),
+      marginTop: theme.s(0.5),
     },
     summaryCard: {
       flex: 1,
-      borderRadius: 18,
-      paddingVertical: theme.s(1.35),
-      paddingHorizontal: theme.s(1.2),
+      borderRadius: 20,
+      paddingVertical: theme.s(1.6),
+      paddingHorizontal: theme.s(1.3),
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.12)",
+      borderColor: "rgba(255,255,255,0.15)",
+      shadowColor: "rgba(255,255,255,0.05)",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 2,
     },
     summaryIconWrap: {
-      width: 34,
-      height: 34,
-      borderRadius: 12,
+      width: 38,
+      height: 38,
+      borderRadius: 14,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "rgba(255,255,255,0.14)",
-      marginBottom: 10,
+      backgroundColor: "rgba(255,255,255,0.16)",
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.1)",
     },
     summaryValue: {
       color: "#F8FAFC",
-      fontSize: 17,
+      fontSize: 19,
       fontWeight: "900",
+      letterSpacing: -0.3,
     },
     summaryLabel: {
-      color: "rgba(248,250,252,0.84)",
-      fontSize: 10,
+      color: "rgba(248,250,252,0.8)",
+      fontSize: 11,
       fontWeight: "700",
-      marginTop: 4,
+      marginTop: 6,
+      letterSpacing: 0.2,
     },
     sectionHeader: {
       flexDirection: "row",
       alignItems: "flex-start",
       justifyContent: "space-between",
-      marginBottom: theme.s(1.5),
-      gap: theme.s(1),
+      marginBottom: theme.s(2),
+      gap: theme.s(1.5),
+      marginTop: theme.s(1),
     },
     sectionHeaderContent: {
       flex: 1,
     },
     sectionTitle: {
       color: theme.colors.text,
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: "900",
+      letterSpacing: -0.3,
     },
     sectionSubtitle: {
       color: theme.colors.muted,
-      fontSize: 12,
+      fontSize: 13,
       fontWeight: "700",
-      marginTop: 4,
-      lineHeight: 19,
+      marginTop: 6,
+      lineHeight: 20,
     },
     showFullHistoryButton: {
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 12,
       backgroundColor:
         theme.mode === "dark" ? "rgba(37,99,235,0.12)" : "rgba(37,99,235,0.08)",
-      borderWidth: 1,
+      borderWidth: 1.2,
       borderColor:
         theme.mode === "dark"
-          ? "rgba(96,165,250,0.18)"
-          : "rgba(59,130,246,0.14)",
+          ? "rgba(96,165,250,0.2)"
+          : "rgba(59,130,246,0.15)",
+    },
+    totalHeaderRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      width: "100%",
+    },
+    totalLeft: {
+      flex: 1,
     },
     showFullHistoryButtonDisabled: {
-      opacity: 0.55,
+      opacity: 0.5,
     },
     showFullHistoryText: {
       color: theme.mode === "dark" ? "#BFDBFE" : "#1D4ED8",
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: "800",
       textAlign: "center",
     },
@@ -672,46 +774,48 @@ const createStyles = (theme: AppTheme) =>
     },
     emptyCard: {
       alignItems: "center",
-      padding: theme.s(3),
-      borderRadius: 24,
+      padding: theme.s(3.5),
+      borderRadius: 26,
       backgroundColor:
         theme.mode === "dark"
-          ? "rgba(15,23,42,0.84)"
-          : "rgba(255,255,255,0.98)",
-      borderWidth: 1,
+          ? "rgba(15,23,42,0.7)"
+          : "rgba(255,255,255,0.99)",
+      borderWidth: 1.5,
       borderColor:
         theme.mode === "dark"
-          ? "rgba(51,65,85,0.52)"
-          : "rgba(148,163,184,0.18)",
+          ? "rgba(96,165,250,0.12)"
+          : "rgba(96,165,250,0.15)",
+      gap: theme.s(1.2),
     },
     emptyIconWrap: {
-      width: 52,
-      height: 52,
-      borderRadius: 18,
+      width: 64,
+      height: 64,
+      borderRadius: 20,
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: theme.s(1.5),
+      marginBottom: theme.s(1),
       backgroundColor:
-        theme.mode === "dark" ? "rgba(37,99,235,0.16)" : "rgba(37,99,235,0.08)",
-      borderWidth: 1,
+        theme.mode === "dark" ? "rgba(37,99,235,0.12)" : "rgba(37,99,235,0.08)",
+      borderWidth: 1.5,
       borderColor:
         theme.mode === "dark"
           ? "rgba(96,165,250,0.2)"
-          : "rgba(59,130,246,0.14)",
+          : "rgba(59,130,246,0.15)",
     },
     emptyTitle: {
       color: theme.colors.text,
-      fontSize: 18,
+      fontSize: 19,
       fontWeight: "900",
       textAlign: "center",
+      letterSpacing: -0.2,
     },
     emptyText: {
       color: theme.colors.muted,
-      fontSize: 13,
-      lineHeight: 20,
+      fontSize: 14,
+      lineHeight: 21,
       fontWeight: "600",
       textAlign: "center",
-      marginTop: 8,
+      marginTop: 4,
     },
     centerState: {
       flex: 1,
@@ -722,58 +826,64 @@ const createStyles = (theme: AppTheme) =>
     },
     stateCard: {
       width: "100%",
-      maxWidth: 360,
-      padding: theme.s(3),
-      borderRadius: 24,
+      maxWidth: 380,
+      padding: theme.s(3.5),
+      borderRadius: 28,
       alignItems: "center",
-      gap: theme.s(1.25),
+      gap: theme.s(1.5),
       backgroundColor:
         theme.mode === "dark"
-          ? "rgba(15,23,42,0.84)"
-          : "rgba(255,255,255,0.98)",
-      borderWidth: 1,
+          ? "rgba(15,23,42,0.7)"
+          : "rgba(255,255,255,0.99)",
+      borderWidth: 1.5,
       borderColor:
         theme.mode === "dark"
-          ? "rgba(51,65,85,0.52)"
-          : "rgba(148,163,184,0.18)",
+          ? "rgba(96,165,250,0.12)"
+          : "rgba(96,165,250,0.15)",
     },
     stateIconWrap: {
-      width: 52,
-      height: 52,
-      borderRadius: 18,
+      width: 64,
+      height: 64,
+      borderRadius: 20,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor:
-        theme.mode === "dark" ? "rgba(37,99,235,0.16)" : "rgba(37,99,235,0.08)",
-      borderWidth: 1,
+        theme.mode === "dark" ? "rgba(37,99,235,0.12)" : "rgba(37,99,235,0.08)",
+      borderWidth: 1.5,
       borderColor:
         theme.mode === "dark"
           ? "rgba(96,165,250,0.2)"
-          : "rgba(59,130,246,0.14)",
+          : "rgba(59,130,246,0.15)",
     },
     stateTitle: {
       color: theme.colors.text,
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: "900",
       textAlign: "center",
+      letterSpacing: -0.2,
     },
     stateText: {
       color: theme.colors.muted,
-      fontSize: 13,
-      lineHeight: 20,
+      fontSize: 14,
+      lineHeight: 21,
       fontWeight: "700",
       textAlign: "center",
     },
     retryButton: {
-      marginTop: theme.s(1),
-      paddingHorizontal: 18,
-      paddingVertical: 12,
-      borderRadius: 16,
+      marginTop: theme.s(1.5),
+      paddingHorizontal: 22,
+      paddingVertical: 13,
+      borderRadius: 14,
       backgroundColor: theme.colors.primary,
+      shadowColor: theme.colors.primary,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 3,
     },
     retryButtonText: {
       color: "#FFFFFF",
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: "800",
     },
     inlineError: {
