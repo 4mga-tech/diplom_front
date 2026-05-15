@@ -1,4 +1,5 @@
 import { LessonContentItem, LessonGlossaryItem } from "@/lib/learning";
+import { playAudio, getAudioUrl } from "@/lib/audio";
 import GlossaryModal from "@/src/features/lesson/components/GlossaryModal";
 import LessonActionButton from "@/src/features/lesson/components/LessonActionButton";
 import LetterPracticeModal from "@/src/features/lesson/components/LetterPracticeModal";
@@ -380,6 +381,16 @@ function ExerciseRepeatContentBlock({
   activeGlossaryWordKey,
 }: ContentBlockProps) {
   const rows = asArray<any>(content.rows);
+  const hasLetterAudio = rows.some((row: any) => row?.audioKey || (row?.primary && !row?.audioUrl));
+
+  const handleAudioPlay = React.useCallback(async (audioKey: string) => {
+    const audioUrl = getAudioUrl(audioKey);
+    try {
+      await playAudio(audioUrl);
+    } catch (error) {
+      console.error("Failed to play audio:", error);
+    }
+  }, []);
 
   return (
     <View style={styles.stack}>
@@ -392,46 +403,70 @@ function ExerciseRepeatContentBlock({
         activeGlossaryWordKey={activeGlossaryWordKey}
       />
       {rows.length > 0 ? (
-        rows.map((row, idx) => (
-          <View key={`${item.id}-row-${idx}`} style={styles.innerCard}>
-            {!!row?.prompt ? (
-              <GlossaryText
-                text={String(row.prompt)}
-                styles={styles}
-                glossary={glossary}
-                onSelectGlossaryWord={onSelectGlossaryWord}
-                activeGlossaryWordKey={activeGlossaryWordKey}
-                variant="title"
-              />
-            ) : null}
-            {!!row?.line ? (
-              <GlossaryText
-                text={String(row.line)}
-                styles={styles}
-                glossary={glossary}
-                onSelectGlossaryWord={onSelectGlossaryWord}
-                activeGlossaryWordKey={activeGlossaryWordKey}
-              />
-            ) : null}
-            {!!row?.text ? (
-              <GlossaryText
-                text={String(row.text)}
-                styles={styles}
-                glossary={glossary}
-                onSelectGlossaryWord={onSelectGlossaryWord}
-                activeGlossaryWordKey={activeGlossaryWordKey}
-              />
-            ) : null}
-            {!!row?.audioUrl ? (
-              <LessonActionButton
-                label="Play practice audio"
-                onPress={() => openLink(row.audioUrl)}
-                styles={styles}
-                icon="play"
-              />
-            ) : null}
+        hasLetterAudio ? (
+          <View style={styles.audioGrid}>
+            {rows.map((row, idx) => {
+              const audioKey = row?.audioKey || (row?.primary ? `letters/${row.primary.toLowerCase()}.mp3` : null);
+              if (!audioKey) return null;
+              return (
+                <Pressable
+                  key={`${item.id}-audio-${idx}`}
+                  onPress={() => handleAudioPlay(audioKey)}
+                  style={({ pressed }) => [
+                    styles.audioCard,
+                    pressed ? styles.audioCardPressed : null,
+                  ]}
+                >
+                  <Text style={styles.audioCardIcon}>▶</Text>
+                  {row?.primary ? (
+                    <Text style={styles.audioCardLabel}>{row.primary}</Text>
+                  ) : null}
+                </Pressable>
+              );
+            })}
           </View>
-        ))
+        ) : (
+          rows.map((row, idx) => (
+            <View key={`${item.id}-row-${idx}`} style={styles.innerCard}>
+              {!!row?.prompt ? (
+                <GlossaryText
+                  text={String(row.prompt)}
+                  styles={styles}
+                  glossary={glossary}
+                  onSelectGlossaryWord={onSelectGlossaryWord}
+                  activeGlossaryWordKey={activeGlossaryWordKey}
+                  variant="title"
+                />
+              ) : null}
+              {!!row?.line ? (
+                <GlossaryText
+                  text={String(row.line)}
+                  styles={styles}
+                  glossary={glossary}
+                  onSelectGlossaryWord={onSelectGlossaryWord}
+                  activeGlossaryWordKey={activeGlossaryWordKey}
+                />
+              ) : null}
+              {!!row?.text ? (
+                <GlossaryText
+                  text={String(row.text)}
+                  styles={styles}
+                  glossary={glossary}
+                  onSelectGlossaryWord={onSelectGlossaryWord}
+                  activeGlossaryWordKey={activeGlossaryWordKey}
+                />
+              ) : null}
+              {!!row?.audioUrl ? (
+                <LessonActionButton
+                  label="Play practice audio"
+                  onPress={() => openLink(row.audioUrl)}
+                  styles={styles}
+                  icon="play"
+                />
+              ) : null}
+            </View>
+          ))
+        )
       ) : (
         <EmptyBlock message="No repeat exercise items available yet." styles={styles} />
       )}

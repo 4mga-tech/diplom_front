@@ -5,7 +5,7 @@ export const mockLetterTests: Record<string, TestQuestion[]> = {
     {
       id: "b1-letter-1",
       levelId: "B1",
-      testType: "letter",
+      testType: "grammar",
       question: 'Аль нь кирилл үсэг "А" вэ?',
       options: [
         { id: "a", text: "A" },
@@ -18,7 +18,7 @@ export const mockLetterTests: Record<string, TestQuestion[]> = {
     {
       id: "b1-letter-2",
       levelId: "B1",
-      testType: "letter",
+      testType: "grammar",
       question: '"Ном" үгийн эхний үсэг аль нь вэ?',
       options: [
         { id: "a", text: "М" },
@@ -33,7 +33,7 @@ export const mockLetterTests: Record<string, TestQuestion[]> = {
     {
       id: "m1-letter-1",
       levelId: "M1",
-      testType: "letter",
+      testType: "grammar",
       question: '"Аав" үг ямар үсгээр эхэлдэг вэ?',
       options: [
         { id: "a", text: "А" },
@@ -46,7 +46,7 @@ export const mockLetterTests: Record<string, TestQuestion[]> = {
     {
       id: "m1-letter-2",
       levelId: "M1",
-      testType: "letter",
+      testType: "grammar",
       question: "Аль нь эгшиг үсэг вэ?",
       options: [
         { id: "a", text: "М" },
@@ -61,7 +61,7 @@ export const mockLetterTests: Record<string, TestQuestion[]> = {
     {
       id: "m2-letter-1",
       levelId: "M2",
-      testType: "letter",
+      testType: "grammar",
       question: '"Өдөр" үг ямар үсгээр эхэлдэг вэ?',
       options: [
         { id: "a", text: "О" },
@@ -74,7 +74,7 @@ export const mockLetterTests: Record<string, TestQuestion[]> = {
     {
       id: "m2-letter-2",
       levelId: "M2",
-      testType: "letter",
+      testType: "grammar",
       question: "Аль нь зөв бичигдсэн үг вэ?",
       options: [
         { id: "a", text: "гэр" },
@@ -89,7 +89,7 @@ export const mockLetterTests: Record<string, TestQuestion[]> = {
     {
       id: "m3-letter-1",
       levelId: "M3",
-      testType: "letter",
+      testType: "grammar",
       question: '"Шийдвэр" үгийн эхний үсэг аль нь вэ?',
       options: [
         { id: "a", text: "Ш" },
@@ -102,7 +102,7 @@ export const mockLetterTests: Record<string, TestQuestion[]> = {
     {
       id: "m3-letter-2",
       levelId: "M3",
-      testType: "letter",
+      testType: "grammar",
       question: "Аль нь зөв кирилл бичиглэл вэ?",
       options: [
         { id: "a", text: "турshлага" },

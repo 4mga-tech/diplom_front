@@ -1,0 +1,282 @@
+[
+  {
+    "id": "letter-а",
+    "letter": "А",
+    "lowercase": "а",
+    "romanization": "a",
+    "group": "basic_vowel",
+    "audioKey": "letters/a.mp3"
+  },
+  {
+    "id": "letter-э",
+    "letter": "Э",
+    "lowercase": "э",
+    "romanization": "e",
+    "group": "basic_vowel",
+    "audioKey": "letters/e.mp3"
+  },
+  {
+    "id": "letter-и",
+    "letter": "И",
+    "lowercase": "и",
+    "romanization": "i",
+    "group": "basic_vowel",
+    "audioKey": "letters/i.mp3"
+  },
+  {
+    "id": "letter-о",
+    "letter": "О",
+    "lowercase": "о",
+    "romanization": "o",
+    "group": "basic_vowel",
+    "audioKey": "letters/o.mp3"
+  },
+  {
+    "id": "letter-ө",
+    "letter": "Ө",
+    "lowercase": "ө",
+    "romanization": "ö",
+    "group": "basic_vowel",
+    "audioKey": "letters/ou.mp3"
+  },
+  {
+    "id": "letter-у",
+    "letter": "У",
+    "lowercase": "у",
+    "romanization": "u",
+    "group": "basic_vowel",
+    "audioKey": "letters/u.mp3"
+  },
+  {
+    "id": "letter-ү",
+    "letter": "Ү",
+    "lowercase": "ү",
+    "romanization": "ü",
+    "group": "basic_vowel",
+    "audioKey": "letters/vvv.mp3"
+  },
+  {
+    "id": "letter-б",
+    "letter": "Б",
+    "lowercase": "б",
+    "romanization": "b",
+    "group": "consonant",
+    "audioKey": "letters/b.mp3"
+  },
+  {
+    "id": "letter-в",
+    "letter": "В",
+    "lowercase": "в",
+    "romanization": "v",
+    "group": "consonant",
+    "audioKey": "letters/v.mp3"
+  },
+  {
+    "id": "letter-г",
+    "letter": "Г",
+    "lowercase": "г",
+    "romanization": "g",
+    "group": "consonant",
+    "audioKey": "letters/g.mp3"
+  },
+  {
+    "id": "letter-д",
+    "letter": "Д",
+    "lowercase": "д",
+    "romanization": "d",
+    "group": "consonant",
+    "audioKey": "letters/d.mp3"
+  },
+  {
+    "id": "letter-ж",
+    "letter": "Ж",
+    "lowercase": "ж",
+    "romanization": "j",
+    "group": "consonant",
+    "audioKey": "letters/j.mp3"
+  },
+  {
+    "id": "letter-з",
+    "letter": "З",
+    "lowercase": "з",
+    "romanization": "z",
+    "group": "consonant",
+    "audioKey": "letters/z.mp3"
+  },
+  {
+    "id": "letter-к",
+    "letter": "К",
+    "lowercase": "к",
+    "romanization": "k",
+    "group": "consonant",
+    "audioKey": "letters/k.mp3"
+  },
+  {
+    "id": "letter-л",
+    "letter": "Л",
+    "lowercase": "л",
+    "romanization": "l",
+    "group": "consonant",
+    "audioKey": "letters/l.mp3"
+  },
+  {
+    "id": "letter-м",
+    "letter": "М",
+    "lowercase": "м",
+    "romanization": "m",
+    "group": "consonant",
+    "audioKey": "letters/m.mp3"
+  },
+  {
+    "id": "letter-н",
+    "letter": "Н",
+    "lowercase": "н",
+    "romanization": "n",
+    "group": "consonant",
+    "audioKey": "letters/n.mp3"
+  },
+  {
+    "id": "letter-п",
+    "letter": "П",
+    "lowercase": "п",
+    "romanization": "p",
+    "group": "consonant",
+    "audioKey": "letters/p.mp3"
+  },
+  {
+    "id": "letter-р",
+    "letter": "Р",
+    "lowercase": "р",
+    "romanization": "r",
+    "group": "consonant",
+    "audioKey": "letters/r.mp3"
+  },
+  {
+    "id": "letter-с",
+    "letter": "С",
+    "lowercase": "с",
+    "romanization": "s",
+    "group": "consonant",
+    "audioKey": "letters/s.mp3"
+  },
+  {
+    "id": "letter-т",
+    "letter": "Т",
+    "lowercase": "т",
+    "romanization": "t",
+    "group": "consonant",
+    "audioKey": "letters/t.mp3"
+  },
+  {
+    "id": "letter-ф",
+    "letter": "Ф",
+    "lowercase": "ф",
+    "romanization": "f",
+    "group": "consonant",
+    "audioKey": "letters/f.mp3"
+  },
+  {
+    "id": "letter-х",
+    "letter": "Х",
+    "lowercase": "х",
+    "romanization": "h",
+    "group": "consonant",
+    "audioKey": "letters/h.mp3"
+  },
+  {
+    "id": "letter-ц",
+    "letter": "Ц",
+    "lowercase": "ц",
+    "romanization": "ts",
+    "group": "consonant",
+    "audioKey": "letters/ts.mp3"
+  },
+  {
+    "id": "letter-ч",
+    "letter": "Ч",
+    "lowercase": "ч",
+    "romanization": "ch",
+    "group": "consonant",
+    "audioKey": "letters/ch.mp3"
+  },
+  {
+    "id": "letter-ш",
+    "letter": "Ш",
+    "lowercase": "ш",
+    "romanization": "sh",
+    "group": "consonant",
+    "audioKey": "letters/sh.mp3"
+  },
+  {
+    "id": "letter-щ",
+    "letter": "Щ",
+    "lowercase": "щ",
+    "romanization": "shche",
+    "group": "consonant",
+    "audioKey": "letters/shche.mp3"
+  },
+  {
+    "id": "letter-й",
+    "letter": "Й",
+    "lowercase": "й",
+    "romanization": "y",
+    "group": "sign_letter",
+    "audioKey": "letters/hagas_i.mp3"
+  },
+  {
+    "id": "letter-ь",
+    "letter": "Ь",
+    "lowercase": "ь",
+    "romanization": "soft_sign",
+    "group": "sign_letter",
+    "audioKey": "letters/zuulun.mp3"
+  },
+  {
+    "id": "letter-ъ",
+    "letter": "Ъ",
+    "lowercase": "ъ",
+    "romanization": "hard_sign",
+    "group": "sign_letter",
+    "audioKey": "letters/hatuu.mp3"
+  },
+  {
+    "id": "letter-е",
+    "letter": "Е",
+    "lowercase": "е",
+    "romanization": "ye",
+    "group": "auxiliary_vowel",
+    "audioKey": "letters/ye.mp3"
+  },
+  {
+    "id": "letter-ё",
+    "letter": "Ё",
+    "lowercase": "ё",
+    "romanization": "yo",
+    "group": "auxiliary_vowel",
+    "audioKey": "letters/yo.mp3"
+  },
+  {
+    "id": "letter-я",
+    "letter": "Я",
+    "lowercase": "я",
+    "romanization": "ya",
+    "group": "auxiliary_vowel",
+    "audioKey": "letters/ya.mp3"
+  },
+  {
+    "id": "letter-ю",
+    "letter": "Ю",
+    "lowercase": "ю",
+    "romanization": "yu",
+    "group": "auxiliary_vowel",
+    "audioKey": "letters/yu.mp3"
+  },
+  {
+    "id": "letter-ы",
+    "letter": "Ы",
+    "lowercase": "ы",
+    "romanization": "y",
+    "group": "auxiliary_vowel",
+    "audioKey": "letters/er_i.mp3"
+  }
+]

@@ -616,6 +616,45 @@ export const createLessonStyles = (theme: AppTheme) =>
       lineHeight: 14,
       textAlign: "center",
     },
+    audioGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    audioCard: {
+      flex: 1,
+      minWidth: 80,
+      borderRadius: 14,
+      paddingVertical: theme.s(1.5),
+      paddingHorizontal: theme.s(1),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(59,130,246,0.12)"
+          : "rgba(59,130,246,0.08)",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(96,165,250,0.22)"
+          : "rgba(59,130,246,0.18)",
+      gap: 6,
+    },
+    audioCardPressed: {
+      opacity: 0.9,
+      transform: [{ scale: 0.97 }],
+    },
+    audioCardIcon: {
+      color: "#3B82F6",
+      fontSize: 20,
+      fontWeight: "700",
+    },
+    audioCardLabel: {
+      color: theme.colors.text,
+      fontSize: 16,
+      fontWeight: "800",
+      textAlign: "center",
+    },
     chip: {
       paddingHorizontal: 12,
       paddingVertical: 8,

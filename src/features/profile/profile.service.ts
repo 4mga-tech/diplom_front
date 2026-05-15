@@ -128,11 +128,25 @@ function getAvatarUploadEndpoint() {
   return baseURL.endsWith("/api") ? "/me/avatar" : "/api/me/avatar";
 }
 
+function buildApiRequestUrl(endpoint: string) {
+  const baseURL = String(api.defaults.baseURL ?? "").trim();
+
+  if (!baseURL) {
+    return endpoint;
+  }
+
+  try {
+    return new URL(endpoint.replace(/^\//, ""), baseURL.endsWith("/") ? baseURL : `${baseURL}/`).toString();
+  } catch {
+    return `${baseURL.replace(/\/$/, "")}/${endpoint.replace(/^\//, "")}`;
+  }
+}
+
 export async function uploadCurrentUserAvatar(
   asset: ImagePicker.ImagePickerAsset,
 ) {
   const endpoint = getAvatarUploadEndpoint();
-  const requestUrl = api.getUri({ url: endpoint });
+  const requestUrl = buildApiRequestUrl(endpoint);
   const token = await AsyncStorage.getItem("token");
   const formData = new FormData();
   const file = buildUploadAsset(asset);
@@ -142,8 +156,8 @@ export async function uploadCurrentUserAvatar(
     const response = await api.post(endpoint, formData, {
       headers: token
         ? {
-            Authorization: `Bearer ${token}`,
-          }
+          Authorization: `Bearer ${token}`,
+        }
         : undefined,
     });
 

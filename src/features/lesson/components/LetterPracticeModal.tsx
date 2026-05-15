@@ -1,3 +1,9 @@
+import {
+  getAudioUrl,
+  getLetterAudioKey,
+  playAudio,
+  stopAudio,
+} from "@/lib/audio";
 import { useAppTheme } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
@@ -10,13 +16,13 @@ import {
   Text,
   View,
 } from "react-native";
-
 type LetterPracticeData = {
   primary: string;
   uppercase?: string | null;
   lowercase?: string | null;
   printForm?: string | null;
   cursiveForm?: string | null;
+  audioKey?: string;
 };
 
 type Point = {
@@ -53,17 +59,41 @@ export default function LetterPracticeModal({
   const { theme } = useAppTheme();
   const [strokes, setStrokes] = React.useState<Point[][]>([]);
   const [canvasFrame, setCanvasFrame] = React.useState<CanvasFrame | null>(null);
+  const [isPlaying, setIsPlaying] = React.useState(false);
   const canvasRef = React.useRef<View | null>(null);
 
-  const handleReset = React.useCallback(() => {
-    setStrokes([]);
-  }, []);
+ const handlePlayAudio = React.useCallback(async () => {
+  const audioKey =
+    letter?.audioKey || getLetterAudioKey(letter?.primary);
+
+  if (!audioKey) return;
+
+  const audioUrl = getAudioUrl(audioKey);
+
+  setIsPlaying(true);
+
+  try {
+    await playAudio(audioUrl);
+  } catch (error) {
+    console.error("Failed to play audio:", error);
+  } finally {
+    setIsPlaying(false);
+  }
+}, [letter?.audioKey, letter?.primary]);
 
   React.useEffect(() => {
     if (!visible) {
       setStrokes([]);
+      setIsPlaying(false);
+      void stopAudio();
+    } else if (letter?.audioKey || letter?.primary) {
+      handlePlayAudio();
     }
-  }, [visible]);
+  }, [visible, letter?.audioKey, letter?.primary, handlePlayAudio]);
+
+  const handleReset = React.useCallback(() => {
+    setStrokes([]);
+  }, []);
 
   const updateCanvasFrame = React.useCallback(() => {
     const node = canvasRef.current;
@@ -199,24 +229,51 @@ export default function LetterPracticeModal({
               </Text>
             </View>
 
-            <Pressable
-              onPress={onClose}
-              style={[
-                styles.closeButton,
-                {
-                  backgroundColor:
-                    theme.mode === "dark"
-                      ? "rgba(255,255,255,0.05)"
-                      : "rgba(148,163,184,0.08)",
-                  borderColor:
-                    theme.mode === "dark"
-                      ? "rgba(255,255,255,0.08)"
-                      : "rgba(148,163,184,0.14)",
-                },
-              ]}
-            >
-              <Ionicons name="close" size={18} color={theme.colors.text} />
-            </Pressable>
+            <View style={styles.headerControls}>
+              {letter?.audioKey || letter?.primary ? (
+                <Pressable
+                  onPress={handlePlayAudio}
+                  disabled={isPlaying}
+                  style={[
+                    styles.headerButton,
+                    {
+                      backgroundColor:
+                        theme.mode === "dark"
+                          ? "rgba(59,130,246,0.15)"
+                          : "rgba(59,130,246,0.1)",
+                      borderColor:
+                        theme.mode === "dark"
+                          ? "rgba(96,165,250,0.25)"
+                          : "rgba(59,130,246,0.2)",
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={isPlaying ? "pause" : "play"}
+                    size={16}
+                    color="#3B82F6"
+                  />
+                </Pressable>
+              ) : null}
+              <Pressable
+                onPress={onClose}
+                style={[
+                  styles.headerButton,
+                  {
+                    backgroundColor:
+                      theme.mode === "dark"
+                        ? "rgba(255,255,255,0.05)"
+                        : "rgba(148,163,184,0.08)",
+                    borderColor:
+                      theme.mode === "dark"
+                        ? "rgba(255,255,255,0.08)"
+                        : "rgba(148,163,184,0.14)",
+                  },
+                ]}
+              >
+                <Ionicons name="close" size={18} color={theme.colors.text} />
+              </Pressable>
+            </View>
           </View>
 
           <View style={styles.topRow}>
@@ -367,6 +424,19 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 12,
   },
+  headerControls: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
+  },
+  headerButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
   eyebrow: {
     fontSize: 11,
     fontWeight: "800",
@@ -377,14 +447,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "900",
     marginTop: 4,
-  },
-  closeButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
   },
   topRow: {
     flexDirection: "row",

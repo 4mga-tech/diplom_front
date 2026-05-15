@@ -47,9 +47,15 @@ function normalizeQuestion(
     question: String(raw?.question ?? raw?.prompt ?? raw?.text ?? ""),
     options: Array.isArray(raw?.options)
       ? raw.options.map((option: unknown, index: number) =>
-          normalizeOption(option, index),
-        )
+        normalizeOption(option, index),
+      )
       : [],
+    correctOptionId: String(
+      raw?.correctOptionId ??
+      raw?.correctAnswer ??
+      raw?.answer ??
+      ""
+    ),
     explanation: raw?.explanation ? String(raw.explanation) : undefined,
   };
 }
@@ -75,9 +81,9 @@ function normalizeLevelSummary(raw: any): TestLevelSummary {
     title: String(raw?.title ?? raw?.levelId ?? "").toUpperCase(),
     activeTypes: Array.isArray(raw?.activeTypes)
       ? raw.activeTypes.filter(
-          (type: unknown): type is "vocabulary" | "grammar" =>
-            type === "vocabulary" || type === "grammar",
-        )
+        (type: unknown): type is "vocabulary" | "grammar" =>
+          type === "vocabulary" || type === "grammar",
+      )
       : [],
     questionCounts: {
       vocabulary: toNumber(raw?.questionCounts?.vocabulary),
@@ -93,20 +99,20 @@ function normalizeTypeAvailability(raw: any): TestTypeAvailabilityResponse {
     levelId,
     types: Array.isArray(raw?.types)
       ? raw.types
-          .map((item: Record<string, unknown>) => ({
-            testType: String(item?.testType ?? "").toLowerCase() as TestType,
-            title: String(item?.title ?? item?.testType ?? ""),
-            active: Boolean(item?.active),
-            status: item?.status === "available" ? "available" : "coming_soon",
-            questionCount: toNumber(item?.questionCount),
-          }))
-          .filter(
-            (item: { testType: TestType }) =>
-              item.testType === "vocabulary" ||
-              item.testType === "grammar" ||
-              item.testType === "listening" ||
-              item.testType === "speaking",
-          )
+        .map((item: Record<string, unknown>) => ({
+          testType: String(item?.testType ?? "").toLowerCase() as TestType,
+          title: String(item?.title ?? item?.testType ?? ""),
+          active: Boolean(item?.active),
+          status: item?.status === "available" ? "available" : "coming_soon",
+          questionCount: toNumber(item?.questionCount),
+        }))
+        .filter(
+          (item: { testType: TestType }) =>
+            item.testType === "vocabulary" ||
+            item.testType === "grammar" ||
+            item.testType === "listening" ||
+            item.testType === "speaking",
+        )
       : [],
   };
 }
@@ -120,8 +126,8 @@ function normalizeQuestionSet(
   const normalizedType = (raw?.testType ?? testType) as TestType;
   const questions = Array.isArray(raw?.questions)
     ? raw.questions.map((question: any) =>
-        normalizeQuestion(question, normalizedLevelId, normalizedType),
-      )
+      normalizeQuestion(question, normalizedLevelId, normalizedType),
+    )
     : [];
 
   return {

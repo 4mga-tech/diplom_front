@@ -55,7 +55,11 @@ export default function LessonScreenView({
   const [hasReachedBottomOnce, setHasReachedBottomOnce] = React.useState(false);
   const [scrollViewportHeight, setScrollViewportHeight] = React.useState(0);
   const [scrollContentHeight, setScrollContentHeight] = React.useState(0);
-  const lessonState = lesson ? getLessonProgressState(lesson) : null;
+  const lessonState = lesson
+    ? lesson.isCompleted
+      ? "completed"
+      : getLessonProgressState(lesson)
+    : null;
   const bottomThreshold = 32;
   const stateColor =
     lessonState === "completed"
@@ -467,7 +471,8 @@ export default function LessonScreenView({
                 onPress={onOpenQuiz}
                 styles={styles}
                 variant="primary"
-                icon={isFinalExamLesson ? "school" : lessonState === "completed" ? "refresh" : "play"}
+                // icon={isFinalExamLesson ? "school" : lessonState === "completed" ? "refresh" : "play"}
+                icon={isFinalExamLesson ? "school" : "play"}
               />
             </View>
           ) : null}
@@ -547,13 +552,7 @@ export default function LessonScreenView({
                 styles={styles}
                 variant="primary"
                 disabled={!primaryForwardActionEnabled}
-                icon={
-                  isFinalExamLesson
-                    ? "school"
-                    : lessonState === "completed"
-                      ? "refresh"
-                      : "play"
-                }
+                icon={isFinalExamLesson ? "school" : "play"}
               />
             ) : null}
             {!canManuallyCompleteLesson && lessonState === "completed" && hasNext ? (

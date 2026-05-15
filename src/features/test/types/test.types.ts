@@ -16,6 +16,8 @@ export type TestQuestion = {
   question: string;
   options: TestOption[];
   explanation?: string;
+    correctOptionId: string;
+
 };
 
 export type TestAnswerSubmission = {
