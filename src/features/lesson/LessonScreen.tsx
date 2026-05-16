@@ -6,6 +6,7 @@ import {
   getLessonListRoute,
   getLessonQuizRoute,
   getNormalizedLearningParams,
+  getUnitRoute,
 } from "@/src/features/learning/routes";
 import LessonScreenView from "@/src/features/lesson/components/LessonScreenView";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
@@ -55,8 +56,8 @@ export default function LessonScreen() {
   );
 
   const handleBack = useCallback(() => {
-    router.back();
-  }, []);
+    router.replace(getUnitRoute(levelId, unitId));
+  }, [levelId, unitId]);
 
   const handleOpenQuiz = useCallback(() => {
     if (!lesson?.id || !lesson.isUnlocked || !lesson.hasQuiz) return;

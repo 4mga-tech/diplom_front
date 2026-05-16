@@ -52,6 +52,29 @@ export const LESSON_CONTENT_TYPE_CONFIG: Record<
     tint: "#38BDF8",
     getDefaultTitle: createDefaultTitle("Audio"),
   },
+  hero_intro: {
+    icon: "sparkles-outline",
+    label: "Intro",
+    sectionType: "reading",
+    tint: "#3B82F6",
+    getDefaultTitle: createDefaultTitle("Introduction"),
+  },
+
+  alphabet_preview: {
+    icon: "grid-outline",
+    label: "Alphabet",
+    sectionType: "reference",
+    tint: "#8B5CF6",
+    getDefaultTitle: createDefaultTitle("Alphabet preview"),
+  },
+
+  next_steps: {
+    icon: "navigate-outline",
+    label: "Next",
+    sectionType: "reading",
+    tint: "#10B981",
+    getDefaultTitle: createDefaultTitle("Next steps"),
+  },
   pronunciation: {
     icon: "volume-medium-outline",
     label: "Pronunciation",
@@ -65,6 +88,20 @@ export const LESSON_CONTENT_TYPE_CONFIG: Record<
     sectionType: "reference",
     tint: "#F59E0B",
     getDefaultTitle: createDefaultTitle("Image"),
+  },
+  syllable_builder: {
+    label: "Syllables",
+    sectionType: "practice",
+    icon: "git-merge-outline",
+    tint: "#3B82F6",
+    getDefaultTitle: (item) => item.title || "Syllable builder",
+  },
+  word_builder: {
+    label: "Words",
+    sectionType: "practice",
+    icon: "text-outline",
+    tint: "#10B981",
+    getDefaultTitle: (item) => item.title || "Word builder",
   },
   alphabet_table: {
     icon: "grid-outline",

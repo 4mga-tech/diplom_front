@@ -103,8 +103,8 @@ export default function LessonScreenView({
   const canOpenQuiz = hasQuiz && canStartPracticeQuiz;
   const canManuallyCompleteLesson = Boolean(
     lesson &&
-      hasQuiz === false &&
-      lesson.isCompleted === false,
+    hasQuiz === false &&
+    lesson.isCompleted === false,
   );
   const isFinalExamLesson = Boolean(
     levelId === "b1" && lesson?.hasQuiz && lesson?.order === 6,
@@ -115,23 +115,8 @@ export default function LessonScreenView({
     : canOpenQuiz
       ? quizLessonLabel
       : "Lesson content";
-  const heroNoticeText = isFinalExamLesson
-    ? "Review each section, then take the final exam when you are ready."
-    : canOpenQuiz
-      ? "Finish the practice quiz after the lesson."
-      : "This lesson focuses on guided study and practice only.";
-  const quizCardEyebrow = isFinalExamLesson ? "Final check" : "Practice check";
-  const quizCardTitle = quizLessonLabel;
-  const quizCardText = isFinalExamLesson
-    ? "Complete the final exam after reviewing the full lesson."
-    : activeSection
-      ? `Check ${activeSection.title || `Section ${activeSection.order}`}.`
-      : "Check the lesson before moving on.";
-  const quizCardMeta = isFinalExamLesson
-    ? "Final assessment"
-    : lessonState === "completed"
-      ? "Practice again"
-      : "Short practice";
+
+
   const quizButtonLabel = isFinalExamLesson
     ? "Start Final Exam"
     : lessonState === "completed"
@@ -146,9 +131,7 @@ export default function LessonScreenView({
   const resolvedNextActionLabel = canManuallyCompleteLesson
     ? "Complete Lesson"
     : nextActionLabel;
-  const resolvedHeroNoticeText = canManuallyCompleteLesson
-    ? "Finish the lesson, then press Complete Lesson to unlock the next lesson."
-    : heroNoticeText;
+
   const shouldShowStickyActionBar =
     canManuallyCompleteLesson ||
     shouldShowPrimaryQuizCtaInBar ||
@@ -236,7 +219,7 @@ export default function LessonScreenView({
             <Text style={styles.stateTitle}>Lesson unavailable</Text>
             <Text style={styles.stateText}>{error || "Lesson not found."}</Text>
             <LessonActionButton
-              label="Back to lessons"
+              label="Back to units"
               onPress={onBack}
               styles={styles}
               icon="chevron-back"
@@ -261,28 +244,17 @@ export default function LessonScreenView({
           >
             <Ionicons name="chevron-back" size={20} color={theme.colors.text} />
           </Pressable>
+
           <View style={styles.headerTitleWrap}>
-            <Text style={styles.headerTitle}>Lesson</Text>
+            <Text style={styles.headerTitle} numberOfLines={2}>
+              {lesson.title}
+            </Text>
             <Text style={styles.headerSubtitle}>{lessonPositionLabel}</Text>
           </View>
         </View>
       </View>
 
-      <View
-        style={[
-          styles.statusPill,
-          {
-            borderColor: `${stateColor}33`,
-            backgroundColor:
-              theme.mode === "dark" ? `${stateColor}16` : `${stateColor}10`,
-          },
-        ]}
-      >
-        <Ionicons name={stateIcon} size={13} color={stateColor} />
-        <Text style={[styles.statusPillText, { color: stateColor }]}>
-          {lessonStateLabel}
-        </Text>
-      </View>
+
 
       <ScrollView
         style={styles.scroll}
@@ -311,129 +283,10 @@ export default function LessonScreenView({
           );
         }}
       >
-        <Animated.View entering={FadeIn.duration(240)} style={styles.heroCard}>
-          <View style={styles.heroInner}>
-            <View style={styles.heroTopMeta}>
-              <Text style={styles.lessonOrderText}>{lessonPositionLabel}</Text>
-              <View
-                style={[
-                  styles.heroStatePill,
-                  {
-                    borderColor: `${stateColor}33`,
-                    backgroundColor:
-                      theme.mode === "dark" ? `${stateColor}16` : `${stateColor}10`,
-                  },
-                ]}
-              >
-                <Ionicons name={stateIcon} size={14} color={stateColor} />
-                <Text style={[styles.heroStatePillText, { color: stateColor }]}>
-                  {lessonStateLabel}
-                </Text>
-              </View>
-            </View>
 
-            <View style={styles.heroTextWrap}>
-              <Text style={styles.heroTitle}>{lesson.title}</Text>
-              {lesson.titleEn ? (
-                <Text style={styles.heroTitleEn}>{lesson.titleEn}</Text>
-              ) : null}
-              <Text style={styles.heroSubtitle}>
-                {lesson.subtitle || "Lesson overview"}
-              </Text>
-              {lesson.subtitleEn ? (
-                <Text style={styles.heroSubtitleEn}>{lesson.subtitleEn}</Text>
-              ) : null}
-            </View>
-
-            <View style={styles.heroSummaryRow}>
-              <View style={styles.heroSummaryItem}>
-                <Text style={styles.heroSummaryLabel}>Sections</Text>
-                <Text style={styles.heroSummaryValue}>{lesson.contents.length}</Text>
-              </View>
-              <View style={styles.heroSummaryDivider} />
-              <View style={styles.heroSummaryItem}>
-                <Text style={styles.heroSummaryLabel}>Reward</Text>
-                <Text style={styles.heroSummaryValue}>{lesson.xpReward} XP</Text>
-              </View>
-              <View style={styles.heroSummaryDivider} />
-              <View style={styles.heroSummaryItem}>
-                <Text style={styles.heroSummaryLabel}>Next action</Text>
-                <Text style={styles.heroSummaryValue}>{resolvedNextActionLabel}</Text>
-              </View>
-            </View>
-
-            <View style={styles.heroNoticeCompact}>
-              <Ionicons
-                name="navigate-outline"
-                size={16}
-                color={theme.mode === "dark" ? "#BFDBFE" : "#2563EB"}
-              />
-              <Text style={styles.heroNoticeCompactText}>
-                {resolvedHeroNoticeText}
-              </Text>
-            </View>
-
-            {lesson.unit ? (
-              <View style={styles.unitContextCard}>
-                <View style={styles.unitContextTop}>
-                  <View style={styles.unitContextText}>
-                    <Text style={styles.unitContextEyebrow}>Unit progress</Text>
-                    <Text style={styles.unitContextTitle}>{lesson.unit.title}</Text>
-                    {completedLessonsLabel ? (
-                      <Text style={styles.unitProgressText}>{completedLessonsLabel}</Text>
-                    ) : null}
-                  </View>
-                  <View style={styles.unitProgressBadge}>
-                    <Text style={styles.unitProgressBadgeText}>{lesson.unit.progress}%</Text>
-                  </View>
-                </View>
-                <View style={styles.progressTrack}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      { width: `${lesson.unit.progress}%` },
-                    ]}
-                  />
-                </View>
-                <View style={styles.navRow}>
-                  <View style={styles.navButton}>
-                    <LessonActionButton
-                      label="Previous"
-                      onPress={onOpenPreviousLesson}
-                      styles={styles}
-                      icon="chevron-back"
-                      disabled={!hasPrev}
-                    />
-                  </View>
-                  <View style={styles.navButton}>
-                    <LessonActionButton
-                      label="Next"
-                      onPress={onOpenNextLesson}
-                      styles={styles}
-                      icon="chevron-forward"
-                      disabled={!hasNext}
-                    />
-                  </View>
-                </View>
-              </View>
-            ) : null}
-          </View>
-        </Animated.View>
 
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionHeaderText}>
-              <Text style={styles.sectionTitle}>Lesson sections</Text>
-              <Text style={styles.sectionHelperText}>
-                Work through each section in order.
-              </Text>
-            </View>
-            <View style={styles.sectionSummaryPill}>
-              <Text style={styles.sectionCaption}>
-                {viewedCount}/{sortedContents.length} viewed
-              </Text>
-            </View>
-          </View>
+
 
           {sortedContents.map((item) => (
             <LessonContentCard
@@ -443,39 +296,11 @@ export default function LessonScreenView({
               onOpenQuiz={onOpenQuiz}
               isFinalExam={isFinalExamLesson && item.type === "quiz_link"}
               isActive={item.id === activeSectionId}
-              isViewed={viewedSectionIds.includes(item.id)}
               onPress={() => handleFocusSection(item.id)}
             />
           ))}
 
-          {canOpenQuiz && sortedContents.length > 0 ? (
-            <View style={styles.quizEntryCard}>
-              <View style={styles.quizEntryTop}>
-                <View style={styles.quizEntryIconWrap}>
-                  <Ionicons name="sparkles-outline" size={18} color="#BFDBFE" />
-                </View>
-                <View style={styles.quizEntryBody}>
-                  <Text style={styles.quizEntryEyebrow}>{quizCardEyebrow}</Text>
-                  <Text style={styles.quizEntryTitle}>{quizCardTitle}</Text>
-                  <Text style={styles.quizEntryText}>{quizCardText}</Text>
-                </View>
-              </View>
-              <View style={styles.quizEntryMetaRow}>
-                <Text style={styles.quizEntryMeta}>
-                  {viewedCount}/{sortedContents.length} sections viewed
-                </Text>
-                <Text style={styles.quizEntryMeta}>{quizCardMeta}</Text>
-              </View>
-              <LessonActionButton
-                label={quizButtonLabel}
-                onPress={onOpenQuiz}
-                styles={styles}
-                variant="primary"
-                // icon={isFinalExamLesson ? "school" : lessonState === "completed" ? "refresh" : "play"}
-                icon={isFinalExamLesson ? "school" : "play"}
-              />
-            </View>
-          ) : null}
+
 
           {completionMessage ? (
             <View style={styles.quizEntryCard}>
@@ -530,7 +355,7 @@ export default function LessonScreenView({
               </Text>
             ) : null}
             <LessonActionButton
-              label="Back to lessons"
+              label="Back to units"
               onPress={onBack}
               styles={styles}
               icon="arrow-back"

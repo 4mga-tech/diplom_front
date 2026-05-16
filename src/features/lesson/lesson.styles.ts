@@ -42,8 +42,9 @@ export const createLessonStyles = (theme: AppTheme) =>
     },
     headerTitle: {
       color: theme.colors.text,
-      fontSize: 19,
+      fontSize: 18,
       fontWeight: "900",
+      lineHeight: 23,
     },
     headerSubtitle: {
       color: theme.colors.muted,
@@ -118,14 +119,22 @@ export const createLessonStyles = (theme: AppTheme) =>
     scroll: { flex: 1 },
     scrollContent: { paddingBottom: theme.s(4), gap: theme.s(1.5) },
     heroCard: {
-      borderRadius: 24,
+      borderRadius: 22,
+      padding: theme.s(1.5),
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(15,23,42,0.88)"
+          : "rgba(255,255,255,0.96)",
       borderWidth: 1,
       borderColor:
         theme.mode === "dark"
-          ? "rgba(51,65,85,0.62)"
-          : "rgba(148,163,184,0.16)",
-      backgroundColor: theme.colors.cardStrong,
+          ? "rgba(51,65,85,0.42)"
+          : "rgba(148,163,184,0.12)",
+      gap: theme.s(1),
     },
+
+
+
     heroInner: {
       paddingHorizontal: 16,
       paddingVertical: 13,
@@ -137,34 +146,65 @@ export const createLessonStyles = (theme: AppTheme) =>
       alignItems: "center",
       gap: theme.s(1),
     },
-    heroStatePill: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
+    heroBadge: {
       paddingHorizontal: 10,
-      paddingVertical: 7,
+      paddingVertical: 5,
       borderRadius: 999,
-      borderWidth: 1,
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(30,41,59,0.9)"
+          : "rgba(241,245,249,1)",
     },
-    heroStatePillText: {
-      fontSize: 11,
-      fontWeight: "800",
-      textTransform: "uppercase",
-      letterSpacing: 0.45,
-    },
-    heroTextWrap: { gap: 4 },
-    lessonOrderText: {
+    heroBadgeText: {
       color: theme.colors.muted,
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: "800",
       textTransform: "uppercase",
-      letterSpacing: 0.55,
+      letterSpacing: 0.5,
+    },
+    heroStatusDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 999,
+    },
+    heroTopRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    heroTextWrap: {
+      flex: 1,
+      gap: 3,
+    }, lessonOrderText: {
+      color: theme.colors.muted,
+      fontSize: 10,
+      fontWeight: "800",
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
     },
     heroTitle: {
       color: theme.colors.text,
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: "900",
-      lineHeight: 24,
+      lineHeight: 28,
+    },
+    heroMetaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+
+    heroMetaDivider: {
+      width: 4,
+      height: 4,
+      borderRadius: 999,
+      backgroundColor: "rgba(148,163,184,0.5)",
+    },
+
+    heroMetaText: {
+      color: theme.colors.muted,
+      fontSize: 12,
+      fontWeight: "700",
     },
     heroTitleEn: {
       color: theme.colors.muted,
@@ -368,14 +408,14 @@ export const createLessonStyles = (theme: AppTheme) =>
       letterSpacing: 0.5,
     },
     contentCard: {
-      borderRadius: theme.r.xl,
+      borderRadius: 16,
       borderWidth: 1,
-      borderColor:
-        theme.mode === "dark"
-          ? "rgba(51,65,85,0.55)"
-          : "rgba(148,163,184,0.18)",
+      padding: 0,
+      marginBottom: 8,
       backgroundColor:
-        theme.mode === "dark" ? "rgba(15,23,42,0.7)" : "rgba(255,255,255,0.95)",
+        theme.mode === "dark" ? "rgba(15,23,42,0.62)" : "rgba(255,255,255,0.95)",
+      borderColor:
+        theme.mode === "dark" ? "rgba(51,65,85,0.35)" : "rgba(148,163,184,0.14)",
       overflow: "hidden",
     },
     contentCardActive: {
@@ -398,10 +438,10 @@ export const createLessonStyles = (theme: AppTheme) =>
     contentHeader: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
-      gap: 12,
-      paddingHorizontal: theme.s(1.35),
-      paddingVertical: theme.s(1.15),
+      paddingHorizontal: 12,
+      paddingTop: 10,
+      paddingBottom: 6,
+      gap: 10,
     },
     contentHeaderLeft: {
       flex: 1,
@@ -410,15 +450,13 @@ export const createLessonStyles = (theme: AppTheme) =>
       gap: 12,
     },
     contentIconWrap: {
-      width: 38,
-      height: 38,
-      borderRadius: 12,
+      width: 30,
+      height: 30,
+      borderRadius: 10,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor:
-        theme.mode === "dark"
-          ? "rgba(37,99,235,0.14)"
-          : "rgba(37,99,235,0.08)",
+        theme.mode === "dark" ? "rgba(37,99,235,0.16)" : "rgba(37,99,235,0.08)",
     },
     contentIconWrapActive: {
       backgroundColor:
@@ -463,9 +501,9 @@ export const createLessonStyles = (theme: AppTheme) =>
     },
     contentTitle: {
       color: theme.colors.text,
-      fontSize: 14,
-      fontWeight: "800",
-      lineHeight: 19,
+      fontSize: 15,
+      fontWeight: "900",
+      lineHeight: 18,
     },
     contentTitleEn: {
       color: theme.colors.muted,
@@ -474,14 +512,17 @@ export const createLessonStyles = (theme: AppTheme) =>
       lineHeight: 17,
     },
     contentBodyWrap: {
-      paddingHorizontal: theme.s(1.35),
-      paddingBottom: theme.s(1.35),
+      paddingHorizontal: 12,
+      paddingBottom: 10,
+      paddingTop: 2,
       gap: theme.s(0.85),
-      borderTopWidth: 1,
+      borderTopWidth: 0,
       borderTopColor:
         theme.mode === "dark"
           ? "rgba(51,65,85,0.35)"
           : "rgba(148,163,184,0.12)",
+      marginTop: 6,
+
     },
     contentBody: {
       color: theme.mode === "dark" ? "rgba(226,232,240,0.92)" : "#334155",
@@ -515,18 +556,18 @@ export const createLessonStyles = (theme: AppTheme) =>
     stack: { gap: 10 },
     stackTight: { gap: 4 },
     innerCard: {
-      borderRadius: 14,
-      padding: theme.s(1.05),
+      borderRadius: 12,
+      padding: 9,
       backgroundColor:
         theme.mode === "dark"
           ? "rgba(30,41,59,0.5)"
           : "rgba(241,245,249,0.95)",
-      borderWidth: 1,
+      borderWidth: 0,
       borderColor:
         theme.mode === "dark"
           ? "rgba(51,65,85,0.35)"
           : "rgba(148,163,184,0.14)",
-      gap: 6,
+      gap: 5,
     },
     rowBetween: {
       flexDirection: "row",
@@ -751,6 +792,196 @@ export const createLessonStyles = (theme: AppTheme) =>
       justifyContent: "space-between",
       gap: theme.s(1),
     },
+    syllableGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 6,
+      marginTop: 6,
+    },
+
+    syllableChip: {
+      minWidth: 58,
+
+      borderRadius: 12,
+      paddingVertical: 7,
+      paddingHorizontal: 12,
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(59,130,246,0.16)"
+          : "rgba(59,130,246,0.08)",
+    },
+
+    syllableFormula: {
+      fontSize: 10,
+      opacity: 0.65,
+      color: theme.colors.text,
+    },
+
+    syllableResult: {
+      marginTop: 2,
+      fontSize: 16,
+      fontWeight: "900",
+      color: theme.colors.text,
+    },
+    wordPreviewRow: {
+      borderRadius: 12,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(30,41,59,0.24)" : "rgba(241,245,249,0.65)",
+      gap: 6,
+    },
+    wordBuildLetters: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 5,
+      justifyContent: "center",
+    },
+
+    wordBuildArrow: {
+      marginTop: 0,
+      textAlign: "center",
+      fontSize: 12,
+      fontWeight: "800",
+      color: theme.colors.muted,
+    },
+    builtWordBox: {
+      marginTop: 6,
+      minHeight: 34,
+      paddingVertical: 6,
+      borderRadius: 10,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(15,23,42,0.55)"
+          : "rgba(241,245,249,0.9)",
+    },
+
+    builtWordText: {
+      fontSize: 16,
+      fontWeight: "900",
+      letterSpacing: 1.5,
+      color: theme.colors.text,
+    },
+
+    wordBuildActions: {
+      marginTop: 6,
+      flexDirection: "row",
+      gap: 8,
+    },
+
+    wordBuildPrimaryButton: {
+      flex: 1,
+      paddingVertical: 7,
+      borderRadius: 10,
+      alignItems: "center",
+      backgroundColor: "#3B82F6",
+    },
+
+    wordBuildSecondaryButton: {
+      flex: 1,
+      paddingVertical: 7,
+      borderRadius: 10,
+      alignItems: "center",
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(255,255,255,0.06)"
+          : "rgba(148,163,184,0.12)",
+    },
+
+
+
+    wordBuildSecondaryText: {
+      fontSize: 13,
+      fontWeight: "800",
+      color: theme.colors.text,
+    },
+
+    wordBuildPrimaryText: {
+      fontSize: 13,
+      fontWeight: "800",
+      color: "#FFFFFF",
+    },
+
+    correctText: {
+      marginTop: 10,
+      fontSize: 14,
+      fontWeight: "800",
+      color: "#22C55E",
+    },
+    fillQuestionCard: {
+      borderRadius: 12,
+      padding: 10,
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(30,41,59,0.28)"
+          : "rgba(241,245,249,0.72)",
+      gap: 8,
+    },
+
+    fillPromptRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+
+    fillPrompt: {
+      fontSize: 24,
+      fontWeight: "900",
+      color: theme.colors.text,
+      letterSpacing: 1,
+    },
+
+    fillMeaning: {
+      fontSize: 12,
+      opacity: 0.65,
+      color: theme.colors.text,
+    },
+
+    fillOptionsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+
+    fillOptionChip: {
+      minWidth: 38,
+      height: 38,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(59,130,246,0.14)"
+          : "rgba(59,130,246,0.08)",
+    },
+    fillOptionSelected: {
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(59,130,246,0.35)"
+          : "rgba(59,130,246,0.22)",
+      borderWidth: 1,
+      borderColor: "#3B82F6",
+    },
+    fillOptionText: {
+      fontSize: 16,
+      fontWeight: "900",
+      color: theme.colors.text,
+    },
+    wrongText: {
+      marginTop: 10,
+      fontSize: 14,
+      fontWeight: "800",
+      color: "#EF4444",
+    },
+    wordBuildWord: {
+      marginTop: 0,
+      textAlign: "center",
+      fontSize: 18,
+      fontWeight: "900",
+      color: theme.colors.text,
+    },
     quizEntryMeta: {
       color: theme.colors.muted,
       fontSize: 11,
@@ -835,6 +1066,111 @@ export const createLessonStyles = (theme: AppTheme) =>
       color: theme.colors.text,
       fontSize: 13,
       fontWeight: "800",
+    },
+    heroMn: {
+      fontSize: 15,
+      fontWeight: "800",
+      lineHeight: 21,
+      color: theme.colors.text,
+
+    },
+
+    heroEn: {
+      marginTop: 4,
+      fontSize: 12,
+      lineHeight: 17,
+      opacity: 0.72,
+      color: theme.colors.text,
+
+    },
+
+    heroStatsRow: {
+      flexDirection: "row",
+      gap: 6,
+      marginTop: 8,
+    },
+
+    heroStatCard: {
+      flex: 1,
+      borderRadius: 10,
+      paddingVertical: 6,
+      alignItems: "center",
+      backgroundColor: "rgba(59,130,246,0.08)",
+    },
+
+
+    heroStatValue: {
+      fontSize: 15,
+      fontWeight: "900",
+      color: theme.colors.text,
+
+    },
+    wordBuildMiniCard: {
+      borderRadius: 12,
+      padding: 8,
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(30,41,59,0.32)"
+          : "rgba(241,245,249,0.72)",
+      gap: 6,
+    },
+
+    heroStatLabel: {
+      marginTop: 2,
+      fontSize: 10,
+      opacity: 0.7,
+      color: theme.colors.text,
+
+    },
+    letterPreviewGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+
+    letterPreviewChip: {
+      width: 28,
+      height: 28,
+      borderRadius: 9,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(59,130,246,0.10)",
+    },
+
+    letterPreviewText: {
+      fontSize: 14,
+      fontWeight: "900",
+      color: theme.colors.text,
+
+    },
+    stepRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+
+    stepBadge: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(59,130,246,0.12)",
+    },
+
+    stepBadgeText: {
+      fontSize: 12,
+      fontWeight: "800",
+      color: theme.colors.text,
+
+    },
+
+    stepText: {
+      flex: 1,
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.text,
+
     },
   });
 

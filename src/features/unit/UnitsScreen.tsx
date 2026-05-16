@@ -43,19 +43,19 @@ function UnitCard({
   const progressState = getUnitProgressState(unit);
   const stateColor =
     progressState === "completed" ? "#22C55E"
-    : progressState === "locked"  ? theme.colors.muted
-    : "#60A5FA";
+      : progressState === "locked" ? theme.colors.muted
+        : "#60A5FA";
 
   const stateIcon =
-    progressState === "completed"     ? "checkmark-circle"
-    : progressState === "locked"      ? "lock-closed"
-    : progressState === "in_progress" ? "play-circle"
-    : "ellipse-outline";
+    progressState === "completed" ? "checkmark-circle"
+      : progressState === "locked" ? "lock-closed"
+        : progressState === "in_progress" ? "play-circle"
+          : "ellipse-outline";
 
   return (
     <Pressable
       disabled={!unit.isUnlocked}
-      onPress={() => router.push(getUnitRoute(unit.levelId, unit.id))}
+      onPress={() => router.replace(getUnitRoute(unit.levelId, unit.id))}
       style={({ pressed }) => [
         styles.cardPress,
         pressed && unit.isUnlocked && { opacity: 0.88 },
@@ -162,7 +162,7 @@ export default function UnitsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => router.replace("/")}
           style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.75 }]}
         >
           <Ionicons name="chevron-back" size={22} color={theme.colors.text} />

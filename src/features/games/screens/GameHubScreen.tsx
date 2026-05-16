@@ -736,30 +736,19 @@ export default function GameHubScreen() {
           />
         }
       >
-        {/* ── Hero ── */}
         <View style={s.hero}>
           <View style={s.heroGlow} />
           <View style={s.heroLeft}>
-            <Text style={s.heroEyebrow}>GAME HUB</Text>
-            <Text style={s.heroTitle}>Practice Zone</Text>
+            <Text style={s.heroTitle}>Practice</Text>
             <Text style={s.heroSub}>Learn Mongolian through play</Text>
 
-            <View style={s.statsRow}>
-              <View style={s.statPill}>
-                <Ionicons
-                  name="checkmark-done-outline"
-                  size={13}
-                  color="#86EFAC"
-                />
-                <Text style={s.statText}>
-                  {xpOverview.completedLessons} lessons
-                </Text>
-              </View>
+            {/* <View style={s.statsRow}>
+              
               <View style={s.statPill}>
                 <Ionicons name="trophy-outline" size={13} color="#FBBF24" />
                 <Text style={s.statText}>{xpOverview.totalXp} total XP</Text>
               </View>
-            </View>
+            </View> */}
 
             {xpOverview.canClaimDailyXp && (
               <Pressable style={s.claimBtn}>

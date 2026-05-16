@@ -200,9 +200,9 @@ export default function UnitOverviewScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        
 
-       
+
+
         {currentLesson ? (
           <Pressable
             onPress={() =>
@@ -218,7 +218,6 @@ export default function UnitOverviewScreen() {
             </View>
             <Text style={styles.currentTitle}>{currentLesson.title}</Text>
             <Text style={styles.currentSubtitle}>{currentLesson.subtitle}</Text>
-            <Text style={styles.currentHint}>Open lesson</Text>
           </Pressable>
         ) : unit.isCompleted ? (
           <View style={styles.completedCard}>
@@ -235,60 +234,66 @@ export default function UnitOverviewScreen() {
         ) : null}
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Lesson map</Text>
+          <Text style={styles.sectionTitle}>Lesson list</Text>
         </View>
 
         <View style={styles.lessonStack}>
           {unit.lessons.map((lesson) => {
-  const lessonState = getLessonProgressState(lesson, unit.currentLessonId);
-  const locked = lessonState === "locked";
-  const isCurrent = lessonState === "current";
-  const stateColor =
-    lessonState === "completed" ? "#22C55E"
-    : lessonState === "locked"  ? theme.colors.muted
-    : lessonState === "current" ? "#60A5FA"
-    : "#0EA5E9";
+            const lessonState = getLessonProgressState(lesson, unit.currentLessonId);
+            const locked = lessonState === "locked";
+            const isCurrent = lessonState === "current";
+            const stateColor =
+              lessonState === "completed" ? "#22C55E"
+                : lessonState === "locked" ? theme.colors.muted
+                  : lessonState === "current" ? "#60A5FA"
+                    : "#0EA5E9";
 
-  const stateIcon =
-    lessonState === "completed" ? "checkmark-circle"
-    : locked                   ? "lock-closed"
-    : isCurrent                ? "play-circle"
-    : "ellipse-outline";
+            const stateIcon =
+              lessonState === "completed" ? "checkmark-circle"
+                : locked ? "lock-closed"
+                  : isCurrent ? "play-circle"
+                    : "ellipse-outline";
 
-  return (
-    <Pressable
-      key={lesson.id}
-      disabled={locked}
-      onPress={() => router.push(getLessonDetailRoute(safeLevelId, unit.id, lesson.id))}
-      style={({ pressed }) => [
-        styles.lessonCard,
-        pressed && !locked && { opacity: 0.88 },
-        locked && styles.lessonCardLocked,
-      ]}
-    >
-      {/* Accent bar */}
-      <View style={[styles.lessonAccentBar, { backgroundColor: stateColor }]} />
+            return (
+              <Pressable
+                key={lesson.id}
+                disabled={locked}
+                onPress={() => router.replace(getLessonDetailRoute(safeLevelId, unit.id, lesson.id))}
+                style={({ pressed }) => [
+                  styles.lessonCard,
+                  pressed && !locked && { opacity: 0.88 },
+                  locked && styles.lessonCardLocked,
+                ]}
+              >
+                {/* Accent bar */}
+                <View style={[styles.lessonAccentBar, { backgroundColor: stateColor }]} />
 
-      <View style={styles.lessonBody}>
-        {/* Top row */}
-        <View style={styles.lessonCardTop}>
-          <Ionicons name={stateIcon} size={14} color={stateColor} />
-          <Text style={[styles.cardStateText, { color: stateColor }]}>
-            {LESSON_STATE_LABELS[lessonState]}
-          </Text>
-        </View>
+                <View style={styles.lessonBody}>
+                  {/* Top row */}
+                  <View style={styles.lessonCardTop}>
+                    <Ionicons name={stateIcon} size={14} color={stateColor} />
+                    <Text style={[styles.cardStateText, { color: stateColor }]}>
+                      {LESSON_STATE_LABELS[lessonState]}
+                    </Text>
+                  </View>
 
-        {/* Title */}
-        <Text style={styles.lessonTitle} numberOfLines={2}>
-          {lesson.title}
-        </Text>
+                  <Text style={styles.lessonTitle} numberOfLines={2}>
+                    {lesson.title}
+                  </Text>
+                  <View style={styles.lessonFooterRow}>
+                    <Text style={styles.lessonOrder}>Lesson {lesson.order}</Text>
 
-        {/* Order meta */}
-        <Text style={styles.lessonOrder}>Lesson {lesson.order}</Text>
-      </View>
-    </Pressable>
-  );
-})}
+                    <View style={styles.lessonXpBadge}>
+                      <Ionicons name="flash" size={10} color="#F59E0B" />
+                      <Text style={styles.lessonXpText}>
+                        {lesson.xpReward} XP
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </Pressable>
+            );
+          })}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -458,11 +463,11 @@ const createStyles = (theme: AppTheme) =>
       gap: theme.s(1.25),
     },
     cardStateText: {
-  fontSize: 10,
-  fontWeight: "800",
-  textTransform: "uppercase",
-  letterSpacing: 0.4,
-},
+      fontSize: 10,
+      fontWeight: "800",
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+    },
     currentCardHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -470,23 +475,17 @@ const createStyles = (theme: AppTheme) =>
     },
     currentTitle: {
       color: theme.colors.text,
-      fontSize: 19,
+      fontSize: 14,
       fontWeight: "900",
       lineHeight: 24,
     },
     currentSubtitle: {
       color: theme.colors.muted,
-      fontSize: 13,
+      fontSize: 11,
       fontWeight: "700",
       lineHeight: 20,
     },
-    currentHint: {
-      color: "#60A5FA",
-      fontSize: 12,
-      fontWeight: "800",
-      textTransform: "uppercase",
-      letterSpacing: 0.45,
-    },
+
     completedCard: {
       flexDirection: "row",
       alignItems: "center",
@@ -537,56 +536,56 @@ const createStyles = (theme: AppTheme) =>
       flexWrap: "wrap",
       gap: theme.s(1),
     },
-   lessonCard: {
-  width: "48%",
-  borderRadius: 14,
-  overflow: "hidden",
-  backgroundColor:
-    theme.mode === "dark" ? "rgba(15,23,42,0.84)" : "rgba(255,255,255,0.98)",
-  borderWidth: 1,
-  borderColor:
-    theme.mode === "dark" ? "rgba(51,65,85,0.52)" : "rgba(148,163,184,0.18)",
-},
-lessonCardLocked: {
-  opacity: 0.5,
-},
-lessonAccentBar: {
-  height: 3,
-  width: "100%",
-},
-lessonBody: {
-  padding: theme.s(1.5),
-  gap: theme.s(0.75),
-},
-   lessonCardTop: {
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 4,
-},
+    lessonCard: {
+      width: "48%",
+      borderRadius: 14,
+      overflow: "hidden",
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(15,23,42,0.84)" : "rgba(255,255,255,0.98)",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark" ? "rgba(51,65,85,0.52)" : "rgba(148,163,184,0.18)",
+    },
+    lessonCardLocked: {
+      opacity: 0.5,
+    },
+    lessonAccentBar: {
+      height: 3,
+      width: "100%",
+    },
+    lessonBody: {
+      padding: theme.s(1.5),
+      gap: theme.s(0.75),
+    },
+    lessonCardTop: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
     lessonIconRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
     },
-   lessonOrder: {
-  color: theme.colors.muted,
-  fontSize: 10,
-  fontWeight: "700",
-},
-  
+    lessonOrder: {
+      color: theme.colors.muted,
+      fontSize: 10,
+      fontWeight: "700",
+    },
+
     lessonTrailing: {
       width: 28,
       alignItems: "flex-end",
       justifyContent: "center",
     },
     lessonIcon: {
-  width: 34,                    
-  height: 34,                    
-  borderRadius: 12,              
-  alignItems: "center",
-  justifyContent: "center",
-  borderWidth: 1,
-},
+      width: 34,
+      height: 34,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+    },
     lessonIconDone: {
       backgroundColor:
         theme.mode === "dark" ? "rgba(34,197,94,0.14)" : "rgba(34,197,94,0.08)",
@@ -603,18 +602,18 @@ lessonBody: {
       borderColor: "rgba(59,130,246,0.18)",
     },
     lessonTitle: {
-  color: theme.colors.text,
-  fontSize: 12,
-  fontWeight: "800",
-  lineHeight: 17,
-},
+      color: theme.colors.text,
+      fontSize: 12,
+      fontWeight: "800",
+      lineHeight: 17,
+    },
     lessonSubtitle: {
-  color: theme.colors.muted,
-  fontSize: 11,                  // 12 → 11
-  fontWeight: "700",
-  marginTop: 2,                  // 4 → 2
-  lineHeight: 16,                // 19 → 16
-},
+      color: theme.colors.muted,
+      fontSize: 11,
+      fontWeight: "700",
+      marginTop: 2,
+      lineHeight: 16,
+    },
     stateCard: {
       width: "100%",
       maxWidth: 360,
@@ -643,5 +642,30 @@ lessonBody: {
         theme.mode === "dark"
           ? "rgba(96,165,250,0.2)"
           : "rgba(59,130,246,0.14)",
+    },
+    lessonFooterRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: theme.s(0.25),
+    },
+
+    lessonXpBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+      paddingHorizontal: 7,
+      paddingVertical: 4,
+      borderRadius: 999,
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(245,158,11,0.14)"
+          : "rgba(245,158,11,0.1)",
+    },
+
+    lessonXpText: {
+      color: theme.mode === "dark" ? "#FCD34D" : "#B45309",
+      fontSize: 10,
+      fontWeight: "900",
     },
   });

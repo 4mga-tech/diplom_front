@@ -1,5 +1,5 @@
+import { getAudioUrl, playAudio } from "@/lib/audio";
 import { LessonContentItem, LessonGlossaryItem } from "@/lib/learning";
-import { playAudio, getAudioUrl } from "@/lib/audio";
 import GlossaryModal from "@/src/features/lesson/components/GlossaryModal";
 import LessonActionButton from "@/src/features/lesson/components/LessonActionButton";
 import LetterPracticeModal from "@/src/features/lesson/components/LetterPracticeModal";
@@ -299,7 +299,99 @@ function ClassificationContentBlock({
     </View>
   );
 }
+function HeroIntroContentBlock({
+  content,
+  styles,
+}: ContentBlockProps) {
+  const stats = asArray<any>(content.stats);
 
+  return (
+    <View style={styles.stack}>
+      {!!content.textMn ? (
+        <Text style={styles.heroMn}>{content.textMn}</Text>
+      ) : null}
+
+      {!!content.textEn ? (
+        <Text style={styles.heroEn}>{content.textEn}</Text>
+      ) : null}
+
+      {stats.length > 0 ? (
+        <View style={styles.heroStatsRow}>
+          {stats.map((stat, idx) => (
+            <View key={idx} style={styles.heroStatCard}>
+              <Text style={styles.heroStatValue}>{stat.value}</Text>
+              <Text style={styles.heroStatLabel}>{stat.label}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+function AlphabetPreviewContentBlock({
+  content,
+  styles,
+}: ContentBlockProps) {
+  const letters = asArray<string>(content.letters);
+
+  if (letters.length === 0) {
+    return (
+      <EmptyBlock
+        message="No letters available yet."
+        styles={styles}
+      />
+    );
+  }
+
+  return (
+    <View style={styles.letterPreviewGrid}>
+      {letters.map((letter, idx) => (
+        <View key={`${letter}-${idx}`} style={styles.letterPreviewChip}>
+          <Text style={styles.letterPreviewText}>
+            {letter}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+function NextStepsContentBlock({
+
+  content,
+  styles,
+}: ContentBlockProps) {
+
+
+  const steps = asArray<string>(
+    content.steps ?? content.highlights ?? content.items
+  );
+
+  if (steps.length === 0) {
+    return null;
+  }
+  return (
+    <View style={styles.stackTight}>
+      {steps.map((step, idx) => {
+        const label =
+          typeof step === "string"
+            ? step
+            : (step as any)?.en ?? (step as any)?.mn ?? "";
+
+        if (!label) return null;
+
+        return (
+          <View key={`${label}-${idx}`} style={styles.stepRow}>
+            <View style={styles.stepBadge}>
+              <Text style={styles.stepBadgeText}>{idx + 1}</Text>
+            </View>
+
+            <Text style={styles.stepText}>{label}</Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
 function GrammarNoteContentBlock({
   item,
   content,
@@ -512,10 +604,10 @@ function ExerciseWriteContentBlock({
             title: String(group?.title ?? `Group ${groupIndex + 1}`),
             description: String(
               group?.instructionMn ??
-                group?.instructionEn ??
-                group?.summary ??
-                group?.description ??
-                "",
+              group?.instructionEn ??
+              group?.summary ??
+              group?.description ??
+              "",
             ),
             letters: groupLetters,
           };
@@ -564,7 +656,7 @@ function ExerciseWriteContentBlock({
         instructionEn={content?.instructionEn}
         styles={styles}
         glossary={[]}
-        onSelectGlossaryWord={() => {}}
+        onSelectGlossaryWord={() => { }}
         activeGlossaryWordKey={null}
       />
       <BlockText styles={styles}>Tap any letter tile to open tracing practice.</BlockText>
@@ -653,63 +745,174 @@ function normalizePracticeLetter(
 }
 
 function ExerciseFillContentBlock({
-  item,
   content,
   styles,
-  glossary,
-  onSelectGlossaryWord,
-  activeGlossaryWordKey,
 }: ContentBlockProps) {
   const questions = asArray<any>(content.questions);
-  const groups = asArray<any>(content.groups);
+  const [selected, setSelected] = React.useState<Record<number, string>>({});
+
+  if (questions.length === 0) {
+    return <EmptyBlock message="No fill exercises available yet." styles={styles} />;
+  }
 
   return (
     <View style={styles.stack}>
-      <BilingualInstruction
-        instructionMn={content?.instructionMn}
-        instructionEn={content?.instructionEn}
-        styles={styles}
-        glossary={glossary}
-        onSelectGlossaryWord={onSelectGlossaryWord}
-        activeGlossaryWordKey={activeGlossaryWordKey}
-      />
-      {questions.map((question, idx) => (
-        <View key={`${item.id}-q-${idx}`} style={styles.innerCard}>
-          <GlossaryText
-            text={String(question?.prompt ?? "")}
-            styles={styles}
-            glossary={glossary}
-            onSelectGlossaryWord={onSelectGlossaryWord}
-            activeGlossaryWordKey={activeGlossaryWordKey}
-          />
-        </View>
-      ))}
-      {groups.map((group, idx) => (
-        <View key={`${item.id}-groupfill-${idx}`} style={styles.innerCard}>
-          {Array.isArray(group?.patternLetters) ? (
-            <Text style={styles.innerTitle}>{group.patternLetters.join(" ")}</Text>
-          ) : null}
-          {Array.isArray(group?.lines)
-            ? group.lines.map((line: string, lineIdx: number) => (
-                <GlossaryText
-                  key={`${item.id}-line-${lineIdx}`}
-                  text={line}
-                  styles={styles}
-                  glossary={glossary}
-                  onSelectGlossaryWord={onSelectGlossaryWord}
-                  activeGlossaryWordKey={activeGlossaryWordKey}
-                />
-              ))
-            : null}
-        </View>
-      ))}
-      {questions.length === 0 && groups.length === 0 ? (
-        <EmptyBlock message="No fill exercise items available yet." styles={styles} />
+      {content?.instructionEn ? (
+        <SupportingText styles={styles}>{content.instructionEn}</SupportingText>
       ) : null}
+
+      {questions.map((question, idx) => {
+        const selectedOption = selected[idx];
+        const isCorrect =
+          selectedOption?.toUpperCase() === String(question?.answer ?? "").toUpperCase();
+
+        return (
+          <View key={`fill-${idx}`} style={styles.fillQuestionCard}>
+            <View style={styles.fillPromptRow}>
+              <Text style={styles.fillPrompt}>{question?.prompt}</Text>
+
+              {question?.meaningEn ? (
+                <Text style={styles.fillMeaning}>{question.meaningEn}</Text>
+              ) : null}
+            </View>
+
+            <View style={styles.fillOptionsRow}>
+              {asArray<string>(question?.options).map((option, optionIdx) => {
+                const isSelected = selectedOption === option;
+
+                return (
+                  <Pressable
+                    key={`${option}-${optionIdx}`}
+                    onPress={() =>
+                      setSelected((current) => ({
+                        ...current,
+                        [idx]: option,
+                      }))
+                    }
+                    style={[
+                      styles.fillOptionChip,
+                      isSelected ? styles.fillOptionSelected : null,
+                    ]}
+                  >
+                    <Text style={styles.fillOptionText}>{option}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {selectedOption ? (
+              <Text style={isCorrect ? styles.correctText : styles.wrongText}>
+                {isCorrect ? `Correct! ${question?.result ?? ""}` : "Try again"}
+              </Text>
+            ) : null}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+function SyllableBuilderContentBlock({
+  content,
+  styles,
+}: ContentBlockProps) {
+  const patterns = asArray<any>(content.patterns);
+
+  if (patterns.length === 0) {
+    return <EmptyBlock message="No syllable patterns available yet." styles={styles} />;
+  }
+
+  return (
+    <View style={styles.stack}>
+      {content?.instructionEn ? (
+        <SupportingText styles={styles}>{content.instructionEn}</SupportingText>
+      ) : null}
+
+      {patterns.map((pattern, idx) => {
+        const base = String(pattern?.base ?? "");
+        const vowels = asArray<string>(pattern?.vowels);
+        const results = asArray<string>(pattern?.results);
+
+        return (
+          <View key={`${base}-${idx}`} style={styles.innerCard}>
+            <Text style={styles.innerTitle}>{base} + vowel</Text>
+
+            <View style={styles.syllableGrid}>
+              {results.map((result, resultIndex) => (
+                <View key={`${result}-${resultIndex}`} style={styles.syllableChip}>
+                  <Text style={styles.syllableFormula}>
+                    {base} + {vowels[resultIndex] ?? ""}
+                  </Text>
+                  <Text style={styles.syllableResult}>{result}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        );
+      })}
     </View>
   );
 }
 
+function WordBuilderContentBlock({
+  content,
+  styles,
+}: ContentBlockProps) {
+  const words = asArray<any>(content.words);
+
+  if (words.length === 0) {
+    return (
+      <EmptyBlock
+        message="No word builder items available yet."
+        styles={styles}
+      />
+    );
+  }
+
+  return (
+    <View style={styles.stack}>
+      {content?.instructionEn ? (
+        <Text style={styles.supportingText}>
+          {String(content.instructionEn)}
+        </Text>
+      ) : null}
+
+      {words.map((wordItem, idx) => {
+        const letters = asArray<string>(wordItem?.letters);
+        const word = String(wordItem?.word ?? "");
+        const meaning = String(wordItem?.meaningEn ?? "");
+
+        return (
+          <View key={`${word}-${idx}`} style={styles.wordPreviewRow}>
+            <View style={styles.wordBuildLetters}>
+              {letters.map((letter, letterIndex) => (
+                <View
+                  key={`${letter}-${letterIndex}`}
+                  style={styles.letterPreviewChip}
+                >
+                  <Text style={styles.letterPreviewText}>
+                    {String(letter)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            <Text style={styles.wordBuildArrow}>↓</Text>
+
+            <Text style={styles.wordBuildWord}>
+              {word}
+            </Text>
+
+            {meaning ? (
+              <Text style={styles.fillMeaning}>
+                {meaning}
+              </Text>
+            ) : null}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
 function ExerciseWordBuildContentBlock({
   item,
   content,
@@ -720,7 +923,41 @@ function ExerciseWordBuildContentBlock({
 }: ContentBlockProps) {
   const questions = asArray<any>(content.questions);
   const example = content.example;
+  const [answers, setAnswers] = React.useState<Record<number, string[]>>({});
+  const [results, setResults] = React.useState<Record<number, boolean | null>>({});
+  const handlePickLetter = (questionIndex: number, letter: string) => {
+    setAnswers((current) => ({
+      ...current,
+      [questionIndex]: [...(current[questionIndex] ?? []), letter],
+    }));
 
+    setResults((current) => ({
+      ...current,
+      [questionIndex]: null,
+    }));
+  };
+
+  const handleClear = (questionIndex: number) => {
+    setAnswers((current) => ({
+      ...current,
+      [questionIndex]: [],
+    }));
+
+    setResults((current) => ({
+      ...current,
+      [questionIndex]: null,
+    }));
+  };
+
+  const handleCheck = (questionIndex: number, answer: string) => {
+    const built = (answers[questionIndex] ?? []).join("").toUpperCase();
+    const correct = built === answer.toUpperCase();
+
+    setResults((current) => ({
+      ...current,
+      [questionIndex]: correct,
+    }));
+  };
   return (
     <View style={styles.stack}>
       <BilingualInstruction
@@ -735,8 +972,13 @@ function ExerciseWordBuildContentBlock({
         <View style={styles.innerCard}>
           <Text style={styles.innerTitle}>Example</Text>
           <GlossaryText
-            text={Array.isArray(example?.numbers) ? example.numbers.join(" ") : ""}
-            styles={styles}
+            text={
+              Array.isArray(example?.letters)
+                ? example.letters.join(" ")
+                : Array.isArray(example?.numbers)
+                  ? example.numbers.join(" ")
+                  : ""
+            } styles={styles}
             glossary={glossary}
             onSelectGlossaryWord={onSelectGlossaryWord}
             activeGlossaryWordKey={activeGlossaryWordKey}
@@ -745,20 +987,66 @@ function ExerciseWordBuildContentBlock({
         </View>
       ) : null}
       {questions.length > 0 ? (
-        questions.map((question, idx) => (
-          <View key={`${item.id}-wb-${idx}`} style={styles.innerCard}>
-            <Text style={styles.innerTitle}>
-              Question {question?.index ?? idx + 1}
-            </Text>
-            <GlossaryText
-              text={Array.isArray(question?.numbers) ? question.numbers.join(" ") : ""}
-              styles={styles}
-              glossary={glossary}
-              onSelectGlossaryWord={onSelectGlossaryWord}
-              activeGlossaryWordKey={activeGlossaryWordKey}
-            />
-          </View>
-        ))
+        <View style={styles.stack}>
+          {questions.map((question, idx) => {
+            const questionIndex = Number(question?.index ?? idx + 1);
+            const letters = asArray<string>(question?.letters);
+            const selectedLetters = answers[questionIndex] ?? [];
+            const result = results[questionIndex];
+
+            return (
+              <View key={`${item.id}-wb-${idx}`} style={styles.wordBuildMiniCard}>
+                <Text style={styles.innerTitle}>
+                  Build the word: {question?.meaningEn}
+                </Text>
+
+                <View style={styles.wordBuildLetters}>
+                  {letters.map((letter, letterIndex) => (
+                    <Pressable
+                      key={`${letter}-${letterIndex}`}
+                      onPress={() => handlePickLetter(questionIndex, letter)}
+                      style={styles.letterPreviewChip}
+                    >
+                      <Text style={styles.letterPreviewText}>{letter}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <View style={styles.builtWordBox}>
+                  <Text style={styles.builtWordText}>
+                    {selectedLetters.length > 0 ? selectedLetters.join("") : "_ _ _"}
+                  </Text>
+                </View>
+
+                <View style={styles.wordBuildActions}>
+                  <Pressable
+                    onPress={() => handleClear(questionIndex)}
+                    style={styles.wordBuildSecondaryButton}
+                  >
+                    <Text style={styles.wordBuildSecondaryText}>Clear</Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() =>
+                      handleCheck(questionIndex, String(question?.answer ?? ""))
+                    }
+                    style={styles.wordBuildPrimaryButton}
+                  >
+                    <Text style={styles.wordBuildPrimaryText}>Check</Text>
+                  </Pressable>
+                </View>
+
+                {result !== null && result !== undefined ? (
+                  <Text style={result ? styles.correctText : styles.wrongText}>
+                    {result
+                      ? `Correct! ${question?.displayAnswer ?? question?.answer}`
+                      : "Try again"}
+                  </Text>
+                ) : null}
+              </View>
+            );
+          })}
+        </View>
       ) : (
         <EmptyBlock message="No word-build questions available yet." styles={styles} />
       )}
@@ -872,8 +1160,13 @@ const CONTENT_COMPONENTS: Partial<
   Record<LessonContentItem["type"], React.ComponentType<ContentBlockProps>>
 > = {
   text: TextContentBlock,
+  hero_intro: HeroIntroContentBlock,
+  alphabet_preview: AlphabetPreviewContentBlock,
+  next_steps: NextStepsContentBlock,
   alphabet_table: AlphabetTableContentBlock,
   classification: ClassificationContentBlock,
+  syllable_builder: SyllableBuilderContentBlock,
+  word_builder: WordBuilderContentBlock,
   grammar_note: GrammarNoteContentBlock,
   vocab_list: VocabListContentBlock,
   exercise_repeat: ExerciseRepeatContentBlock,

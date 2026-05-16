@@ -8,6 +8,11 @@ export type LessonContentType =
   | "audio"
   | "pronunciation"
   | "image"
+  | "syllable_builder"
+  | "word_builder"
+  | "hero_intro"
+  | "next_steps"
+  | "alphabet_preview"
   | "alphabet_table"
   | "classification"
   | "grammar_note"
@@ -26,7 +31,13 @@ export type LessonContentPayload = {
   videoUrl?: string;
   quizId?: string;
   url?: string;
-
+  steps?: string[];
+  stats?: {
+    label: string;
+    value: number;
+  }[];
+  patterns?: any[];
+  words?: any[];
   letter?: string;
   transliteration?: string;
   pronunciationTip?: string;
@@ -582,58 +593,61 @@ export async function fetchLessonDetail(
 
     const contents = Array.isArray(data?.contents)
       ? data.contents.map((item: any, index: number) => ({
-          id: String(
-            item?.id ?? item?._id ?? `${lessonId}-content-${index + 1}`,
-          ),
-          type: (item?.type ?? "text") as LessonContentType,
-          order: Number(item?.order ?? index + 1),
-          title: item?.title,
-          titleEn: item?.titleEn,
-          content: {
-            glossary: Array.isArray(item?.content?.glossary)
-              ? item.content.glossary.map((glossaryItem: any) => ({
-                  word: String(glossaryItem?.word ?? ""),
-                  translation: String(glossaryItem?.translation ?? ""),
-                  noteMn: glossaryItem?.noteMn
-                    ? String(glossaryItem.noteMn)
-                    : undefined,
-                  noteEn: glossaryItem?.noteEn
-                    ? String(glossaryItem.noteEn)
-                    : undefined,
-                }))
-              : undefined,
-            text: item?.content?.text,
-            textMn: item?.content?.textMn,
-            textEn: item?.content?.textEn,
-            videoUrl: item?.content?.videoUrl,
-            quizId: item?.content?.quizId,
-            url: item?.content?.url,
+        id: String(
+          item?.id ?? item?._id ?? `${lessonId}-content-${index + 1}`,
+        ),
+        type: (item?.type ?? "text") as LessonContentType,
+        order: Number(item?.order ?? index + 1),
+        title: item?.title,
+        titleEn: item?.titleEn,
+        content: {
+          glossary: Array.isArray(item?.content?.glossary)
+            ? item.content.glossary.map((glossaryItem: any) => ({
+              word: String(glossaryItem?.word ?? ""),
+              translation: String(glossaryItem?.translation ?? ""),
+              noteMn: glossaryItem?.noteMn
+                ? String(glossaryItem.noteMn)
+                : undefined,
+              noteEn: glossaryItem?.noteEn
+                ? String(glossaryItem.noteEn)
+                : undefined,
+            }))
+            : undefined,
+          text: item?.content?.text,
+          textMn: item?.content?.textMn,
+          textEn: item?.content?.textEn,
+          videoUrl: item?.content?.videoUrl,
+          quizId: item?.content?.quizId,
+          url: item?.content?.url,
+          steps: item?.content?.steps,
+          stats: item?.content?.stats,
+          patterns: item?.content?.patterns,
+          words: item?.content?.words,
+          letter: item?.content?.letter,
+          transliteration: item?.content?.transliteration,
+          pronunciationTip: item?.content?.pronunciationTip,
+          exampleWord: item?.content?.exampleWord,
+          exampleMeaning: item?.content?.exampleMeaning,
+          audioUrl: item?.content?.audioUrl,
 
-            letter: item?.content?.letter,
-            transliteration: item?.content?.transliteration,
-            pronunciationTip: item?.content?.pronunciationTip,
-            exampleWord: item?.content?.exampleWord,
-            exampleMeaning: item?.content?.exampleMeaning,
-            audioUrl: item?.content?.audioUrl,
+          imageUrl: item?.content?.imageUrl,
+          caption: item?.content?.caption,
 
-            imageUrl: item?.content?.imageUrl,
-            caption: item?.content?.caption,
-
-            letters: item?.content?.letters,
-            groups: item?.content?.groups,
-            notes: item?.content?.notes,
-            items: item?.content?.items,
-            rows: item?.content?.rows,
-            questions: item?.content?.questions,
-            example: item?.content?.example,
-            instructionMn: item?.content?.instructionMn,
-            instructionEn: item?.content?.instructionEn,
-            summary: item?.content?.summary,
-            columns: item?.content?.columns,
-            patternLetters: item?.content?.patternLetters,
-            lines: item?.content?.lines,
-          },
-        }))
+          letters: item?.content?.letters,
+          groups: item?.content?.groups,
+          notes: item?.content?.notes,
+          items: item?.content?.items,
+          rows: item?.content?.rows,
+          questions: item?.content?.questions,
+          example: item?.content?.example,
+          instructionMn: item?.content?.instructionMn,
+          instructionEn: item?.content?.instructionEn,
+          summary: item?.content?.summary,
+          columns: item?.content?.columns,
+          patternLetters: item?.content?.patternLetters,
+          lines: item?.content?.lines,
+        },
+      }))
       : [];
     const hasQuiz =
       data?.hasQuiz === true ||

@@ -8,7 +8,8 @@ import { getLevelById } from "@/src/data/curriculum";
 import {
   getCanonicalLevelId,
   getLessonDetailRoute,
-  getNormalizedLearningParams
+  getNormalizedLearningParams,
+  getUnitRoute,
 } from "@/src/features/learning/routes";
 import { AppTheme, useAppTheme, useThemedStyles } from "@/src/ui/theme";
 import { Ionicons } from "@expo/vector-icons";
@@ -97,8 +98,8 @@ export default function LessonListScreen() {
   );
 
   const handleBack = useCallback(() => {
-    router.back();
-  }, []);
+    router.replace(getUnitRoute(safeLevelId, safeUnitId));
+  }, [safeLevelId, safeUnitId]);
 
   if (!levelMeta) {
     return (
@@ -210,7 +211,7 @@ export default function LessonListScreen() {
               <Pressable
                 disabled={locked}
                 onPress={() =>
-                  router.push(getLessonDetailRoute(safeLevelId, safeUnitId, item.id))
+                  router.replace(getLessonDetailRoute(safeLevelId, safeUnitId, item.id))
                 }
                 style={({ pressed }) => [
                   styles.lessonCard,
