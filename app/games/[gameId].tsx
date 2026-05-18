@@ -1,5 +1,11 @@
-import GameStagesScreen from "@/src/features/games/screens/GameStagesScreen";
+import { Redirect, useLocalSearchParams } from "expo-router";
 
-export default function GameStagesRoute() {
-  return <GameStagesScreen />;
+export default function LegacyGameStagesRoute() {
+  const { gameId } = useLocalSearchParams<{ gameId?: string }>();
+
+  if (!gameId) {
+    return <Redirect href="/" />;
+  }
+
+  return <Redirect href={`/practice/${encodeURIComponent(gameId)}` as any} />;
 }

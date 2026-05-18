@@ -1,5 +1,5 @@
-import UnitLessonScreen from "@/src/features/unit/UnitLessonScreen";
+import UnitScreen from "@/src/features/learning/screens/UnitScreen";
 
 export default function LessonListRoute() {
-  return <UnitLessonScreen />;
+  return <UnitScreen />;
 }

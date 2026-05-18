@@ -1,17 +1,16 @@
-import { useLocalSearchParams } from "expo-router";
-import { Text, View } from "react-native";
+import { Redirect, useLocalSearchParams } from "expo-router";
 
-export default function GamePlayRoute() {
-  const { gameId, stageId } = useLocalSearchParams<{
-    gameId: string;
-    stageId?: string;
-  }>();
+export default function LegacyGamePlayRoute() {
+  const { gameId, stageId } = useLocalSearchParams<{ gameId?: string; stageId?: string }>();
 
-  return (
-    <View style={{ flex: 1, padding: 24, justifyContent: "center" }}>
-      <Text style={{ fontSize: 24, fontWeight: "800" }}>Game Play</Text>
-      <Text>Game: {gameId}</Text>
-      <Text>Stage: {stageId}</Text>
-    </View>
-  );
+  if (!gameId) {
+    return <Redirect href="/" />;
+  }
+
+  const basePath = `/practice/${encodeURIComponent(gameId)}/play`;
+  const href = stageId
+    ? `${basePath}?stageId=${encodeURIComponent(stageId)}`
+    : basePath;
+
+  return <Redirect href={href as any} />;
 }

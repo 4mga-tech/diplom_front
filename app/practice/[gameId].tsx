@@ -1,5 +1,5 @@
 import PracticeStagesScreen from "@/src/features/practice/screens/PracticeStagesScreen";
 
-export default function GameStagesScreen() {
+export default function PracticeStagesRoute() {
   return <PracticeStagesScreen />;
 }
