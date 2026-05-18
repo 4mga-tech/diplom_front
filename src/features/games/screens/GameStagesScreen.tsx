@@ -1,12 +1,12 @@
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React from "react";
 import {
-    Dimensions,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -318,14 +318,24 @@ const gamesData = {
   },
 };
 
-const StageNode = ({ stage, gameColor }: { stage: any; gameColor: string }) => {
-  const handlePress = () => {
-    if (stage.unlocked) {
-      console.log(`Navigate to ${stage.title} practice screen`);
-      // TODO: Navigate to actual practice screen
-    }
-  };
+const StageNode = ({
+  stage,
+  gameColor,
+  gameId,
+}: {
+  stage: any;
+  gameColor: string;
+  gameId: string;
+}) => {
+  const router = useRouter();
 
+  const handlePress = () => {
+  if (stage.unlocked) {
+    router.push(
+      `/games/${gameId}/play?stageId=${stage.id}`
+    );
+  }
+};
   const nodeSize = stage.unlocked ? 80 : 60;
   const nodePosition = {
     left: stage.position.x * (width - 40) - nodeSize / 2,
@@ -517,8 +527,12 @@ export default function GameStagesScreen() {
 
           {/* Stage Nodes */}
           {game.stages.map((stage) => (
-            <StageNode key={stage.id} stage={stage} gameColor={game.color} />
-          ))}
+<StageNode
+  key={stage.id}
+  stage={stage}
+  gameColor={game.color}
+  gameId={gameId}
+/>          ))}
         </View>
 
         {/* Stage Details */}
