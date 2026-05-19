@@ -6,12 +6,12 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const TYPE_UI: Record<string, { label: string; icon: keyof typeof Ionicons.glyphMap; color: string; bg: string; dark: string }> = {
-  missing_letter: { label: "Missing Letter", icon: "create-outline", color: "#7C3AED", bg: "#F3E8FF", dark: "#4C1D95" },
-  letter_match: { label: "Letter Match", icon: "grid-outline", color: "#2563EB", bg: "#DBEAFE", dark: "#1E3A8A" },
-  word_builder: { label: "Word Builder", icon: "cube-outline", color: "#0891B2", bg: "#CFFAFE", dark: "#164E63" },
-  meaning_match: { label: "Meaning Match", icon: "layers-outline", color: "#16A34A", bg: "#DCFCE7", dark: "#14532D" },
-  daily_challenge: { label: "Daily Challenge", icon: "flash-outline", color: "#EA580C", bg: "#FFEDD5", dark: "#7C2D12" },
+const TYPE_UI: Record<string, { label: string; subtitle: string; icon: keyof typeof Ionicons.glyphMap; border: string; iconBg: string }> = {
+  missing_letter: { label: "Missing Letter", subtitle: "Fill the gap", icon: "create-outline", border: "#8B5CF6", iconBg: "#F3E8FF" },
+  letter_match: { label: "Letter Match", subtitle: "Find pairs", icon: "git-compare-outline", border: "#F43F5E", iconBg: "#FFE4E6" },
+  word_builder: { label: "Word Builder", subtitle: "Build words", icon: "cube-outline", border: "#F59E0B", iconBg: "#FEF3C7" },
+  meaning_match: { label: "Meaning Match", subtitle: "Match meaning", icon: "layers-outline", border: "#22C55E", iconBg: "#DCFCE7" },
+  daily_challenge: { label: "Daily Challenge", subtitle: "Daily boost", icon: "flash-outline", border: "#3B82F6", iconBg: "#DBEAFE" },
 };
 
 export default function PracticeLevelScreen({ levelId }: { levelId: string }) {
@@ -41,32 +41,37 @@ export default function PracticeLevelScreen({ levelId }: { levelId: string }) {
   const sorted = useMemo(() => [...items].sort((a, b) => (a.type ?? "").localeCompare(b.type ?? "")), [items]);
 
   if (loading) return <SafeAreaView style={styles.safeArea}><View style={styles.center}><ActivityIndicator color="#4F46E5" /><Text style={styles.centerText}>Loading practices...</Text></View></SafeAreaView>;
-  if (error) return <SafeAreaView style={styles.safeArea}><View style={styles.center}><Text style={styles.centerText}>{error}</Text><Pressable onPress={() => void load()} style={styles.backButton}><Text style={styles.backButtonText}>Retry</Text></Pressable></View></SafeAreaView>;
+  if (error) return <SafeAreaView style={styles.safeArea}><View style={styles.center}><Text style={styles.centerText}>{error}</Text><Pressable onPress={() => void load()} style={styles.retryButton}><Text style={styles.retryButtonText}>Retry</Text></Pressable></View></SafeAreaView>;
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
         <Pressable style={styles.backButton} onPress={() => router.replace('/achievements')}>
-          <Ionicons name="chevron-back" size={16} color="#4338CA" />
+          <Ionicons name="chevron-back" size={16} color="#334155" />
           <Text style={styles.backButtonText}>Back</Text>
         </Pressable>
 
         <View style={styles.hero}>
-          <View style={styles.heroBadge}><Text style={styles.heroBadgeText}>{normalizedLevel}</Text></View>
-          <Text style={styles.heroTitle}>Choose your mode</Text>
-          <Text style={styles.heroSub}>Fast missions with daily XP rewards.</Text>
+          <Text style={styles.heroEyebrow}>Level {normalizedLevel}</Text>
+          <Text style={styles.heroTitle}>Practice Categories</Text>
+          <Text style={styles.heroSub}>Tap a card to open the roadmap.</Text>
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>{normalizedLevel}</Text>
+          <View style={styles.countChip}><Text style={styles.countChipText}>{sorted.length}</Text></View>
         </View>
 
         <View style={styles.grid}>
           {sorted.map((item) => {
-            const ui = TYPE_UI[item.type ?? ""] ?? { label: item.title, icon: "game-controller-outline" as const, color: "#4F46E5", bg: "#E0E7FF", dark: "#312E81" };
+            const ui = TYPE_UI[item.type ?? ""] ?? { label: item.title, subtitle: "Practice", icon: "game-controller-outline" as const, border: "#6366F1", iconBg: "#E0E7FF" };
             return (
-              <Pressable key={item.id} style={[styles.card, { backgroundColor: ui.bg }]} onPress={() => router.push(`/practice/${encodeURIComponent(item.id)}/roadmap` as any)}>
-                <View style={[styles.iconWrap, { backgroundColor: "rgba(255,255,255,0.7)" }]}><Ionicons name={ui.icon} size={21} color={ui.color} /></View>
-                <Text style={[styles.typeLabel, { color: ui.dark }]}>{ui.label}</Text>
-                <View style={styles.cardFooter}>
-                  <View style={styles.pill}><Text style={[styles.pillText, { color: ui.dark }]}>{item.maxDailyXp ?? 0} XP</Text></View>
+              <Pressable key={item.id} style={styles.cardWrap} onPress={() => router.push(`/practice/${encodeURIComponent(item.id)}/roadmap` as any)}>
+                <View style={[styles.squareCard, { borderColor: ui.border }]}>
+                  <View style={[styles.iconBubble, { backgroundColor: ui.iconBg }]}><Ionicons name={ui.icon} size={28} color={ui.border} /></View>
                 </View>
+                <Text numberOfLines={1} style={styles.cardTitle}>{ui.label}</Text>
+                <Text numberOfLines={1} style={styles.cardSubtitle}>{ui.subtitle}</Text>
               </Pressable>
             );
           })}
@@ -77,22 +82,26 @@ export default function PracticeLevelScreen({ levelId }: { levelId: string }) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F4F7FB' },
-  content: { padding: 12, gap: 12, paddingBottom: 24 },
+  safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
+  content: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 24, gap: 14 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   centerText: { color: '#4B5563' },
-  backButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, backgroundColor: '#E0E7FF', paddingHorizontal: 10, paddingVertical: 6 },
-  backButtonText: { fontSize: 12, fontWeight: '800', color: '#4338CA' },
-  hero: { borderRadius: 20, backgroundColor: '#312E81', padding: 14, gap: 6, overflow: 'hidden' },
-  heroBadge: { alignSelf: 'flex-start', borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.22)', paddingHorizontal: 8, paddingVertical: 4 },
-  heroBadgeText: { fontSize: 11, color: '#FFFFFF', fontWeight: '900', letterSpacing: 0.5 },
-  heroTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '900' },
-  heroSub: { color: '#C7D2FE', fontWeight: '700', fontSize: 13 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  card: { width: '48.5%', borderRadius: 16, padding: 12, minHeight: 122, justifyContent: 'space-between', shadowColor: '#0F172A', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
-  iconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  typeLabel: { marginTop: 8, fontSize: 14, fontWeight: '900' },
-  cardFooter: { flexDirection: 'row', justifyContent: 'flex-start' },
-  pill: { borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.7)', paddingHorizontal: 8, paddingVertical: 4 },
-  pillText: { fontSize: 11, fontWeight: '800' },
+  retryButton: { marginTop: 8, borderRadius: 12, backgroundColor: '#4F46E5', paddingHorizontal: 12, paddingVertical: 8 },
+  retryButtonText: { color: '#FFFFFF', fontWeight: '700' },
+  backButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, backgroundColor: '#E2E8F0', paddingHorizontal: 10, paddingVertical: 6 },
+  backButtonText: { fontSize: 12, fontWeight: '700', color: '#334155' },
+  hero: { borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFFFFF', padding: 12, gap: 4 },
+  heroEyebrow: { fontSize: 11, fontWeight: '700', color: '#6366F1' },
+  heroTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A' },
+  heroSub: { fontSize: 12, color: '#64748B' },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionTitle: { fontSize: 17, fontWeight: '800', color: '#0F172A' },
+  countChip: { minWidth: 30, borderRadius: 999, backgroundColor: '#E2E8F0', paddingHorizontal: 10, paddingVertical: 4, alignItems: 'center' },
+  countChipText: { fontSize: 12, fontWeight: '700', color: '#334155' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
+  cardWrap: { width: '30.5%' },
+  squareCard: { aspectRatio: 1, borderRadius: 14, borderWidth: 2, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  iconBubble: { width: 52, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  cardTitle: { marginTop: 7, fontSize: 12, fontWeight: '700', color: '#1E293B' },
+  cardSubtitle: { marginTop: 2, fontSize: 10, color: '#64748B' },
 });

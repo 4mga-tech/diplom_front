@@ -8,16 +8,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const LEVEL_ORDER = ["B1", "M1", "M2"];
 
-const LEVEL_THEME: Record<string, { icon: keyof typeof Ionicons.glyphMap; bg: string; accent: string; chip: string }> = {
-  B1: { icon: "planet-outline", bg: "#4F46E5", accent: "#C7D2FE", chip: "rgba(255,255,255,0.22)" },
-  M1: { icon: "rocket-outline", bg: "#0F766E", accent: "#99F6E4", chip: "rgba(255,255,255,0.18)" },
-  M2: { icon: "trophy-outline", bg: "#9A3412", accent: "#FED7AA", chip: "rgba(255,255,255,0.2)" },
+const TYPE_UI: Record<string, { label: string; subtitle: string; icon: keyof typeof Ionicons.glyphMap; border: string; iconBg: string }> = {
+  missing_letter: { label: "Missing Letter", subtitle: "Fill the gap", icon: "create-outline", border: "#8B5CF6", iconBg: "#F3E8FF" },
+  letter_match: { label: "Letter Match", subtitle: "Find pairs", icon: "git-compare-outline", border: "#F43F5E", iconBg: "#FFE4E6" },
+  word_builder: { label: "Word Builder", subtitle: "Build words", icon: "cube-outline", border: "#F59E0B", iconBg: "#FEF3C7" },
+  meaning_match: { label: "Meaning Match", subtitle: "Match meaning", icon: "layers-outline", border: "#22C55E", iconBg: "#DCFCE7" },
+  daily_challenge: { label: "Daily Challenge", subtitle: "Daily boost", icon: "flash-outline", border: "#3B82F6", iconBg: "#DBEAFE" },
 };
 
 type LevelGroup = {
   levelId: string;
   items: PracticeSummary[];
-  totalDailyXp: number;
 };
 
 export default function PracticeHubScreen() {
@@ -66,16 +67,8 @@ export default function PracticeHubScreen() {
         if (idxB === -1) return -1;
         return idxA - idxB;
       })
-      .map(([levelId, items]) => ({
-        levelId,
-        items,
-        totalDailyXp: items.reduce((sum, current) => sum + (current.maxDailyXp ?? 0), 0),
-      }));
+      .map(([levelId, items]) => ({ levelId, items }));
   }, [practices]);
-
-  const onPressLevel = useCallback((levelId: string) => {
-    router.push(`/practice/${encodeURIComponent(levelId.toLowerCase())}` as any);
-  }, [router]);
 
   if (loading) return <SafeAreaView style={styles.safeArea}><View style={styles.centerContainer}><ActivityIndicator size="small" color="#4F46E5" /><Text style={styles.centerText}>Loading practice...</Text></View></SafeAreaView>;
   if (error) return <SafeAreaView style={styles.safeArea}><View style={styles.centerContainer}><Ionicons name="alert-circle-outline" size={26} color="#DC2626" /><Text style={styles.centerTitle}>Something went wrong</Text><Text style={styles.centerText}>{error}</Text><Pressable style={styles.retryButton} onPress={() => void loadPractices()}><Text style={styles.retryButtonText}>Retry</Text></Pressable></View></SafeAreaView>;
@@ -86,58 +79,61 @@ export default function PracticeHubScreen() {
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadPractices(true)} />}
       >
-        <View style={styles.heroCard}>
-          <View style={styles.heroOrbOne} />
-          <View style={styles.heroOrbTwo} />
-          <View style={styles.heroIconWrap}><Ionicons name="game-controller" size={32} color="#FFFFFF" /></View>
-          <Text style={styles.heroTitle}>Practice Zone</Text>
-          <Text style={styles.heroSubtitle}>Pick a world, clear quick challenges, and farm daily XP.</Text>
+        <View style={styles.headerWrap}>
+          <Text style={styles.screenTitle}>Practice</Text>
+          <Text style={styles.screenSubtitle}>Choose by level and start from roadmap.</Text>
         </View>
 
-        <View style={styles.grid}>
-          {groupedLevels.map((group) => {
-            const theme = LEVEL_THEME[group.levelId] ?? { icon: "sparkles-outline" as const, bg: "#4338CA", accent: "#C7D2FE", chip: "rgba(255,255,255,0.2)" };
-            return (
-              <Pressable key={group.levelId} style={[styles.levelCard, { backgroundColor: theme.bg }]} onPress={() => onPressLevel(group.levelId)}>
-                <View style={styles.levelTop}>
-                  <Text style={styles.levelName}>{group.levelId}</Text>
-                  <View style={[styles.levelIconWrap, { backgroundColor: theme.chip }]}><Ionicons name={theme.icon} size={19} color="#FFFFFF" /></View>
-                </View>
-                <Text style={styles.levelWorld}>World {group.levelId}</Text>
-                <View style={styles.metaChipRow}>
-                  <View style={[styles.metaChip, { backgroundColor: theme.chip }]}><Text style={styles.metaText}>{group.items.length} acts</Text></View>
-                  <View style={[styles.metaChip, { backgroundColor: theme.chip }]}><Ionicons name="flash" size={12} color={theme.accent} /><Text style={styles.metaText}>{group.totalDailyXp}</Text></View>
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
+        {groupedLevels.map((group) => (
+          <View key={group.levelId} style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{group.levelId}</Text>
+              <View style={styles.countChip}><Text style={styles.countChipText}>{group.items.length}</Text></View>
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rowContent}>
+              {group.items.map((item) => {
+                const ui = TYPE_UI[item.type ?? ""] ?? { label: item.title, subtitle: "Practice", icon: "game-controller-outline" as const, border: "#6366F1", iconBg: "#E0E7FF" };
+                return (
+                  <Pressable key={item.id} style={styles.cardWrap} onPress={() => router.push(`/practice/${encodeURIComponent(item.id)}/roadmap` as any)}>
+                    <View style={[styles.squareCard, { borderColor: ui.border }]}>
+                      <View style={[styles.iconBubble, { backgroundColor: ui.iconBg }]}>
+                        <Ionicons name={ui.icon} size={26} color={ui.border} />
+                      </View>
+                    </View>
+                    <Text numberOfLines={1} style={styles.cardTitle}>{ui.label}</Text>
+                    <Text numberOfLines={1} style={styles.cardSubtitle}>{ui.subtitle}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        ))}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#EEF2FF" },
-  scrollContent: { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 24, gap: 14 },
+  safeArea: { flex: 1, backgroundColor: "#F8FAFC" },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 20, gap: 16 },
+  headerWrap: { gap: 4 },
+  screenTitle: { fontSize: 27, fontWeight: "800", color: "#0F172A" },
+  screenSubtitle: { fontSize: 13, color: "#64748B" },
+  section: { gap: 10 },
+  sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  sectionTitle: { fontSize: 18, fontWeight: "800", color: "#0F172A" },
+  countChip: { minWidth: 30, borderRadius: 999, backgroundColor: "#E2E8F0", paddingHorizontal: 10, paddingVertical: 4, alignItems: "center" },
+  countChipText: { fontSize: 12, fontWeight: "700", color: "#334155" },
+  rowContent: { gap: 12, paddingRight: 8 },
+  cardWrap: { width: 112 },
+  squareCard: { width: 112, height: 112, borderRadius: 16, borderWidth: 2, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
+  iconBubble: { width: 52, height: 52, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  cardTitle: { marginTop: 8, fontSize: 13, fontWeight: "700", color: "#1E293B" },
+  cardSubtitle: { marginTop: 2, fontSize: 11, color: "#64748B" },
   centerContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24, gap: 8 },
   centerTitle: { fontSize: 16, fontWeight: "700", color: "#111827" },
   centerText: { fontSize: 14, color: "#4B5563", textAlign: "center" },
   retryButton: { marginTop: 8, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: "#4F46E5" },
   retryButtonText: { color: "#FFFFFF", fontWeight: "700" },
-  heroCard: { position: "relative", overflow: "hidden", borderRadius: 28, borderBottomLeftRadius: 36, borderBottomRightRadius: 36, padding: 18, backgroundColor: "#312E81", minHeight: 170 },
-  heroOrbOne: { position: "absolute", width: 160, height: 160, borderRadius: 999, backgroundColor: "rgba(129,140,248,0.35)", right: -30, top: -40 },
-  heroOrbTwo: { position: "absolute", width: 120, height: 120, borderRadius: 999, backgroundColor: "rgba(34,211,238,0.22)", left: -20, bottom: -45 },
-  heroIconWrap: { width: 58, height: 58, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
-  heroTitle: { marginTop: 12, fontSize: 31, fontWeight: "900", color: "#FFFFFF" },
-  heroSubtitle: { marginTop: 6, maxWidth: "86%", fontSize: 14, color: "#E0E7FF", fontWeight: "700" },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  levelCard: { width: "48.5%", borderRadius: 18, padding: 12, gap: 8, shadowColor: "#0F172A", shadowOpacity: 0.1, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  levelTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  levelName: { fontSize: 14, fontWeight: "900", color: "#FFFFFF", letterSpacing: 0.6 },
-  levelIconWrap: { width: 34, height: 34, borderRadius: 11, alignItems: "center", justifyContent: "center" },
-  levelWorld: { fontSize: 18, color: "#FFFFFF", fontWeight: "900" },
-  metaChipRow: { marginTop: 6, gap: 6 },
-  metaChip: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
-  metaText: { fontSize: 11, fontWeight: "800", color: "#FFFFFF" },
 });
