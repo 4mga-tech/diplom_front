@@ -40,7 +40,8 @@ function normalizeTaskType(value: unknown): PracticeTaskType {
     normalized === "ordering" ||
     normalized === "speaking" ||
     normalized === "listening" ||
-    normalized === "writing"
+    normalized === "writing" ||
+    normalized === "missing_letter"
   ) {
     return normalized;
   }
@@ -77,6 +78,8 @@ function normalizeTask(raw: any, index: number): PracticeTask {
       normalizeOption(option, optionIndex),
     ),
     order: toNumberOrNull(raw?.order ?? raw?.position ?? index + 1) ?? index + 1,
+    correctOptionId: toStringOrNull(raw?.correctOptionId ?? raw?.correctOption ?? raw?.correctChoiceId),
+    correctAnswer: toStringOrNull(raw?.correctAnswer ?? raw?.answer),
   };
 }
 
@@ -121,6 +124,8 @@ function normalizeAttemptResult(raw: any): PracticeAttemptResult {
     totalQuestions: toNumberOrNull(raw?.totalQuestions ?? raw?.questionsCount),
     passed: typeof raw?.passed === "boolean" ? raw.passed : null,
     feedback: toStringOrNull(raw?.feedback ?? raw?.message),
+    xpEarned: toNumberOrNull(raw?.xpEarned ?? raw?.xp ?? raw?.awardedXp),
+    xpCapped: typeof raw?.xpCapped === "boolean" ? raw.xpCapped : null,
   };
 }
 
