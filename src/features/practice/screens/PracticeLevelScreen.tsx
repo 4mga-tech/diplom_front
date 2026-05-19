@@ -61,7 +61,7 @@ export default function PracticeLevelScreen({ levelId }: { levelId: string }) {
           {sorted.map((item) => {
             const ui = TYPE_UI[item.type ?? ""] ?? { label: item.title, icon: "game-controller-outline" as const, color: "#4F46E5", bg: "#E0E7FF", dark: "#312E81" };
             return (
-              <Pressable key={item.id} style={[styles.card, { backgroundColor: ui.bg }]} onPress={() => router.push(`/practice/${encodeURIComponent(item.id)}/play` as any)}>
+              <Pressable key={item.id} style={[styles.card, { backgroundColor: ui.bg }]} onPress={() => router.push(`/practice/${encodeURIComponent(item.id)}/roadmap` as any)}>
                 <View style={[styles.iconWrap, { backgroundColor: "rgba(255,255,255,0.7)" }]}><Ionicons name={ui.icon} size={21} color={ui.color} /></View>
                 <Text style={[styles.typeLabel, { color: ui.dark }]}>{ui.label}</Text>
                 <View style={styles.cardFooter}>

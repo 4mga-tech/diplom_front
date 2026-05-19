@@ -5,6 +5,7 @@ import {
   PracticeAttemptResult,
   PracticeDetails,
   PracticeSummary,
+  PracticeRoadmapStage,
   PracticeTask,
   PracticeTaskOption,
   PracticeTaskType,
@@ -93,13 +94,34 @@ function normalizePracticeSummary(raw: unknown): PracticeSummary {
   };
 }
 
+
+function normalizeRoadmapStage(raw: unknown, index: number): PracticeRoadmapStage {
+  const stage = (raw ?? {}) as Record<string, unknown>;
+  const questionIds = Array.isArray(stage.questionIds) ? stage.questionIds.map((id) => String(id)) : [];
+  return {
+    id: String(stage.id ?? stage._id ?? `stage-${index + 1}`),
+    title: String(stage.title ?? `Stage ${index + 1}`),
+    subtitle: toStringOrNull(stage.subtitle),
+    order: toNumberOrNull(stage.order ?? index + 1) ?? index + 1,
+    xpReward: toNumberOrNull(stage.xpReward ?? stage.xp ?? 0) ?? 0,
+    isUnlocked: Boolean(stage.isUnlocked),
+    questionIds,
+  };
+}
+
 function normalizePracticeDetails(raw: unknown): PracticeDetails {
   const details = (raw ?? {}) as Record<string, unknown>;
   const tasksSource = Array.isArray(details.tasks) ? details.tasks : Array.isArray(details.questions) ? details.questions : [];
+  const roadmapSource = (details.config as Record<string, unknown> | undefined)?.roadmap;
+  const roadmap = Array.isArray(roadmapSource)
+    ? roadmapSource.map((stage: unknown, index: number) => normalizeRoadmapStage(stage, index))
+    : [];
+
   return {
     ...normalizePracticeSummary(details),
     instructions: toStringOrNull(details.instructions),
     tasks: tasksSource.map((task: unknown, index: number) => normalizeTask(task, index)),
+    roadmap,
   };
 }
 

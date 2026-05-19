@@ -50,15 +50,27 @@ export type PracticeTask = {
   meaningEn?: string | null;
 };
 
+export type PracticeRoadmapStage = {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  order: number;
+  xpReward: number;
+  isUnlocked: boolean;
+  questionIds: string[];
+};
+
 export type PracticeDetails = PracticeSummary & {
   instructions: string | null;
   tasks: PracticeTask[];
+  roadmap: PracticeRoadmapStage[];
 };
 
 export type PracticeAttemptPayload = {
   score: number;
   correctCount: number;
   totalCount: number;
+  stageId?: string;
 };
 
 export type PracticeAttemptResult = {

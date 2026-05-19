@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-type Props = { practiceId: string };
+type Props = { practiceId: string; stageId?: string };
 type AnswerMap = Record<string, string>;
 type PlayState = "loading" | "playing" | "submitting" | "completed" | "error" | "empty";
 
@@ -31,7 +31,7 @@ function isCorrectAnswer(task: PracticeTask, optionId: string): boolean {
   return false;
 }
 
-export default function PracticePlayScreen({ practiceId }: Props) {
+export default function PracticePlayScreen({ practiceId, stageId }: Props) {
   const router = useRouter();
   const [practice, setPractice] = useState<PracticeDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +60,14 @@ export default function PracticePlayScreen({ practiceId }: Props) {
     void loadPractice();
   }, [loadPractice]);
 
-  const sortedTasks = useMemo(() => [...(practice?.tasks ?? [])].sort((a, b) => a.order - b.order), [practice]);
+  const sortedTasks = useMemo(() => {
+    const tasks = [...(practice?.tasks ?? [])].sort((a, b) => a.order - b.order);
+    if (!stageId || !practice) return tasks;
+    const stage = practice.roadmap.find((item) => item.id === stageId);
+    if (!stage) return tasks;
+    const allowed = new Set(stage.questionIds);
+    return tasks.filter((task) => allowed.has(task.id));
+  }, [practice, stageId]);
   const totalCount = sortedTasks.length;
   const answeredCount = Object.keys(answers).length;
   const correctCount = useMemo(
@@ -83,7 +90,7 @@ export default function PracticePlayScreen({ practiceId }: Props) {
     if (!practice || playState === "submitting" || playState === "completed") return;
     setPlayState("submitting");
     try {
-      const result = await practiceService.submitAttempt(practice.id, { score, correctCount, totalCount });
+      const result = await practiceService.submitAttempt(practice.id, { score, correctCount, totalCount, stageId });
       setAttemptResult(result);
       setPlayState("completed");
     } catch (e) {
@@ -91,7 +98,7 @@ export default function PracticePlayScreen({ practiceId }: Props) {
       setError("Could not submit result. Try again.");
       setPlayState("error");
     }
-  }, [practice, playState, score, correctCount, totalCount]);
+  }, [practice, playState, score, correctCount, totalCount, stageId]);
 
   if (playState === "loading") return <SafeAreaView style={styles.safeArea}><View style={styles.centerContainer}><ActivityIndicator size="small" color="#4F46E5" /><Text style={styles.centerText}>Loading practice...</Text></View></SafeAreaView>;
   if (playState === "error") return <SafeAreaView style={styles.safeArea}><View style={styles.centerContainer}><Ionicons name="alert-circle-outline" size={24} color="#DC2626" /><Text style={styles.centerTitle}>Something went wrong</Text><Text style={styles.centerText}>{error}</Text><Pressable style={styles.primaryButton} onPress={() => void loadPractice()}><Text style={styles.primaryButtonText}>Retry</Text></Pressable></View></SafeAreaView>;
@@ -106,7 +113,7 @@ export default function PracticePlayScreen({ practiceId }: Props) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.contentContainer}>
-        <Pressable style={styles.backButton} onPress={() => router.push(practice?.levelId ? `/practice/${encodeURIComponent(practice.levelId.toLowerCase())}` as any : "/(tabs)/achievements")}>
+        <Pressable style={styles.backButton} onPress={() => router.push(`/practice/${encodeURIComponent(practiceId)}/roadmap` as any)}>
           <Ionicons name="chevron-back" size={16} color="#E0E7FF" />
           <Text style={styles.backButtonText}>Back</Text>
         </Pressable>
