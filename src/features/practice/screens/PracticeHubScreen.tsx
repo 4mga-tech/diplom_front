@@ -414,12 +414,12 @@ const daily = StyleSheet.create({
     gap: 10,
   },
   taskCardWrap: {
-    width: 102,
+    width: 98,
     alignItems: "center",
   },
   taskSquareCard: {
-    width: 98,
-    height: 98,
+    width: 78,
+    height: 78,
     borderRadius: 18,
     borderWidth: 2,
     backgroundColor: "#FFFFFF",
@@ -536,12 +536,12 @@ const styles = StyleSheet.create({
   },
   countChipText: { fontSize: 12, fontWeight: "700" },
 
-  rowContent: { gap: 12, paddingRight: 8 },
-  cardWrap: { width: 116 },
+  rowContent: { gap: 10, paddingRight: 8 },
+  cardWrap: { width: 92 },
   squareCard: {
-    width: 116,
-    height: 116,
-    borderRadius: 20,
+    width: 78,
+    height: 78,
+    borderRadius: 18,
     borderWidth: 2,
     backgroundColor: "#FFFFFF",
     alignItems: "center",
