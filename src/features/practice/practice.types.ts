@@ -7,26 +7,35 @@ export type PracticeTaskType =
   | "speaking"
   | "listening"
   | "writing"
-  | "unknown"
-  | "missing_letter";
+  | "missing_letter"
+  | "letter_match"
+  | "meaning_match"
+  | "word_builder"
+  | "daily_challenge"
+  | "unknown";
 
 export type PracticeSummary = {
   id: string;
+  type: string | null;
+  levelId: string | null;
   title: string;
   subtitle: string | null;
   description: string | null;
-  type: string | null;
+  xpReward: number | null;
+  maxDailyXp: number | null;
+  dailyAttemptLimit: number | null;
+  config: Record<string, unknown> | null;
   lessonId: string | null;
   difficulty: string | null;
   estimatedDurationMinutes: number | null;
   tasksCount: number;
-  xpReward: number | null;
-  maxDailyXp: number | null;
 };
 
 export type PracticeTaskOption = {
   id: string;
   text: string;
+  result?: string | null;
+  meaningEn?: string | null;
 };
 
 export type PracticeTask = {
@@ -37,6 +46,8 @@ export type PracticeTask = {
   order: number;
   correctOptionId: string | null;
   correctAnswer: string | null;
+  result?: string | null;
+  meaningEn?: string | null;
 };
 
 export type PracticeDetails = PracticeSummary & {
@@ -58,5 +69,7 @@ export type PracticeAttemptResult = {
   passed: boolean | null;
   feedback: string | null;
   xpEarned: number | null;
+  dailyXpEarned: number | null;
+  dailyXpLimit: number | null;
   xpCapped: boolean | null;
 };

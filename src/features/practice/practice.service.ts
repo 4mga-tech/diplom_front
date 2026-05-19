@@ -21,143 +21,116 @@ function toNumberOrNull(value: unknown): number | null {
 }
 
 function toStringOrNull(value: unknown): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-
+  if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function toRecordOrNull(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
 function normalizeTaskType(value: unknown): PracticeTaskType {
-  const normalized = String(value ?? "").trim().toLowerCase();
-
-  if (
-    normalized === "single_choice" ||
-    normalized === "multiple_choice" ||
-    normalized === "fill_in_blank" ||
-    normalized === "matching" ||
-    normalized === "ordering" ||
-    normalized === "speaking" ||
-    normalized === "listening" ||
-    normalized === "writing" ||
-    normalized === "missing_letter"
-  ) {
-    return normalized;
-  }
-
-  return "unknown";
+  const normalized = String(value ?? "").trim().toLowerCase() as PracticeTaskType;
+  const allowed: PracticeTaskType[] = [
+    "single_choice","multiple_choice","fill_in_blank","matching","ordering","speaking","listening","writing",
+    "missing_letter","letter_match","meaning_match","word_builder","daily_challenge",
+  ];
+  return allowed.includes(normalized) ? normalized : "unknown";
 }
 
-function normalizeOption(raw: any, index: number): PracticeTaskOption {
-  if (typeof raw === "string") {
-    return {
-      id: `${index + 1}`,
-      text: raw,
-    };
-  }
-
+function normalizeOption(raw: unknown, index: number): PracticeTaskOption {
+  if (typeof raw === "string") return { id: `${index + 1}`, text: raw };
+  const option = (raw ?? {}) as Record<string, unknown>;
   return {
-    id: String(raw?.id ?? raw?._id ?? raw?.value ?? index + 1),
-    text: String(raw?.text ?? raw?.label ?? raw?.value ?? ""),
+    id: String(option.id ?? option._id ?? option.value ?? index + 1),
+    text: String(option.text ?? option.label ?? option.value ?? ""),
+    result: toStringOrNull(option.result),
+    meaningEn: toStringOrNull(option.meaningEn ?? option.meaning_en),
   };
 }
 
-function normalizeTask(raw: any, index: number): PracticeTask {
-  const optionsSource = Array.isArray(raw?.options)
-    ? raw.options
-    : Array.isArray(raw?.choices)
-      ? raw.choices
+function normalizeTask(raw: unknown, index: number): PracticeTask {
+  const task = (raw ?? {}) as Record<string, unknown>;
+  const optionsSource = Array.isArray(task.options)
+    ? task.options
+    : Array.isArray(task.choices)
+      ? task.choices
       : [];
 
   return {
-    id: String(raw?.id ?? raw?._id ?? `task-${index + 1}`),
-    type: normalizeTaskType(raw?.type ?? raw?.taskType ?? raw?.kind),
-    prompt: String(raw?.prompt ?? raw?.question ?? raw?.text ?? ""),
-    options: optionsSource.map((option: unknown, optionIndex: number) =>
-      normalizeOption(option, optionIndex),
-    ),
-    order: toNumberOrNull(raw?.order ?? raw?.position ?? index + 1) ?? index + 1,
-    correctOptionId: toStringOrNull(raw?.correctOptionId ?? raw?.correctOption ?? raw?.correctChoiceId),
-    correctAnswer: toStringOrNull(raw?.correctAnswer ?? raw?.answer),
+    id: String(task.id ?? task._id ?? `task-${index + 1}`),
+    type: normalizeTaskType(task.type ?? task.taskType ?? task.kind),
+    prompt: String(task.prompt ?? task.question ?? task.text ?? ""),
+    options: optionsSource.map((option: unknown, optionIndex: number) => normalizeOption(option, optionIndex)),
+    order: toNumberOrNull(task.order ?? task.position ?? index + 1) ?? index + 1,
+    correctOptionId: toStringOrNull(task.correctOptionId ?? task.correctOption ?? task.correctChoiceId),
+    correctAnswer: toStringOrNull(task.correctAnswer ?? task.answer),
+    result: toStringOrNull(task.result),
+    meaningEn: toStringOrNull(task.meaningEn ?? task.meaning_en),
   };
 }
 
-function normalizePracticeSummary(raw: any): PracticeSummary {
+function normalizePracticeSummary(raw: unknown): PracticeSummary {
+  const item = (raw ?? {}) as Record<string, unknown>;
   return {
-    id: String(raw?.id ?? raw?._id ?? ""),
-    title: String(raw?.title ?? raw?.name ?? ""),
-    subtitle: toStringOrNull(raw?.subtitle ?? raw?.tagline),
-    description: toStringOrNull(raw?.description),
-    lessonId: toStringOrNull(raw?.lessonId ?? raw?.lesson?._id ?? raw?.lesson?.id),
-    difficulty: toStringOrNull(raw?.difficulty ?? raw?.level),
-    type: toStringOrNull(raw?.type ?? raw?.practiceType ?? raw?.category),
-    estimatedDurationMinutes: toNumberOrNull(
-      raw?.estimatedDurationMinutes ?? raw?.durationMinutes ?? raw?.duration,
-    ),
-    tasksCount: toNumberOrNull(raw?.tasksCount ?? raw?.questionsCount ?? raw?.tasks?.length) ?? 0,
-    xpReward: toNumberOrNull(raw?.xpReward ?? raw?.xp ?? raw?.rewardXp),
-    maxDailyXp: toNumberOrNull(raw?.maxDailyXp ?? raw?.dailyXpCap),
+    id: String(item.id ?? item._id ?? ""),
+    type: toStringOrNull(item.type ?? item.practiceType ?? item.category),
+    levelId: toStringOrNull(item.levelId ?? item.level?.toString?.()),
+    title: String(item.title ?? item.name ?? ""),
+    subtitle: toStringOrNull(item.subtitle ?? item.tagline),
+    description: toStringOrNull(item.description),
+    xpReward: toNumberOrNull(item.xpReward ?? item.xp ?? item.rewardXp),
+    maxDailyXp: toNumberOrNull(item.maxDailyXp ?? item.dailyXpCap),
+    dailyAttemptLimit: toNumberOrNull(item.dailyAttemptLimit),
+    config: toRecordOrNull(item.config),
+    lessonId: toStringOrNull(item.lessonId ?? (item.lesson as Record<string, unknown> | undefined)?._id ?? (item.lesson as Record<string, unknown> | undefined)?.id),
+    difficulty: toStringOrNull(item.difficulty ?? item.level),
+    estimatedDurationMinutes: toNumberOrNull(item.estimatedDurationMinutes ?? item.durationMinutes ?? item.duration),
+    tasksCount: toNumberOrNull(item.tasksCount ?? item.questionsCount ?? ((item.tasks as unknown[] | undefined)?.length)) ?? 0,
   };
 }
 
-function normalizePracticeDetails(raw: any): PracticeDetails {
-  const summary = normalizePracticeSummary(raw);
-  const tasksSource = Array.isArray(raw?.tasks)
-    ? raw.tasks
-    : Array.isArray(raw?.questions)
-      ? raw.questions
-      : [];
-
+function normalizePracticeDetails(raw: unknown): PracticeDetails {
+  const details = (raw ?? {}) as Record<string, unknown>;
+  const tasksSource = Array.isArray(details.tasks) ? details.tasks : Array.isArray(details.questions) ? details.questions : [];
   return {
-    ...summary,
-    instructions: toStringOrNull(raw?.instructions),
-    tasks: tasksSource.map((task: any, index: number) => normalizeTask(task, index)),
+    ...normalizePracticeSummary(details),
+    instructions: toStringOrNull(details.instructions),
+    tasks: tasksSource.map((task: unknown, index: number) => normalizeTask(task, index)),
   };
 }
 
-function normalizeAttemptResult(raw: any): PracticeAttemptResult {
+function normalizeAttemptResult(raw: unknown): PracticeAttemptResult {
+  const result = (raw ?? {}) as Record<string, unknown>;
   return {
-    attemptId: String(raw?.attemptId ?? raw?.id ?? raw?._id ?? ""),
-    score: toNumberOrNull(raw?.score ?? raw?.percentage),
-    correctAnswers: toNumberOrNull(raw?.correctAnswers ?? raw?.correctCount),
-    totalQuestions: toNumberOrNull(raw?.totalQuestions ?? raw?.questionsCount),
-    passed: typeof raw?.passed === "boolean" ? raw.passed : null,
-    feedback: toStringOrNull(raw?.feedback ?? raw?.message),
-    xpEarned: toNumberOrNull(raw?.xpEarned ?? raw?.xp ?? raw?.awardedXp),
-    xpCapped: typeof raw?.xpCapped === "boolean" ? raw.xpCapped : null,
+    attemptId: String(result.attemptId ?? result.id ?? result._id ?? ""),
+    score: toNumberOrNull(result.score ?? result.percentage),
+    correctAnswers: toNumberOrNull(result.correctAnswers ?? result.correctCount),
+    totalQuestions: toNumberOrNull(result.totalQuestions ?? result.questionsCount),
+    passed: typeof result.passed === "boolean" ? result.passed : null,
+    feedback: toStringOrNull(result.feedback ?? result.message),
+    xpEarned: toNumberOrNull(result.xpEarned ?? result.xp ?? result.awardedXp),
+    dailyXpEarned: toNumberOrNull(result.dailyXpEarned),
+    dailyXpLimit: toNumberOrNull(result.dailyXpLimit ?? result.maxDailyXp),
+    xpCapped: typeof result.xpCapped === "boolean" ? result.xpCapped : null,
   };
 }
 
 export const practiceService = {
   async getPractices(): Promise<PracticeSummary[]> {
     const response = await api.get("/practice");
-    const payload = extractData<any>(response.data);
-
-    return Array.isArray(payload)
-      ? payload.map((item: any) => normalizePracticeSummary(item))
-      : [];
+    const payload = extractData<unknown>(response.data);
+    return Array.isArray(payload) ? payload.map((item) => normalizePracticeSummary(item)) : [];
   },
-
   async getPracticeById(practiceId: string): Promise<PracticeDetails> {
-    const normalizedPracticeId = practiceId.trim();
-    const response = await api.get(
-      `/practice/${encodeURIComponent(normalizedPracticeId)}`,
-    );
-
-    return normalizePracticeDetails(extractData<any>(response.data));
+    const response = await api.get(`/practice/${encodeURIComponent(practiceId.trim())}`);
+    return normalizePracticeDetails(extractData<unknown>(response.data));
   },
-
-  async submitAttempt(
-    practiceId: string,
-    payload: PracticeAttemptPayload,
-  ): Promise<PracticeAttemptResult> {
-    const normalizedPracticeId = practiceId.trim();
-    const response = await api.post(
-      `/practice/${encodeURIComponent(normalizedPracticeId)}/attempt`,
-      payload,
-    );
-
-    return normalizeAttemptResult(extractData<any>(response.data));
+  async submitAttempt(practiceId: string, payload: PracticeAttemptPayload): Promise<PracticeAttemptResult> {
+    const response = await api.post(`/practice/${encodeURIComponent(practiceId.trim())}/attempt`, payload);
+    return normalizeAttemptResult(extractData<unknown>(response.data));
   },
 };
