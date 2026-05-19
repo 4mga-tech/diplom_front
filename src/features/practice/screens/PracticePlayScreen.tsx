@@ -11,7 +11,7 @@ type Props = {
 
 type AnswerMap = Record<string, string>;
 
-type SubmitState = "idle" | "submitting" | "done";
+type PlayState = "loading" | "playing" | "submitting" | "completed" | "error" | "empty";
 
 function isMissingLetterPractice(practice: PracticeDetails): boolean {
   return practice.type === "missing_letter";
@@ -32,28 +32,26 @@ function isCorrectAnswer(task: PracticeTask, optionId: string): boolean {
 
 export default function PracticePlayScreen({ practiceId }: Props) {
   const [practice, setPractice] = useState<PracticeDetails | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [playState, setPlayState] = useState<PlayState>("loading");
   const [answers, setAnswers] = useState<AnswerMap>({});
-  const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [attemptResult, setAttemptResult] = useState<PracticeAttemptResult | null>(null);
 
   const loadPractice = useCallback(async () => {
-    setLoading(true);
+    setPlayState("loading");
     setError(null);
-    setSubmitState("idle");
     setAttemptResult(null);
     setAnswers({});
 
     try {
       const details = await practiceService.getPracticeById(practiceId);
       setPractice(details);
+      setPlayState(details.tasks.length > 0 ? "playing" : "empty");
     } catch (loadError) {
       console.log("Failed to load practice detail", loadError);
       setError("Could not load this practice.");
       setPractice(null);
-    } finally {
-      setLoading(false);
+      setPlayState("error");
     }
   }, [practiceId]);
 
@@ -93,11 +91,11 @@ export default function PracticePlayScreen({ practiceId }: Props) {
   }, []);
 
   const onFinish = useCallback(async () => {
-    if (!practice || submitState === "submitting") {
+    if (!practice || playState === "submitting") {
       return;
     }
 
-    setSubmitState("submitting");
+    setPlayState("submitting");
     try {
       const result = await practiceService.submitAttempt(practice.id, {
         score,
@@ -105,15 +103,15 @@ export default function PracticePlayScreen({ practiceId }: Props) {
         totalCount,
       });
       setAttemptResult(result);
-      setSubmitState("done");
+      setPlayState("completed");
     } catch (submitError) {
       console.log("Failed to submit practice attempt", submitError);
       setError("Could not submit result. Try again.");
-      setSubmitState("idle");
+      setPlayState("error");
     }
-  }, [practice, submitState, score, correctCount, totalCount]);
+  }, [practice, playState, score, correctCount, totalCount]);
 
-  if (loading) {
+  if (playState === "loading") {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.centerContainer}>
@@ -124,7 +122,7 @@ export default function PracticePlayScreen({ practiceId }: Props) {
     );
   }
 
-  if (error) {
+  if (playState === "error") {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.centerContainer}>
@@ -139,7 +137,7 @@ export default function PracticePlayScreen({ practiceId }: Props) {
     );
   }
 
-  if (!practice || sortedTasks.length === 0) {
+  if (playState === "empty" || !practice || sortedTasks.length === 0) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.centerContainer}>
@@ -214,7 +212,7 @@ export default function PracticePlayScreen({ practiceId }: Props) {
           );
         })}
 
-        {submitState === "done" ? (
+        {playState === "completed" ? (
           <View style={styles.resultCard}>
             <Text style={styles.resultTitle}>Practice complete</Text>
             <Text style={styles.resultText}>Score: {attemptResult?.score ?? score}%</Text>
@@ -226,11 +224,11 @@ export default function PracticePlayScreen({ practiceId }: Props) {
           </View>
         ) : (
           <Pressable
-            style={[styles.primaryButton, (!allAnswered || submitState === "submitting") && styles.disabledButton]}
-            disabled={!allAnswered || submitState === "submitting"}
+            style={[styles.primaryButton, (!allAnswered || playState === "submitting") && styles.disabledButton]}
+            disabled={!allAnswered || playState === "submitting"}
             onPress={() => void onFinish()}
           >
-            <Text style={styles.primaryButtonText}>{submitState === "submitting" ? "Finishing..." : "Finish"}</Text>
+            <Text style={styles.primaryButtonText}>{playState === "submitting" ? "Finishing..." : "Finish"}</Text>
           </Pressable>
         )}
       </ScrollView>
