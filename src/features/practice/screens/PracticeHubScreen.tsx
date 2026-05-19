@@ -95,7 +95,7 @@ export default function PracticeHubScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <FlatList
-        data={practices}
+        data={[...practices].sort((a, b) => (a.levelId ?? "").localeCompare(b.levelId ?? "") || a.title.localeCompare(b.title))}
         keyExtractor={(item) => item.id}
         refreshControl={
           <RefreshControl
@@ -110,7 +110,7 @@ export default function PracticeHubScreen() {
               <Text style={styles.cardTitle} numberOfLines={1}>
                 {item.title}
               </Text>
-              {item.type ? <Text style={styles.badge}>{item.type}</Text> : null}
+              {item.type ? <Text style={styles.badge}>{item.type.replace(/_/g, " ")}</Text> : null}
             </View>
 
             {item.subtitle ? (
@@ -124,6 +124,7 @@ export default function PracticeHubScreen() {
             </Text>
 
             <View style={styles.metaRow}>
+              {item.levelId ? <Text style={styles.metaText}>Level: {item.levelId}</Text> : null}
               <Text style={styles.metaText}>XP: {item.xpReward ?? 0}</Text>
               <Text style={styles.metaText}>Daily cap: {item.maxDailyXp ?? 0}</Text>
             </View>
