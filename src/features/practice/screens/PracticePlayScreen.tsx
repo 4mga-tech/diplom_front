@@ -106,7 +106,7 @@ export default function PracticePlayScreen({ practiceId }: Props) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.contentContainer}>
-        <Pressable style={styles.backButton} onPress={() => router.push(practice?.levelId ? `/practice/${encodeURIComponent(practice.levelId.toLowerCase())}` as any : "/practice")}>
+        <Pressable style={styles.backButton} onPress={() => router.push(practice?.levelId ? `/practice/${encodeURIComponent(practice.levelId.toLowerCase())}` as any : "/(tabs)/achievements")}>
           <Ionicons name="chevron-back" size={16} color="#4338CA" />
           <Text style={styles.backButtonText}>Back</Text>
         </Pressable>
