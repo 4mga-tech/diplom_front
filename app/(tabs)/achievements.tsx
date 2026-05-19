@@ -1,5 +1,5 @@
-import GameHubScreen from "@/src/features/games/screens/GameHubScreen";
+import PracticeHubScreen from "@/src/features/practice/screens/PracticeHubScreen";
 
-export default function AchievementsRoute() {
-  return <GameHubScreen />;
+export default function PracticeRoute() {
+  return <PracticeHubScreen />;
 }
