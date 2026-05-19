@@ -107,7 +107,7 @@ export default function PracticePlayScreen({ practiceId }: Props) {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.contentContainer}>
         <Pressable style={styles.backButton} onPress={() => router.push(practice?.levelId ? `/practice/${encodeURIComponent(practice.levelId.toLowerCase())}` as any : "/(tabs)/achievements")}>
-          <Ionicons name="chevron-back" size={16} color="#4338CA" />
+          <Ionicons name="chevron-back" size={16} color="#E0E7FF" />
           <Text style={styles.backButtonText}>Back</Text>
         </Pressable>
 
@@ -202,7 +202,7 @@ export default function PracticePlayScreen({ practiceId }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F4F7FB" },
+  safeArea: { flex: 1, backgroundColor: "#EEF2FF" },
   contentContainer: { padding: 12, gap: 10, paddingBottom: 24 },
   backButton: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 999, backgroundColor: "#E0E7FF", paddingHorizontal: 10, paddingVertical: 6 },
   backButtonText: { fontSize: 12, fontWeight: "800", color: "#4338CA" },
@@ -210,25 +210,25 @@ const styles = StyleSheet.create({
   centerTitle: { fontSize: 16, fontWeight: "700", color: "#111827" },
   centerText: { fontSize: 14, color: "#4B5563", textAlign: "center" },
 
-  headerCard: { backgroundColor: "#FFFFFF", borderRadius: 16, padding: 12, gap: 8, shadowColor: "#0F172A", shadowOpacity: 0.05, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
+  headerCard: { backgroundColor: "#312E81", borderRadius: 18, padding: 12, gap: 8, shadowColor: "#0F172A", shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
   headerTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
   headerLeft: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, minWidth: 0 },
-  headerIconWrap: { width: 30, height: 30, borderRadius: 9, backgroundColor: "#E0E7FF", alignItems: "center", justifyContent: "center" },
-  title: { flex: 1, fontSize: 15, fontWeight: "800", color: "#111827" },
+  headerIconWrap: { width: 32, height: 32, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
+  title: { flex: 1, fontSize: 15, fontWeight: "900", color: "#FFFFFF" },
   xpChip: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#FFF7ED", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
   xpChipText: { fontSize: 11, fontWeight: "800", color: "#9A3412" },
-  progressBarTrack: { height: 7, borderRadius: 999, backgroundColor: "#E5E7EB", overflow: "hidden" },
-  progressBarFill: { height: "100%", borderRadius: 999, backgroundColor: "#4F46E5" },
+  progressBarTrack: { height: 8, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.25)", overflow: "hidden" },
+  progressBarFill: { height: "100%", borderRadius: 999, backgroundColor: "#22D3EE" },
   progressMetaRow: { flexDirection: "row", justifyContent: "space-between" },
-  progressMeta: { fontSize: 11, fontWeight: "700", color: "#4B5563" },
+  progressMeta: { fontSize: 11, fontWeight: "800", color: "#C7D2FE" },
 
   questionCard: { backgroundColor: "#FFFFFF", borderRadius: 16, padding: 12, gap: 10, shadowColor: "#0F172A", shadowOpacity: 0.04, shadowRadius: 5, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
   questionHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   questionNumber: { fontSize: 11, fontWeight: "800", color: "#4F46E5", backgroundColor: "#EEF2FF", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999 },
   prompt: { fontSize: 15, lineHeight: 21, fontWeight: "700", color: "#111827" },
   optionsWrap: { gap: 8 },
-  optionButton: { borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: "#FFFFFF" },
-  optionSelected: { borderColor: "#6366F1", backgroundColor: "#EEF2FF" },
+  optionButton: { borderWidth: 1, borderColor: "#DBEAFE", borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: "#F8FAFC" },
+  optionSelected: { borderColor: "#6366F1", backgroundColor: "#E0E7FF" },
   optionCorrect: { borderColor: "#16A34A", backgroundColor: "#DCFCE7" },
   optionWrong: { borderColor: "#DC2626", backgroundColor: "#FEE2E2" },
   optionText: { fontSize: 14, fontWeight: "600", color: "#111827" },
@@ -244,12 +244,12 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: "#FFFFFF", fontWeight: "800", fontSize: 14 },
   disabledButton: { opacity: 0.45 },
 
-  resultCard: { backgroundColor: "#FFFFFF", borderRadius: 16, padding: 12, gap: 8, shadowColor: "#0F172A", shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
+  resultCard: { backgroundColor: "#1E1B4B", borderRadius: 16, padding: 12, gap: 8, shadowColor: "#0F172A", shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
   resultTop: { flexDirection: "row", alignItems: "center", gap: 6 },
-  resultTitle: { fontSize: 16, fontWeight: "800", color: "#111827" },
+  resultTitle: { fontSize: 16, fontWeight: "900", color: "#FFFFFF" },
   resultStatsRow: { flexDirection: "row", gap: 8 },
-  statPill: { flex: 1, backgroundColor: "#EEF2FF", borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8 },
-  statLabel: { fontSize: 11, color: "#4B5563", fontWeight: "700" },
-  statValue: { marginTop: 2, fontSize: 16, fontWeight: "900", color: "#312E81" },
-  resultMeta: { fontSize: 12, color: "#374151", fontWeight: "600" },
+  statPill: { flex: 1, backgroundColor: "rgba(255,255,255,0.14)", borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8 },
+  statLabel: { fontSize: 11, color: "#C7D2FE", fontWeight: "700" },
+  statValue: { marginTop: 2, fontSize: 18, fontWeight: "900", color: "#FFFFFF" },
+  resultMeta: { fontSize: 12, color: "#E0E7FF", fontWeight: "700" },
 });
