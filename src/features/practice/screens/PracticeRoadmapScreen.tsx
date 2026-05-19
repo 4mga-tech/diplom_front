@@ -14,6 +14,7 @@ export default function PracticeRoadmapScreen({ practiceId }: Props) {
   const [title, setTitle] = useState<string>("Practice Roadmap");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [levelId, setLevelId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -22,10 +23,16 @@ export default function PracticeRoadmapScreen({ practiceId }: Props) {
       const details = await practiceService.getPracticeById(practiceId);
       setTitle(details.title || "Practice Roadmap");
       setStages(details.roadmap ?? []);
+
+      const explicitLevelId = details.levelId?.trim();
+      const derivedLevelId = practiceId.split("-")[0]?.trim();
+      const resolvedLevelId = explicitLevelId || derivedLevelId || null;
+      setLevelId(resolvedLevelId ? resolvedLevelId.toLowerCase() : null);
     } catch (e) {
       console.log("Failed to load roadmap", e);
       setError("Could not load roadmap.");
       setStages([]);
+      setLevelId(null);
     } finally {
       setLoading(false);
     }
@@ -49,7 +56,7 @@ export default function PracticeRoadmapScreen({ practiceId }: Props) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
+        <Pressable style={styles.backButton} onPress={() => router.replace(levelId ? `/practice/${encodeURIComponent(levelId)}` as any : "/practice" as any)}>
           <Ionicons name="chevron-back" size={16} color="#BBF7D0" />
           <Text style={styles.backButtonText}>Back</Text>
         </Pressable>
