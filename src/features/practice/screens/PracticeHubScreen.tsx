@@ -130,26 +130,21 @@ function DailyTasksSection() {
         <View style={[daily.progressBarFill, { width: `${progress * 100}%` as any }]} />
       </View>
 
-      <View style={daily.taskList}>
+      <View style={daily.taskRowList}>
         {MOCK_DAILY_TASKS.map((task) => (
-          <View key={task.id} style={daily.taskRow}>
-            <View style={[daily.taskIconBubble, { backgroundColor: task.iconBg }]}>
-              <Ionicons name={task.icon} size={18} color={task.accent} />
-            </View>
-            <View style={daily.taskMeta}>
-              <Text style={daily.taskTitle}>{task.title}</Text>
-              <Text style={daily.taskSubtitle}>{task.subtitle}</Text>
-            </View>
-            <View
-              style={[
-                daily.checkCircle,
-                task.done && { backgroundColor: "#22C55E", borderColor: "#22C55E" },
-              ]}
-            >
+          <View key={task.id} style={daily.taskCardWrap}>
+            <View style={[daily.taskSquareCard, { borderColor: task.accent }]}>
+              <View style={[daily.taskIconBubble, { backgroundColor: task.iconBg }]}>
+                <Ionicons name={task.icon} size={22} color={task.accent} />
+              </View>
               {task.done && (
-                <Ionicons name="checkmark" size={13} color="#fff" />
+                <View style={daily.doneBadge}>
+                  <Ionicons name="checkmark" size={11} color="#fff" />
+                </View>
               )}
             </View>
+            <Text numberOfLines={2} style={daily.taskTitle}>{task.title}</Text>
+            <Text numberOfLines={1} style={daily.taskSubtitle}>{task.subtitle}</Text>
           </View>
         ))}
       </View>
@@ -246,11 +241,21 @@ export default function PracticeHubScreen() {
         }
       >
         {/* Screen header */}
-        <View style={styles.headerWrap}>
-          <Text style={styles.screenTitle}>Practice</Text>
-          <Text style={styles.screenSubtitle}>
-            Choose by level and start from roadmap.
-          </Text>
+        <View style={styles.heroCard}>
+          <View style={styles.heroTopRow}>
+            <View>
+              <Text style={styles.heroTitle}>Practice Hub</Text>
+              <Text style={styles.heroSubtitle}>Daily steps to level up</Text>
+            </View>
+            <View style={styles.heroBadge}>
+              <Ionicons name="sparkles" size={12} color="#4338CA" />
+              <Text style={styles.heroBadgeText}>Streak 3</Text>
+            </View>
+          </View>
+          <View style={styles.heroProgressTrack}>
+            <View style={styles.heroProgressFill} />
+          </View>
+          <Text style={styles.heroProgressLabel}>Today 1/3 complete</Text>
         </View>
 
         {/* Daily tasks mock card */}
@@ -309,7 +314,7 @@ export default function PracticeHubScreen() {
                         >
                           <Ionicons
                             name={ui.icon}
-                            size={28}
+                            size={32}
                             color={ui.border}
                           />
                         </View>
@@ -370,31 +375,45 @@ const daily = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "#534AB7",
   },
-  taskList: { gap: 10 },
-  taskRow: {
+  taskRowList: {
     flexDirection: "row",
-    alignItems: "center",
+    justifyContent: "space-between",
     gap: 10,
   },
+  taskCardWrap: {
+    width: 102,
+    alignItems: "center",
+  },
+  taskSquareCard: {
+    width: 98,
+    height: 98,
+    borderRadius: 18,
+    borderWidth: 2,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
   taskIconBubble: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 52,
+    height: 52,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
-  taskMeta: { flex: 1, gap: 1 },
-  taskTitle: { fontSize: 13, fontWeight: "600", color: "#1E293B" },
-  taskSubtitle: { fontSize: 11, color: "#94A3B8" },
-  checkCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: "#CBD5E1",
+  doneBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#22C55E",
   },
+  taskTitle: { marginTop: 8, fontSize: 12, fontWeight: "700", color: "#1E293B", textAlign: "center" },
+  taskSubtitle: { marginTop: 2, fontSize: 11, color: "#94A3B8", textAlign: "center" },
 });
 
 // ─── Main styles ──────────────────────────────────────────────────────────────
@@ -406,9 +425,42 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     gap: 20,
   },
-  headerWrap: { gap: 4 },
-  screenTitle: { fontSize: 26, fontWeight: "800", color: "#0F172A" },
-  screenSubtitle: { fontSize: 13, color: "#64748B" },
+  heroCard: {
+    borderRadius: 22,
+    padding: 16,
+    backgroundColor: "#4F46E5",
+    gap: 10,
+  },
+  heroTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  heroTitle: { fontSize: 24, fontWeight: "800", color: "#FFFFFF" },
+  heroSubtitle: { marginTop: 2, fontSize: 13, color: "#E0E7FF" },
+  heroBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "#C7D2FE",
+  },
+  heroBadgeText: { fontSize: 11, color: "#4338CA", fontWeight: "700" },
+  heroProgressTrack: {
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: "#818CF8",
+    overflow: "hidden",
+  },
+  heroProgressFill: {
+    width: "33%",
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: "#F8FAFC",
+  },
+  heroProgressLabel: { fontSize: 11, color: "#E0E7FF", fontWeight: "600" },
 
   section: { gap: 10 },
   sectionHeader: {
@@ -450,8 +502,9 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#1E293B",
     lineHeight: 16,
+    textAlign: "center",
   },
-  cardSubtitle: { marginTop: 2, fontSize: 11, color: "#64748B" },
+  cardSubtitle: { marginTop: 2, fontSize: 11, color: "#64748B", textAlign: "center" },
 
   centerContainer: {
     flex: 1,
