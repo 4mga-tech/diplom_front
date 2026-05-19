@@ -1,6 +1,7 @@
 import { practiceService } from "@/src/features/practice/practice.service";
 import { PracticeAttemptResult, PracticeDetails, PracticeTask } from "@/src/features/practice/practice.types";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -31,6 +32,7 @@ function isCorrectAnswer(task: PracticeTask, optionId: string): boolean {
 }
 
 export default function PracticePlayScreen({ practiceId }: Props) {
+  const router = useRouter();
   const [practice, setPractice] = useState<PracticeDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [playState, setPlayState] = useState<PlayState>("loading");
@@ -99,11 +101,16 @@ export default function PracticePlayScreen({ practiceId }: Props) {
     return <SafeAreaView style={styles.safeArea}><View style={styles.centerContainer}><Ionicons name="construct-outline" size={24} color="#6B7280" /><Text style={styles.centerTitle}>Coming soon</Text><Text style={styles.centerText}>This practice type is not supported in the app yet.</Text></View></SafeAreaView>;
   }
 
-  const practiceIcon = PRACTICE_TYPE_ICON[practice.type ?? ""] ?? "sparkles-outline";
+  const practiceIcon = PRACTICE_TYPE_ICON[practice.type ?? ""] ?? "game-controller-outline";
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.contentContainer}>
+        <Pressable style={styles.backButton} onPress={() => router.push("/practice")}>
+          <Ionicons name="chevron-back" size={16} color="#4338CA" />
+          <Text style={styles.backButtonText}>Back to Practice</Text>
+        </Pressable>
+
         <View style={styles.headerCard}>
           <View style={styles.headerTopRow}>
             <View style={styles.headerLeft}>
@@ -197,6 +204,8 @@ export default function PracticePlayScreen({ practiceId }: Props) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F4F7FB" },
   contentContainer: { padding: 12, gap: 10, paddingBottom: 24 },
+  backButton: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 999, backgroundColor: "#E0E7FF", paddingHorizontal: 10, paddingVertical: 6 },
+  backButtonText: { fontSize: 12, fontWeight: "800", color: "#4338CA" },
   centerContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24, gap: 8 },
   centerTitle: { fontSize: 16, fontWeight: "700", color: "#111827" },
   centerText: { fontSize: 14, color: "#4B5563", textAlign: "center" },
