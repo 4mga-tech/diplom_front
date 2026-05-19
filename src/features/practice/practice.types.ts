@@ -7,7 +7,8 @@ export type PracticeTaskType =
   | "speaking"
   | "listening"
   | "writing"
-  | "unknown";
+  | "unknown"
+  | "missing_letter";
 
 export type PracticeSummary = {
   id: string;
@@ -34,6 +35,8 @@ export type PracticeTask = {
   prompt: string;
   options: PracticeTaskOption[];
   order: number;
+  correctOptionId: string | null;
+  correctAnswer: string | null;
 };
 
 export type PracticeDetails = PracticeSummary & {
@@ -42,10 +45,9 @@ export type PracticeDetails = PracticeSummary & {
 };
 
 export type PracticeAttemptPayload = {
-  answers: Array<{
-    taskId: string;
-    answer: string | string[];
-  }>;
+  score: number;
+  correctCount: number;
+  totalCount: number;
 };
 
 export type PracticeAttemptResult = {
@@ -55,4 +57,6 @@ export type PracticeAttemptResult = {
   totalQuestions: number | null;
   passed: boolean | null;
   feedback: string | null;
+  xpEarned: number | null;
+  xpCapped: boolean | null;
 };
