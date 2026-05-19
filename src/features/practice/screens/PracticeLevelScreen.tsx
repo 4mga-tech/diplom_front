@@ -6,12 +6,12 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const TYPE_UI: Record<string, { label: string; icon: keyof typeof Ionicons.glyphMap; color: string; bg: string }> = {
-  missing_letter: { label: "Missing Letter", icon: "create-outline", color: "#7C3AED", bg: "#F3E8FF" },
-  letter_match: { label: "Letter Match", icon: "grid-outline", color: "#2563EB", bg: "#DBEAFE" },
-  word_builder: { label: "Word Builder", icon: "cube-outline", color: "#0891B2", bg: "#CFFAFE" },
-  meaning_match: { label: "Meaning Match", icon: "layers-outline", color: "#16A34A", bg: "#DCFCE7" },
-  daily_challenge: { label: "Daily Challenge", icon: "flash-outline", color: "#EA580C", bg: "#FFEDD5" },
+const TYPE_UI: Record<string, { label: string; icon: keyof typeof Ionicons.glyphMap; color: string; bg: string; dark: string }> = {
+  missing_letter: { label: "Missing Letter", icon: "create-outline", color: "#7C3AED", bg: "#F3E8FF", dark: "#4C1D95" },
+  letter_match: { label: "Letter Match", icon: "grid-outline", color: "#2563EB", bg: "#DBEAFE", dark: "#1E3A8A" },
+  word_builder: { label: "Word Builder", icon: "cube-outline", color: "#0891B2", bg: "#CFFAFE", dark: "#164E63" },
+  meaning_match: { label: "Meaning Match", icon: "layers-outline", color: "#16A34A", bg: "#DCFCE7", dark: "#14532D" },
+  daily_challenge: { label: "Daily Challenge", icon: "flash-outline", color: "#EA580C", bg: "#FFEDD5", dark: "#7C2D12" },
 };
 
 export default function PracticeLevelScreen({ levelId }: { levelId: string }) {
@@ -52,23 +52,25 @@ export default function PracticeLevelScreen({ levelId }: { levelId: string }) {
         </Pressable>
 
         <View style={styles.hero}>
-          <Text style={styles.heroBadge}>{normalizedLevel}</Text>
-          <Text style={styles.heroTitle}>Select a practice type</Text>
+          <View style={styles.heroBadge}><Text style={styles.heroBadgeText}>{normalizedLevel}</Text></View>
+          <Text style={styles.heroTitle}>Choose your mode</Text>
+          <Text style={styles.heroSub}>Fast missions with daily XP rewards.</Text>
         </View>
 
-        {sorted.map((item) => {
-          const ui = TYPE_UI[item.type ?? ""] ?? { label: item.title, icon: "game-controller-outline" as const, color: "#4F46E5", bg: "#E0E7FF" };
-          return (
-            <Pressable key={item.id} style={styles.card} onPress={() => router.push(`/practice/${encodeURIComponent(item.id)}/play` as any)}>
-              <View style={[styles.iconWrap, { backgroundColor: ui.bg }]}><Ionicons name={ui.icon} size={20} color={ui.color} /></View>
-              <View style={styles.cardBody}>
-                <Text style={styles.cardTitle}>{ui.label}</Text>
-                <Text style={styles.cardSub}>{item.subtitle ?? "Start practice"}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#6B7280" />
-            </Pressable>
-          );
-        })}
+        <View style={styles.grid}>
+          {sorted.map((item) => {
+            const ui = TYPE_UI[item.type ?? ""] ?? { label: item.title, icon: "game-controller-outline" as const, color: "#4F46E5", bg: "#E0E7FF", dark: "#312E81" };
+            return (
+              <Pressable key={item.id} style={[styles.card, { backgroundColor: ui.bg }]} onPress={() => router.push(`/practice/${encodeURIComponent(item.id)}/play` as any)}>
+                <View style={[styles.iconWrap, { backgroundColor: "rgba(255,255,255,0.7)" }]}><Ionicons name={ui.icon} size={21} color={ui.color} /></View>
+                <Text style={[styles.typeLabel, { color: ui.dark }]}>{ui.label}</Text>
+                <View style={styles.cardFooter}>
+                  <View style={styles.pill}><Text style={[styles.pillText, { color: ui.dark }]}>{item.maxDailyXp ?? 0} XP</Text></View>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -76,17 +78,21 @@ export default function PracticeLevelScreen({ levelId }: { levelId: string }) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F4F7FB' },
-  content: { padding: 12, gap: 10, paddingBottom: 24 },
+  content: { padding: 12, gap: 12, paddingBottom: 24 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   centerText: { color: '#4B5563' },
   backButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, backgroundColor: '#E0E7FF', paddingHorizontal: 10, paddingVertical: 6 },
   backButtonText: { fontSize: 12, fontWeight: '800', color: '#4338CA' },
-  hero: { borderRadius: 16, backgroundColor: '#312E81', padding: 12, gap: 6 },
-  heroBadge: { alignSelf: 'flex-start', fontSize: 12, color: '#FFFFFF', fontWeight: '900', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
-  heroTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '900' },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 14, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  iconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  cardBody: { flex: 1, minWidth: 0 },
-  cardTitle: { fontSize: 15, fontWeight: '800', color: '#111827' },
-  cardSub: { marginTop: 2, fontSize: 12, color: '#6B7280' },
+  hero: { borderRadius: 20, backgroundColor: '#312E81', padding: 14, gap: 6, overflow: 'hidden' },
+  heroBadge: { alignSelf: 'flex-start', borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.22)', paddingHorizontal: 8, paddingVertical: 4 },
+  heroBadgeText: { fontSize: 11, color: '#FFFFFF', fontWeight: '900', letterSpacing: 0.5 },
+  heroTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '900' },
+  heroSub: { color: '#C7D2FE', fontWeight: '700', fontSize: 13 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  card: { width: '48.5%', borderRadius: 16, padding: 12, minHeight: 122, justifyContent: 'space-between', shadowColor: '#0F172A', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
+  iconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  typeLabel: { marginTop: 8, fontSize: 14, fontWeight: '900' },
+  cardFooter: { flexDirection: 'row', justifyContent: 'flex-start' },
+  pill: { borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.7)', paddingHorizontal: 8, paddingVertical: 4 },
+  pillText: { fontSize: 11, fontWeight: '800' },
 });
