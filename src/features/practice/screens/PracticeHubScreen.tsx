@@ -15,6 +15,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const LEVEL_ORDER = ["B1", "M1", "M2"];
+const LEVEL_FILTERS = ["ALL", "B1", "M1", "M2"] as const;
+type SelectedLevel = (typeof LEVEL_FILTERS)[number];
 
 const LEVEL_THEME: Record<string, { badge: string; badgeText: string }> = {
   B1: { badge: "#EEEDFE", badgeText: "#534AB7" },
@@ -158,6 +160,7 @@ export default function PracticeHubScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedLevel, setSelectedLevel] = useState<SelectedLevel>("ALL");
 
   const loadPractices = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -205,6 +208,12 @@ export default function PracticeHubScreen() {
       .map(([levelId, items]) => ({ levelId, items }));
   }, [practices]);
 
+
+
+  const filteredGroups = useMemo(() => {
+    if (selectedLevel === "ALL") return groupedLevels;
+    return groupedLevels.filter((group) => group.levelId === selectedLevel);
+  }, [groupedLevels, selectedLevel]);
   if (loading)
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -261,8 +270,32 @@ export default function PracticeHubScreen() {
         {/* Daily tasks mock card */}
         <DailyTasksSection />
 
+        <View style={styles.filterBar}>
+          {LEVEL_FILTERS.map((level) => {
+            const isActive = selectedLevel === level;
+            const label = level === "ALL" ? "Бүгд" : level;
+
+            return (
+              <Pressable
+                key={level}
+                style={[styles.filterTab, isActive && styles.filterTabActive]}
+                onPress={() => setSelectedLevel(level)}
+              >
+                <Text
+                  style={[
+                    styles.filterTabText,
+                    isActive && styles.filterTabTextActive,
+                  ]}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         {/* Level groups */}
-        {groupedLevels.map((group) => {
+        {filteredGroups.map((group) => {
           const theme = LEVEL_THEME[group.levelId] ?? {
             badge: "#E2E8F0",
             badgeText: "#334155",
@@ -462,6 +495,31 @@ const styles = StyleSheet.create({
   },
   heroProgressLabel: { fontSize: 11, color: "#E0E7FF", fontWeight: "600" },
 
+  filterBar: {
+    flexDirection: "row",
+    gap: 8,
+    paddingVertical: 2,
+  },
+  filterTab: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#FFFFFF",
+  },
+  filterTabActive: {
+    borderColor: "#534AB7",
+    backgroundColor: "#EEEDFE",
+  },
+  filterTabText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#94A3B8",
+  },
+  filterTabTextActive: {
+    color: "#534AB7",
+  },
   section: { gap: 10 },
   sectionHeader: {
     flexDirection: "row",
