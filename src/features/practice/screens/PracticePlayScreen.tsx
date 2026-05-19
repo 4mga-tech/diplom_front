@@ -95,7 +95,7 @@ export default function PracticePlayScreen({ practiceId }: Props) {
 
   if (playState === "loading") return <SafeAreaView style={styles.safeArea}><View style={styles.centerContainer}><ActivityIndicator size="small" color="#4F46E5" /><Text style={styles.centerText}>Loading practice...</Text></View></SafeAreaView>;
   if (playState === "error") return <SafeAreaView style={styles.safeArea}><View style={styles.centerContainer}><Ionicons name="alert-circle-outline" size={24} color="#DC2626" /><Text style={styles.centerTitle}>Something went wrong</Text><Text style={styles.centerText}>{error}</Text><Pressable style={styles.primaryButton} onPress={() => void loadPractice()}><Text style={styles.primaryButtonText}>Retry</Text></Pressable></View></SafeAreaView>;
-  if (playState === "empty" || !practice || sortedTasks.length === 0) return <SafeAreaView style={styles.safeArea}><View style={styles.centerContainer}><Ionicons name="file-tray-outline" size={24} color="#6B7280" /><Text style={styles.centerTitle}>No rounds yet</Text><Text style={styles.centerText}>This challenge has no rounds available yet.</Text></View></SafeAreaView>;
+  if (playState === "empty" || !practice || sortedTasks.length === 0) return <SafeAreaView style={styles.safeArea}><View style={styles.centerContainer}><Ionicons name="file-tray-outline" size={24} color="#6B7280" /><Text style={styles.centerTitle}>No questions yet</Text><Text style={styles.centerText}>This practice has no tasks available.</Text></View></SafeAreaView>;
 
   if (!isSupportedPracticeType(practice)) {
     return <SafeAreaView style={styles.safeArea}><View style={styles.centerContainer}><Ionicons name="construct-outline" size={24} color="#6B7280" /><Text style={styles.centerTitle}>Coming soon</Text><Text style={styles.centerText}>This practice type is not supported in the app yet.</Text></View></SafeAreaView>;
@@ -142,11 +142,11 @@ export default function PracticePlayScreen({ practiceId }: Props) {
           return (
             <View key={task.id} style={styles.questionCard}>
               <View style={styles.questionHeaderRow}>
-                <Text style={styles.questionNumber}>Round {index + 1}</Text>
+                <Text style={styles.questionNumber}>Q{index + 1}</Text>
                 {answered ? (
                   <View style={[styles.feedbackBadge, correct ? styles.feedbackBadgeCorrect : styles.feedbackBadgeWrong]}>
                     <Ionicons name={correct ? "checkmark-circle" : "close-circle"} size={12} color={correct ? "#15803D" : "#B91C1C"} />
-                    <Text style={[styles.feedbackText, correct ? styles.correctText : styles.wrongText]}>{correct ? "Nice!" : "Try again"}</Text>
+                    <Text style={[styles.feedbackText, correct ? styles.correctText : styles.wrongText]}>{correct ? "Correct" : "Wrong"}</Text>
                   </View>
                 ) : null}
               </View>
@@ -181,11 +181,11 @@ export default function PracticePlayScreen({ practiceId }: Props) {
           <View style={styles.resultCard}>
             <View style={styles.resultTop}>
               <Ionicons name="trophy" size={20} color="#D97706" />
-              <Text style={styles.resultTitle}>Challenge complete</Text>
+              <Text style={styles.resultTitle}>Nice work!</Text>
             </View>
             <View style={styles.resultStatsRow}>
               <View style={styles.statPill}><Text style={styles.statLabel}>Score</Text><Text style={styles.statValue}>{attemptResult?.score ?? score}%</Text></View>
-              <View style={styles.statPill}><Text style={styles.statLabel}>XP earned</Text><Text style={styles.statValue}>+{attemptResult?.xpEarned ?? 0}</Text></View>
+              <View style={styles.statPill}><Text style={styles.statLabel}>XP</Text><Text style={styles.statValue}>+{attemptResult?.xpEarned ?? 0}</Text></View>
             </View>
             <Text style={styles.resultMeta}>Correct {attemptResult?.correctAnswers ?? correctCount}/{attemptResult?.totalQuestions ?? totalCount}</Text>
             <Text style={styles.resultMeta}>Daily {attemptResult?.dailyXpEarned ?? 0}/{attemptResult?.dailyXpLimit ?? practice.maxDailyXp ?? 0}{attemptResult?.xpCapped ? " • capped" : ""}</Text>
@@ -193,7 +193,7 @@ export default function PracticePlayScreen({ practiceId }: Props) {
           </View>
         ) : (
           <Pressable style={[styles.primaryButton, (!allAnswered || playState === "submitting") && styles.disabledButton]} disabled={!allAnswered || playState === "submitting"} onPress={() => void onFinish()}>
-            <Text style={styles.primaryButtonText}>{playState === "submitting" ? "Wrapping up..." : "Complete challenge"}</Text>
+            <Text style={styles.primaryButtonText}>{playState === "submitting" ? "Finishing..." : "Finish"}</Text>
           </Pressable>
         )}
       </ScrollView>

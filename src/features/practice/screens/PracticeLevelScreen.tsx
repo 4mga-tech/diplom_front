@@ -40,7 +40,7 @@ export default function PracticeLevelScreen({ levelId }: { levelId: string }) {
 
   const sorted = useMemo(() => [...items].sort((a, b) => (a.type ?? "").localeCompare(b.type ?? "")), [items]);
 
-  if (loading) return <SafeAreaView style={styles.safeArea}><View style={styles.center}><ActivityIndicator color="#4F46E5" /><Text style={styles.centerText}>Loading level...</Text></View></SafeAreaView>;
+  if (loading) return <SafeAreaView style={styles.safeArea}><View style={styles.center}><ActivityIndicator color="#4F46E5" /><Text style={styles.centerText}>Loading practices...</Text></View></SafeAreaView>;
   if (error) return <SafeAreaView style={styles.safeArea}><View style={styles.center}><Text style={styles.centerText}>{error}</Text><Pressable onPress={() => void load()} style={styles.backButton}><Text style={styles.backButtonText}>Retry</Text></Pressable></View></SafeAreaView>;
 
   return (
@@ -53,7 +53,7 @@ export default function PracticeLevelScreen({ levelId }: { levelId: string }) {
 
         <View style={styles.hero}>
           <Text style={styles.heroBadge}>{normalizedLevel}</Text>
-          <Text style={styles.heroTitle}>Pick your challenge</Text>
+          <Text style={styles.heroTitle}>Select a practice type</Text>
         </View>
 
         {sorted.map((item) => {
@@ -63,7 +63,7 @@ export default function PracticeLevelScreen({ levelId }: { levelId: string }) {
               <View style={[styles.iconWrap, { backgroundColor: ui.bg }]}><Ionicons name={ui.icon} size={20} color={ui.color} /></View>
               <View style={styles.cardBody}>
                 <Text style={styles.cardTitle}>{ui.label}</Text>
-                <Text style={styles.cardSub}>{item.subtitle ?? "Tap to start"}</Text>
+                <Text style={styles.cardSub}>{item.subtitle ?? "Start practice"}</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#6B7280" />
             </Pressable>
