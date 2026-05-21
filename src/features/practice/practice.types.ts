@@ -34,6 +34,8 @@ export type PracticeSummary = {
 export type PracticeTaskOption = {
   id: string;
   text: string;
+  label?: string;
+  imageUrl?: string;
   result?: string | null;
   meaningEn?: string | null;
 };
