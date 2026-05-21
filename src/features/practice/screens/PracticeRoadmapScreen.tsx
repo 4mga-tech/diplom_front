@@ -14,8 +14,7 @@ export default function PracticeRoadmapScreen({ practiceId }: Props) {
   const [title, setTitle] = useState<string>("Practice Roadmap");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [levelId, setLevelId] = useState<string | null>(null);
-
+  
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -23,16 +22,10 @@ export default function PracticeRoadmapScreen({ practiceId }: Props) {
       const details = await practiceService.getPracticeById(practiceId);
       setTitle(details.title || "Practice Roadmap");
       setStages(details.roadmap ?? []);
-
-      const explicitLevelId = details.levelId?.trim();
-      const derivedLevelId = practiceId.split("-")[0]?.trim();
-      const resolvedLevelId = explicitLevelId || derivedLevelId || null;
-      setLevelId(resolvedLevelId ? resolvedLevelId.toLowerCase() : null);
     } catch (e) {
       console.log("Failed to load roadmap", e);
       setError("Could not load roadmap.");
       setStages([]);
-      setLevelId(null);
     } finally {
       setLoading(false);
     }
@@ -55,8 +48,10 @@ export default function PracticeRoadmapScreen({ practiceId }: Props) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <View style={styles.bgTop} />
+      <View style={styles.bgMid} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Pressable style={styles.backButton} onPress={() => router.replace(levelId ? `/practice/${encodeURIComponent(levelId)}` as any : "/practice" as any)}>
+        <Pressable style={styles.backButton} onPress={() => router.replace("/practice" as any)}>
           <Ionicons name="chevron-back" size={16} color="#BBF7D0" />
           <Text style={styles.backButtonText}>Back</Text>
         </Pressable>
@@ -67,7 +62,7 @@ export default function PracticeRoadmapScreen({ practiceId }: Props) {
           </View>
           <View style={styles.heroBody}>
             <Text style={styles.heroTitle}>{title}</Text>
-            <Text style={styles.heroSub}>Level up by clearing each node.</Text>
+            <Text style={styles.heroSub}>Clear nodes and unlock next.</Text>
           </View>
           <View style={styles.heroChip}>
             <Ionicons name="flash" size={12} color="#F97316" />
@@ -126,8 +121,10 @@ export default function PracticeRoadmapScreen({ practiceId }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#0F172A" },
+  safeArea: { flex: 1, backgroundColor: "#EEF4FF" },
   content: { paddingHorizontal: 14, paddingTop: 8, paddingBottom: 36, gap: 14 },
+  bgTop: { position: "absolute", top: -120, right: -70, width: 280, height: 280, borderRadius: 140, backgroundColor: "#C7D2FE" },
+  bgMid: { position: "absolute", bottom: 140, left: -120, width: 280, height: 280, borderRadius: 140, backgroundColor: "#BFDBFE" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 24 },
   centerTitle: { fontSize: 16, fontWeight: "800", color: "#E2E8F0" },
   centerText: { textAlign: "center", color: "#94A3B8" },
