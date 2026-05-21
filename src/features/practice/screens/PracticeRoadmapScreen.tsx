@@ -98,7 +98,7 @@ export default function PracticeRoadmapScreen({ practiceId }: Props) {
 
                 <Pressable
                   disabled={isLocked}
-                  onPress={() => router.push(`/(tabs)/practice/${encodeURIComponent(practiceId)}/play?stageId=${encodeURIComponent(stage.id)}` as any)}
+                  onPress={() => router.push(`/practice/${encodeURIComponent(practiceId)}/play?stageId=${encodeURIComponent(stage.id)}` as any)}
                   style={({ pressed }) => [
                     styles.node,
                     isLeft ? styles.nodeLeft : styles.nodeRight,

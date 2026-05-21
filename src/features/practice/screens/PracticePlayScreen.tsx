@@ -95,7 +95,7 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Pressable style={styles.backButton} onPress={() => router.replace(`/(tabs)/practice/${encodeURIComponent(practiceId)}/roadmap` as any)}><Ionicons name="chevron-back" size={16} color="#4338CA" /><Text style={styles.backText}>Back</Text></Pressable>
+        <Pressable style={styles.backButton} onPress={() => router.replace(`/practice/${encodeURIComponent(practiceId)}/roadmap` as any)}><Ionicons name="chevron-back" size={16} color="#4338CA" /><Text style={styles.backText}>Back</Text></Pressable>
         <View style={styles.header}><Ionicons name={practiceIcon} size={20} color="#fff" /><Text style={styles.title}>{practice.title}</Text></View>
 
         {sortedTasks.map((task, index) => {
