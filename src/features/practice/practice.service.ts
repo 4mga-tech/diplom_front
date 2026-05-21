@@ -4,8 +4,8 @@ import {
   PracticeAttemptPayload,
   PracticeAttemptResult,
   PracticeDetails,
-  PracticeSummary,
   PracticeRoadmapStage,
+  PracticeSummary,
   PracticeTask,
   PracticeTaskOption,
   PracticeTaskType,
@@ -36,8 +36,8 @@ function toRecordOrNull(value: unknown): Record<string, unknown> | null {
 function normalizeTaskType(value: unknown): PracticeTaskType {
   const normalized = String(value ?? "").trim().toLowerCase() as PracticeTaskType;
   const allowed: PracticeTaskType[] = [
-    "single_choice","multiple_choice","fill_in_blank","matching","ordering","speaking","listening","writing",
-    "missing_letter","letter_match","meaning_match","word_builder","daily_challenge",
+    "single_choice", "multiple_choice", "fill_in_blank", "matching", "ordering", "speaking", "listening", "writing",
+    "missing_letter", "letter_match", "meaning_match", "word_builder", "daily_challenge",
   ];
   return allowed.includes(normalized) ? normalized : "unknown";
 }
@@ -48,6 +48,8 @@ function normalizeOption(raw: unknown, index: number): PracticeTaskOption {
   return {
     id: String(option.id ?? option._id ?? option.value ?? index + 1),
     text: String(option.text ?? option.label ?? option.value ?? ""),
+    label: toStringOrNull(option.label) ?? String(option.text ?? option.value ?? ""),
+    imageUrl: toStringOrNull(option.imageUrl ?? option.image_url) ?? undefined,
     result: toStringOrNull(option.result),
     meaningEn: toStringOrNull(option.meaningEn ?? option.meaning_en),
   };

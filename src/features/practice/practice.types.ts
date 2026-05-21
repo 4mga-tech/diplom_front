@@ -35,7 +35,7 @@ export type PracticeTaskOption = {
   id: string;
   text: string;
   label?: string;
-  imageUrl?: string;
+  imageUrl?: string | null;
   result?: string | null;
   meaningEn?: string | null;
 };

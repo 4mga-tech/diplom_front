@@ -1,3 +1,4 @@
+import { api } from "@/lib/api";
 import { practiceService } from "@/src/features/practice/practice.service";
 import { PracticeDetails, PracticeTask } from "@/src/features/practice/practice.types";
 import { Ionicons } from "@expo/vector-icons";
@@ -5,7 +6,6 @@ import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { api } from "@/lib/api";
 
 type Props = { practiceId: string; stageId?: string };
 
@@ -49,15 +49,16 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
 
   const current = tasks[idx];
   const progress = tasks.length ? (idx + 1) / tasks.length : 0;
-  const apiBaseUrl = (api.defaults.baseURL || "").replace(/\/+$/, "");
-  const stageXp = practice?.roadmap.find((x) => x.id === stageId)?.xpReward ?? 12;
+const apiBaseUrl = (api.defaults.baseURL || "")
+  .replace(/\/api\/?$/, "")
+  .replace(/\/+$/, "");  const stageXp = practice?.roadmap.find((x) => x.id === stageId)?.xpReward ?? 12;
 
-  const resolveImageUrl = useCallback((imageUrl?: string) => {
-    if (!imageUrl) return null;
-    if (/^https?:\/\//i.test(imageUrl)) return imageUrl;
-    if (!apiBaseUrl) return imageUrl;
-    return `${apiBaseUrl}${imageUrl.startsWith("/") ? imageUrl : `/${imageUrl}`}`;
-  }, [apiBaseUrl]);
+  const resolveImageUrl = useCallback((imageUrl?: string | null) => {
+  if (!imageUrl) return null;
+  if (/^https?:\/\//i.test(imageUrl)) return imageUrl;
+  if (!apiBaseUrl) return imageUrl;
+  return `${apiBaseUrl}${imageUrl.startsWith("/") ? imageUrl : `/${imageUrl}`}`;
+}, [apiBaseUrl]);
 
   const animateFeedback = useCallback((isCorrect: boolean) => {
     if (isCorrect) {
@@ -135,7 +136,10 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
       {practice?.type === "sentence_order" && <View style={styles.buildArea}><Text style={styles.buildText}>{answers[current.id] ? current.options.find((o) => o.id === answers[current.id])?.text : "Tap words to build sentence"}</Text></View>}
       {practice?.type === "image_choice" && <View style={styles.imageGrid}>
         {current.options.map((o) => {
+          console.log("OPTION:", o);
+console.log("RAW IMAGE URL:", o.imageUrl);
           const img = resolveImageUrl(o.imageUrl);
+          console.log("IMAGE URL:", resolveImageUrl(o.imageUrl));
           const status = imageLoadState[o.id] || "loading";
           const isSelected = selectedOptionId === o.id;
           const isCorrect = feedback && isCorrectAnswer(current, o.id);
