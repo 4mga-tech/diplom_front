@@ -1,153 +1,106 @@
 import { practiceService } from "@/src/features/practice/practice.service";
-import { PracticeAttemptResult, PracticeDetails, PracticeTask } from "@/src/features/practice/practice.types";
+import { PracticeDetails, PracticeTask } from "@/src/features/practice/practice.types";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type Props = { practiceId: string; stageId?: string };
-type AnswerMap = Record<string, string>;
-type PlayState = "loading" | "playing" | "submitting" | "completed" | "error" | "empty";
-
-const PRACTICE_TYPE_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
-  missing_word: "create-outline",
-  missing_letter: "create-outline",
-  sentence_order: "swap-vertical-outline",
-  dialogue_fill: "chatbubbles-outline",
-  image_choice: "image-outline",
-};
 
 function isCorrectAnswer(task: PracticeTask, optionId: string): boolean {
   if (task.correctOptionId) return task.correctOptionId === optionId;
-  if (task.correctAnswer) {
-    const selectedOption = task.options.find((option) => option.id === optionId);
-    return selectedOption?.text.trim().toLowerCase() === task.correctAnswer.trim().toLowerCase();
-  }
-  return false;
+  const selectedOption = task.options.find((o) => o.id === optionId);
+  return (selectedOption?.text || "").trim().toLowerCase() === (task.correctAnswer || "").trim().toLowerCase();
 }
 
 export default function PracticePlayScreen({ practiceId, stageId }: Props) {
   const router = useRouter();
   const [practice, setPractice] = useState<PracticeDetails | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [playState, setPlayState] = useState<PlayState>("loading");
-  const [answers, setAnswers] = useState<AnswerMap>({});
-  const [attemptResult, setAttemptResult] = useState<PracticeAttemptResult | null>(null);
+  const [idx, setIdx] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
 
-  const loadPractice = useCallback(async () => {
-    setPlayState("loading");
-    setError(null);
-    setAttemptResult(null);
-    setAnswers({});
-    try {
+  useEffect(() => {
+    (async () => {
       const details = await practiceService.getPracticeById(practiceId);
       setPractice(details);
-      setPlayState(details.tasks.length > 0 ? "playing" : "empty");
-    } catch (e) {
-      setError("Could not load this practice.");
-      setPlayState("error");
-      setPractice(null);
-    }
+      setLoading(false);
+    })();
   }, [practiceId]);
 
-  useEffect(() => { void loadPractice(); }, [loadPractice]);
-
-  const sortedTasks = useMemo(() => {
-    const tasks = [...(practice?.tasks ?? [])].sort((a, b) => a.order - b.order);
-    if (!stageId || !practice) return tasks;
-    const stage = practice.roadmap.find((item) => item.id === stageId);
-    if (!stage) return tasks;
+  const tasks = useMemo(() => {
+    const all = [...(practice?.tasks || [])].sort((a, b) => a.order - b.order);
+    if (!practice || !stageId) return all;
+    const stage = practice.roadmap.find((x) => x.id === stageId);
+    if (!stage) return all;
     const allowed = new Set(stage.questionIds);
-    return tasks.filter((task) => allowed.has(task.id));
+    return all.filter((t) => allowed.has(t.id));
   }, [practice, stageId]);
 
-  const totalCount = sortedTasks.length;
-  const answeredCount = Object.keys(answers).length;
-  const correctCount = useMemo(() => sortedTasks.reduce((c, t) => (answers[t.id] && isCorrectAnswer(t, answers[t.id]) ? c + 1 : c), 0), [answers, sortedTasks]);
-  const score = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
-  const allAnswered = totalCount > 0 && answeredCount === totalCount;
+  const current = tasks[idx];
+  const progress = tasks.length ? (idx + 1) / tasks.length : 0;
 
-  const onSelectOption = useCallback((task: PracticeTask, optionId: string) => {
-    setAnswers((cur) => (cur[task.id] ? cur : { ...cur, [task.id]: optionId }));
-  }, []);
+  const onPick = useCallback(async (optionId: string) => {
+    if (!current) return;
+    const ok = isCorrectAnswer(current, optionId);
+    setFeedback(ok ? "correct" : "wrong");
+    setAnswers((s) => ({ ...s, [current.id]: optionId }));
+    setTimeout(() => {
+      setFeedback(null);
+      if (idx < tasks.length - 1) setIdx((v) => v + 1);
+    }, 400);
+  }, [current, idx, tasks.length]);
 
   const onFinish = useCallback(async () => {
-    if (!practice || playState === "submitting" || playState === "completed") return;
-    setPlayState("submitting");
-    try {
-      const result = await practiceService.submitAttempt(practice.id, { score, correctCount, totalCount, stageId });
-      setAttemptResult(result);
-      setPlayState("completed");
-    } catch {
-      setError("Could not submit result. Try again.");
-      setPlayState("error");
-    }
-  }, [practice, playState, score, correctCount, totalCount, stageId]);
+    if (!practice) return;
+    const correctCount = tasks.filter((t) => answers[t.id] && isCorrectAnswer(t, answers[t.id])).length;
+    const score = tasks.length ? Math.round((correctCount / tasks.length) * 100) : 0;
+    await practiceService.submitAttempt(practice.id, { score, correctCount, totalCount: tasks.length, stageId });
+    router.replace(`/practice/${encodeURIComponent(practiceId)}/roadmap` as any);
+  }, [answers, practice, practiceId, router, stageId, tasks]);
 
-  if (playState === "loading") return <SafeAreaView style={styles.safeArea}><View style={styles.center}><ActivityIndicator color="#4F46E5" /><Text>Loading...</Text></View></SafeAreaView>;
-  if (playState === "error") return <SafeAreaView style={styles.safeArea}><View style={styles.center}><Text>{error}</Text></View></SafeAreaView>;
-  if (playState === "empty" || !practice || sortedTasks.length === 0) return <SafeAreaView style={styles.safeArea}><View style={styles.center}><Text>No questions yet</Text></View></SafeAreaView>;
+  if (loading || !current) return <SafeAreaView style={styles.safeArea}><View style={styles.center}><ActivityIndicator color="#93C5FD" /></View></SafeAreaView>;
 
-  const type = practice.type ?? "";
-  const practiceIcon = PRACTICE_TYPE_ICON[type] ?? "game-controller-outline";
+  const isLast = idx === tasks.length - 1;
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Pressable style={styles.backButton} onPress={() => router.replace(`/practice/${encodeURIComponent(practiceId)}/roadmap` as any)}><Ionicons name="chevron-back" size={16} color="#4338CA" /><Text style={styles.backText}>Back</Text></Pressable>
-        <View style={styles.header}><Ionicons name={practiceIcon} size={20} color="#fff" /><Text style={styles.title}>{practice.title}</Text></View>
+  return <SafeAreaView style={styles.safeArea}><View style={styles.wrap}>
+    <View style={styles.top}><Pressable onPress={() => router.replace(`/practice/${encodeURIComponent(practiceId)}/roadmap` as any)}><Ionicons name="chevron-back" size={20} color="#BFDBFE" /></Pressable><View style={styles.bar}><View style={[styles.barFill, { width: `${progress * 100}%` }]} /></View><Text style={styles.xp}>+{12}XP</Text></View>
 
-        {sortedTasks.map((task, index) => {
-          const answered = Boolean(answers[task.id]);
-          const renderStyle = type;
-          return (
-            <View key={task.id} style={styles.card}>
-              <Text style={styles.q}>Q{index + 1}</Text>
-              {renderStyle === "dialogue_fill" ? <View style={styles.chatBubble}><Text style={styles.prompt}>{task.prompt}</Text></View> : <Text style={styles.prompt}>{task.prompt}</Text>}
-              {renderStyle === "image_choice" && (
-                <View style={styles.imagePlaceholder}><Ionicons name="image-outline" size={34} color="#2563EB" /><Text style={styles.imageText}>imageKey: {task.result ?? "demo"}</Text></View>
-              )}
-              {renderStyle === "sentence_order" && <Text style={styles.helper}>Choose the correct sentence order.</Text>}
-              <View style={styles.options}>
-                {task.options.map((option) => (
-                  <Pressable key={option.id} disabled={answered} style={[styles.option, answers[task.id] === option.id && styles.optionSelected]} onPress={() => onSelectOption(task, option.id)}>
-                    <Text style={styles.optionText}>{option.text}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          );
-        })}
+    <View style={[styles.card, feedback === "correct" && styles.correct, feedback === "wrong" && styles.wrong]}>
+      <Text style={styles.prompt}>{current.prompt}</Text>
+      {practice?.type === "dialogue_fill" && <View style={styles.dialog}><Text style={styles.bubbleA}>A: {current.prompt}</Text><Text style={styles.bubbleB}>B: ________</Text></View>}
+      {practice?.type === "image_choice" && <View style={styles.image}><Ionicons name="image-outline" size={48} color="#7DD3FC" /></View>}
+      {practice?.type === "sentence_order" && <View style={styles.buildArea}><Text style={styles.buildText}>{answers[current.id] ? current.options.find((o) => o.id === answers[current.id])?.text : "Tap words to build sentence"}</Text></View>}
+    </View>
 
-        <Pressable style={[styles.finish, (!allAnswered || playState === "submitting") && styles.disabled]} disabled={!allAnswered || playState === "submitting"} onPress={() => void onFinish()}>
-          <Text style={styles.finishText}>{playState === "completed" ? `Done ${attemptResult?.score ?? score}%` : "Finish"}</Text>
-        </Pressable>
-      </ScrollView>
-    </SafeAreaView>
-  );
+    <View style={styles.options}>{current.options.map((o) => <Pressable key={o.id} style={styles.opt} onPress={() => onPick(o.id)}><Text style={styles.optText}>{o.text}</Text></Pressable>)}</View>
+    {isLast && answers[current.id] && <Pressable style={styles.finish} onPress={() => void onFinish()}><Text style={styles.finishText}>Complete Stage</Text></Pressable>}
+  </View></SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#EEF4FF" },
-  content: { padding: 12, gap: 10, paddingBottom: 24 },
+  safeArea: { flex: 1, backgroundColor: "#071120" },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  backButton: { alignSelf: "flex-start", flexDirection: "row", gap: 4, backgroundColor: "#E0E7FF", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
-  backText: { color: "#4338CA", fontWeight: "800" },
-  header: { backgroundColor: "#1E1B4B", borderRadius: 14, padding: 12, flexDirection: "row", gap: 8, alignItems: "center" },
-  title: { color: "#fff", fontWeight: "900", fontSize: 16, flex: 1 },
-  card: { backgroundColor: "#fff", borderRadius: 14, padding: 12, gap: 8 },
-  q: { color: "#4F46E5", fontWeight: "800" },
-  prompt: { fontSize: 15, fontWeight: "700", color: "#111827" },
-  chatBubble: { backgroundColor: "#EFF6FF", borderRadius: 14, padding: 10, alignSelf: "flex-start", maxWidth: "90%" },
-  helper: { fontSize: 12, color: "#475569", fontWeight: "600" },
-  imagePlaceholder: { borderWidth: 1, borderColor: "#BFDBFE", backgroundColor: "#F8FAFC", borderRadius: 12, alignItems: "center", justifyContent: "center", padding: 12, gap: 4 },
-  imageText: { fontSize: 11, color: "#64748B" },
-  options: { gap: 8 },
-  option: { borderWidth: 1, borderColor: "#DBEAFE", borderRadius: 12, padding: 10, backgroundColor: "#F8FAFC" },
-  optionSelected: { borderColor: "#6366F1", backgroundColor: "#E0E7FF" },
-  optionText: { fontWeight: "600", color: "#111827" },
-  finish: { backgroundColor: "#4F46E5", borderRadius: 12, padding: 12, alignItems: "center" },
-  finishText: { color: "#fff", fontWeight: "800" },
-  disabled: { opacity: 0.5 },
+  wrap: { flex: 1, padding: 16, gap: 14 },
+  top: { flexDirection: "row", alignItems: "center", gap: 10 },
+  bar: { flex: 1, height: 10, borderRadius: 999, backgroundColor: "#1E293B", overflow: "hidden" },
+  barFill: { height: "100%", backgroundColor: "#22C55E" },
+  xp: { color: "#FDE68A", fontWeight: "900", fontSize: 12 },
+  card: { flex: 1, borderRadius: 22, backgroundColor: "#0D1A2D", borderWidth: 1, borderColor: "#1F3351", padding: 16, gap: 12, justifyContent: "center" },
+  correct: { borderColor: "#16A34A", shadowColor: "#16A34A", shadowOpacity: 0.6, shadowRadius: 10 },
+  wrong: { borderColor: "#DC2626" },
+  prompt: { color: "#F8FAFC", fontSize: 22, fontWeight: "900", textAlign: "center" },
+  dialog: { gap: 8 },
+  bubbleA: { backgroundColor: "#13253E", color: "#E2E8F0", padding: 10, borderRadius: 14, alignSelf: "flex-start" },
+  bubbleB: { backgroundColor: "#1E3A8A", color: "#DBEAFE", padding: 10, borderRadius: 14, alignSelf: "flex-end" },
+  image: { height: 180, borderRadius: 16, borderWidth: 1, borderColor: "#1E3A8A", alignItems: "center", justifyContent: "center" },
+  buildArea: { minHeight: 70, borderRadius: 14, borderWidth: 1, borderColor: "#334155", alignItems: "center", justifyContent: "center", padding: 10 },
+  buildText: { color: "#CBD5E1", fontWeight: "700" },
+  options: { gap: 10 },
+  opt: { borderRadius: 14, backgroundColor: "#12233D", borderWidth: 1, borderColor: "#2B3D5B", padding: 14 },
+  optText: { color: "#E2E8F0", fontWeight: "800", textAlign: "center" },
+  finish: { backgroundColor: "#2563EB", borderRadius: 14, padding: 14 },
+  finishText: { color: "#fff", textAlign: "center", fontWeight: "900" },
 });
