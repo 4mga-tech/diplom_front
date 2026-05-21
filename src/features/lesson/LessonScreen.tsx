@@ -10,7 +10,7 @@ import {
 } from "@/src/features/learning/routes";
 import LessonScreenView from "@/src/features/lesson/components/LessonScreenView";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
 export default function LessonScreen() {
   const params = useLocalSearchParams<{
@@ -28,6 +28,8 @@ export default function LessonScreen() {
   const [completionMessage, setCompletionMessage] = useState<string | null>(
     null,
   );
+  const [completionModalVisible, setCompletionModalVisible] = useState(false);
+  const [earnedXp, setEarnedXp] = useState(0);
 
   const loadLesson = useCallback(async () => {
     if (!lessonId) {
@@ -132,6 +134,19 @@ export default function LessonScreen() {
     resolvedUnitId,
   ]);
 
+
+  const completionProgressMessage = useMemo(() => {
+    if (lesson?.nextLessonId) {
+      return "Great work! Your next lesson is ready.";
+    }
+
+    if (lesson?.hasQuiz) {
+      return "Nice progress! You can continue with the quiz.";
+    }
+
+    return "You can go back to the unit to keep learning.";
+  }, [lesson?.hasQuiz, lesson?.nextLessonId]);
+
   const handleCompleteLesson = useCallback(async () => {
     if (
       !lesson?.id ||
@@ -149,10 +164,10 @@ export default function LessonScreen() {
 
       if (claimResult.claimed) {
         notifyXpUpdated();
-        handleAdvanceAfterCompletion();
-      } else {
-        handleAdvanceAfterCompletion();
       }
+
+      setEarnedXp(claimResult.amount ?? 0);
+      setCompletionModalVisible(true);
     } catch (completionError) {
       console.error("Error completing lesson:", completionError);
       setCompletionMessage("We could not complete this lesson right now.");
@@ -161,7 +176,6 @@ export default function LessonScreen() {
     }
   }, [
     completingLesson,
-    handleAdvanceAfterCompletion,
     lesson?.hasQuiz,
     lesson?.id,
     lesson?.isCompleted,
@@ -180,6 +194,13 @@ export default function LessonScreen() {
       onCompleteLesson={handleCompleteLesson}
       onOpenPreviousLesson={handleOpenPreviousLesson}
       onOpenNextLesson={handleOpenNextLesson}
+      completionModalVisible={completionModalVisible}
+      completionXp={earnedXp}
+      completionProgressMessage={completionProgressMessage}
+      onContinueAfterCompletion={() => {
+        setCompletionModalVisible(false);
+        handleAdvanceAfterCompletion();
+      }}
     />
   );
 }

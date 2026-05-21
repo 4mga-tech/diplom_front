@@ -1,5 +1,6 @@
 import { getLessonProgressState, LessonDetail } from "@/lib/learning";
 import LessonActionButton from "@/src/features/lesson/components/LessonActionButton";
+import LessonCompleteModal from "@/src/features/lesson/components/LessonCompleteModal";
 import LessonContentCard from "@/src/features/lesson/components/LessonContentCard";
 import { createLessonStyles } from "@/src/features/lesson/lesson.styles";
 import { useAppTheme, useThemedStyles } from "@/src/ui/theme";
@@ -27,6 +28,10 @@ type Props = {
   onCompleteLesson: () => void;
   onOpenPreviousLesson: () => void;
   onOpenNextLesson: () => void;
+  completionModalVisible: boolean;
+  completionXp: number;
+  completionProgressMessage: string | null;
+  onContinueAfterCompletion: () => void;
 };
 
 export default function LessonScreenView({
@@ -41,6 +46,10 @@ export default function LessonScreenView({
   onCompleteLesson,
   onOpenPreviousLesson,
   onOpenNextLesson,
+  completionModalVisible,
+  completionXp,
+  completionProgressMessage,
+  onContinueAfterCompletion,
 }: Props) {
   const { theme } = useAppTheme();
   const styles = useThemedStyles(createLessonStyles);
@@ -391,6 +400,16 @@ export default function LessonScreenView({
           </View>
         </Animated.View>
       ) : null}
+
+      <LessonCompleteModal
+        visible={completionModalVisible}
+        xpEarned={completionXp}
+        progressMessage={completionProgressMessage}
+        hasNextLesson={hasNext}
+        onContinue={onContinueAfterCompletion}
+        onNextLesson={onOpenNextLesson}
+        onBackToUnit={onBack}
+      />
     </SafeAreaView>
   );
 }
