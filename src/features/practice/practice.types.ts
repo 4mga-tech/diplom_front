@@ -85,3 +85,22 @@ export type PracticeAttemptResult = {
   dailyXpLimit: number | null;
   xpCapped: boolean | null;
 };
+
+
+export type DailyTaskType = "complete_stage" | "earn_xp" | "play_mode" | "finish_image" | "correct_answers";
+
+export type DailyTask = {
+  id: string;
+  type: DailyTaskType;
+  title: string;
+  target: number;
+  progress: number;
+  xpReward: number;
+  completed: boolean;
+};
+
+export type DailyTasksPayload = {
+  dateKey: string;
+  resetAt: string;
+  tasks: DailyTask[];
+};

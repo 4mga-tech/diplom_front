@@ -51,7 +51,7 @@ export default function PracticeRoadmapScreen({ practiceId }: Props) {
       <View style={styles.bgTop} />
       <View style={styles.bgMid} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Pressable style={styles.backButton} onPress={() => router.replace("/practice" as any)}>
+        <Pressable style={styles.backButton} onPress={() => router.replace("/(tabs)/practice" as any)}>
           <Ionicons name="chevron-back" size={16} color="#BBF7D0" />
           <Text style={styles.backButtonText}>Back</Text>
         </Pressable>
@@ -98,7 +98,7 @@ export default function PracticeRoadmapScreen({ practiceId }: Props) {
 
                 <Pressable
                   disabled={isLocked}
-                  onPress={() => router.push(`/practice/${encodeURIComponent(practiceId)}/play?stageId=${encodeURIComponent(stage.id)}` as any)}
+                  onPress={() => router.push(`/(tabs)/practice/${encodeURIComponent(practiceId)}/play?stageId=${encodeURIComponent(stage.id)}` as any)}
                   style={({ pressed }) => [
                     styles.node,
                     isLeft ? styles.nodeLeft : styles.nodeRight,

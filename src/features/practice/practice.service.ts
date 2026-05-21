@@ -9,6 +9,8 @@ import {
   PracticeTask,
   PracticeTaskOption,
   PracticeTaskType,
+  DailyTask,
+  DailyTasksPayload,
 } from "./practice.types";
 
 function extractData<T>(payload: unknown): T {
@@ -141,6 +143,32 @@ function normalizeAttemptResult(raw: unknown): PracticeAttemptResult {
   };
 }
 
+
+
+function normalizeDailyTask(raw: unknown, index: number): DailyTask {
+  const task = (raw ?? {}) as Record<string, unknown>;
+  const target = toNumberOrNull(task.target) ?? 1;
+  const progress = Math.max(0, toNumberOrNull(task.progress) ?? 0);
+  return {
+    id: String(task.id ?? `daily-${index + 1}`),
+    type: String(task.type ?? "complete_stage") as DailyTask["type"],
+    title: String(task.title ?? `Daily task ${index + 1}`),
+    target,
+    progress,
+    xpReward: toNumberOrNull(task.xpReward ?? task.xp ?? 5) ?? 5,
+    completed: Boolean(task.completed ?? progress >= target),
+  };
+}
+
+function normalizeDailyPayload(raw: unknown): DailyTasksPayload {
+  const data = (raw ?? {}) as Record<string, unknown>;
+  const tasks = Array.isArray(data.tasks) ? data.tasks.map((t, i) => normalizeDailyTask(t, i)) : [];
+  return {
+    dateKey: String(data.dateKey ?? new Date().toISOString().slice(0, 10)),
+    resetAt: String(data.resetAt ?? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()),
+    tasks,
+  };
+}
 export const practiceService = {
   async getPractices(): Promise<PracticeSummary[]> {
     const response = await api.get("/practice");
@@ -150,6 +178,10 @@ export const practiceService = {
   async getPracticeById(practiceId: string): Promise<PracticeDetails> {
     const response = await api.get(`/practice/${encodeURIComponent(practiceId.trim())}`);
     return normalizePracticeDetails(extractData<unknown>(response.data));
+  },
+  async getDailyTasks(): Promise<DailyTasksPayload> {
+    const response = await api.get("/practice/daily");
+    return normalizeDailyPayload(extractData<unknown>(response.data));
   },
   async submitAttempt(practiceId: string, payload: PracticeAttemptPayload): Promise<PracticeAttemptResult> {
     const response = await api.post(`/practice/${encodeURIComponent(practiceId.trim())}/attempt`, payload);
