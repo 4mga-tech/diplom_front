@@ -1,25 +1,19 @@
 import { practiceService } from "@/src/features/practice/practice.service";
 import { PracticeSummary } from "@/src/features/practice/practice.types";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const HUB_TYPES = ["missing_word", "sentence_order", "dialogue_fill", "image_choice"] as const;
+const HUB_TYPES = ["dialogue_fill", "image_choice", "sentence_order"] as const;
 
-const TYPE_META: Record<string, { title: string; icon: keyof typeof Ionicons.glyphMap; colors: [string, string] }> = {
-  missing_word: { title: "Үг нөхөх", icon: "create-outline", colors: ["#8B5CF6", "#6D28D9"] },
-  sentence_order: { title: "Зөв дараалалд оруулах", icon: "swap-vertical-outline", colors: ["#06B6D4", "#2563EB"] },
-  dialogue_fill: { title: "Харилцан яриа нөхөх", icon: "chatbubbles-outline", colors: ["#F97316", "#EA580C"] },
-  image_choice: { title: "Зураг хараад сонгох", icon: "image-outline", colors: ["#22C55E", "#16A34A"] },
+const TYPE_META: Record<string, { title: string; subtitle: string; icon: keyof typeof Ionicons.glyphMap; xpHint: string }> = {
+  dialogue_fill: { title: "Dialogue Fill", subtitle: "Choose the right reply", icon: "chatbubbles-outline", xpHint: "+12 XP" },
+  image_choice: { title: "Image Choice", subtitle: "Visual word matching", icon: "image-outline", xpHint: "+10 XP" },
+  sentence_order: { title: "Sentence Order", subtitle: "Build clean sentences", icon: "reorder-three-outline", xpHint: "+14 XP" },
 };
-
-const MOCK_DAILY_TASKS = [
-  { id: "d1", title: "2 stage", done: true },
-  { id: "d2", title: "+120 XP", done: false },
-  { id: "d3", title: "1 шинэ төрөл", done: false },
-];
 
 export default function PracticeHubScreen() {
   const router = useRouter();
@@ -29,8 +23,7 @@ export default function PracticeHubScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const loadPractices = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
+    if (isRefresh) setRefreshing(true); else setLoading(true);
     try {
       const data = await practiceService.getPractices();
       setPractices(data);
@@ -46,57 +39,62 @@ export default function PracticeHubScreen() {
 
   useFocusEffect(useCallback(() => { void loadPractices(); }, [loadPractices]));
 
-  const typeCards = useMemo(() => {
-    const mapped = HUB_TYPES.map((typeKey) => {
-      const list = practices
-        .filter((item) => item.type === typeKey)
-        .sort((a, b) => a.title.localeCompare(b.title));
-      return list[0] ?? null;
-    }).filter(Boolean) as PracticeSummary[];
+  const mappedModes = useMemo(() => {
+    const modeCards = HUB_TYPES.map((type) => {
+      const filtered = practices.filter((item) => item.type === type);
+      if (!filtered.length) return null;
+      return { ...filtered[0], stageCount: filtered.length };
+    }).filter(Boolean) as Array<PracticeSummary & { stageCount: number }>;
 
-    return mapped;
+    const quickChallenge = practices[0]
+      ? [{ ...practices[0], id: `${practices[0].id}#quick`, type: "quick_challenge", title: "Quick Challenge", stageCount: 10 } as PracticeSummary & { stageCount: number }]
+      : [];
+
+    return [...modeCards, ...quickChallenge];
   }, [practices]);
 
-  if (loading) return <SafeAreaView style={styles.safeArea}><View style={styles.center}><ActivityIndicator color="#4F46E5" /><Text style={styles.centerText}>Loading...</Text></View></SafeAreaView>;
-  if (error) return <SafeAreaView style={styles.safeArea}><View style={styles.center}><Text style={styles.centerText}>{error}</Text><Pressable style={styles.retry} onPress={() => void loadPractices()}><Text style={styles.retryText}>Retry</Text></Pressable></View></SafeAreaView>;
+  if (loading) return <SafeAreaView style={styles.safeArea}><View style={styles.center}><ActivityIndicator color="#93C5FD" /><Text style={styles.centerText}>Loading...</Text></View></SafeAreaView>;
+  if (error) return <SafeAreaView style={styles.safeArea}><View style={styles.center}><Text style={styles.centerText}>{error}</Text></View></SafeAreaView>;
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.bgTop} />
-      <View style={styles.bgMid} />
-      <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadPractices(true)} />}
-      >
-        <View style={styles.hero}>
-          <Text style={styles.heroTitle}>Practice Hub</Text>
-          <Text style={styles.heroSubtitle}>4 game modes • Pick and play</Text>
+      <View style={styles.glowOne} />
+      <View style={styles.glowTwo} />
+      <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadPractices(true)} />}>
+        <View style={styles.headerRow}>
+          <View style={styles.avatar}><Ionicons name="game-controller" size={18} color="#C4B5FD" /></View>
+          <Text style={styles.title}>Practice</Text>
+          <View style={styles.badge}><Text style={styles.badgeText}>🔥 5</Text></View>
+          <View style={styles.badge}><Text style={styles.badgeText}>⚡ 120</Text></View>
         </View>
 
-        <View style={styles.dailyWrap}>
-          <Text style={styles.dailyTitle}>Өдрийн даалгавар</Text>
-          <View style={styles.dailyRow}>
-            {MOCK_DAILY_TASKS.map((task) => (
-              <View key={task.id} style={styles.dailyItem}>
-                <Ionicons name={task.done ? "checkmark-circle" : "ellipse-outline"} size={14} color={task.done ? "#16A34A" : "#64748B"} />
-                <Text style={styles.dailyItemText}>{task.title}</Text>
-              </View>
-            ))}
-          </View>
+        <View style={styles.dailyRow}>
+          {Array.from({ length: 3 }).map((_, idx) => (
+            <View key={idx} style={styles.dailyCard}>
+              <Text style={styles.dailyTop}>Task {idx + 1}</Text>
+              <Text style={styles.dailyMid}>{idx * 3}/10</Text>
+              <Text style={styles.dailyBottom}>+{12 + idx * 3} XP • 23h</Text>
+            </View>
+          ))}
         </View>
 
-        <View style={styles.cardsWrap}>
-          {typeCards.map((practice) => {
-            const meta = TYPE_META[practice.type ?? ""];
+        <View style={styles.grid}>
+          {mappedModes.map((practice) => {
+            const isQuick = practice.type === "quick_challenge";
+            const meta = isQuick ? { title: "Quick Challenge", subtitle: "Daily mixed sprint", icon: "flash-outline" as const, xpHint: "+20 XP" } : TYPE_META[practice.type ?? ""];
             if (!meta) return null;
             return (
               <Pressable
                 key={practice.id}
-                style={({ pressed }) => [styles.card, { backgroundColor: meta.colors[0], borderColor: meta.colors[1] }, pressed && styles.cardPressed]}
-                onPress={() => router.push(`/practice/${encodeURIComponent(practice.id)}/roadmap` as any)}
+                style={({ pressed }) => [styles.gameCard, pressed && styles.pressed]}
+                onPress={() => router.push(`/practice/${encodeURIComponent(practice.id.split("#")[0])}/roadmap` as any)}
               >
-                <View style={styles.cardIcon}><Ionicons name={meta.icon} size={28} color="#fff" /></View>
-                <Text style={styles.cardTitle}>{meta.title}</Text>
+                <LinearGradient colors={["#16233A", "#0D172B"]} style={styles.gradient}>
+                  <Ionicons name={meta.icon} size={18} color="#93C5FD" />
+                  <Text style={styles.gameTitle}>{meta.title}</Text>
+                  <Text style={styles.gameSubtitle}>{meta.subtitle}</Text>
+                  <View style={styles.cardFoot}><Text style={styles.footText}>{practice.stageCount} stages</Text><Text style={styles.footText}>{meta.xpHint}</Text></View>
+                </LinearGradient>
               </Pressable>
             );
           })}
@@ -107,28 +105,28 @@ export default function PracticeHubScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#EEF4FF" },
-  bgTop: { position: "absolute", top: -100, right: -60, width: 260, height: 260, borderRadius: 130, backgroundColor: "#C7D2FE" },
-  bgMid: { position: "absolute", bottom: 180, left: -100, width: 260, height: 260, borderRadius: 130, backgroundColor: "#BFDBFE" },
-  content: { padding: 14, paddingBottom: 26, gap: 12 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", gap: 8 },
-  centerText: { color: "#334155" },
-  retry: { backgroundColor: "#312E81", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
-  retryText: { color: "#fff", fontWeight: "800" },
-
-  hero: { borderRadius: 18, backgroundColor: "#1E1B4B", padding: 14 },
-  heroTitle: { color: "#fff", fontSize: 24, fontWeight: "900" },
-  heroSubtitle: { marginTop: 2, color: "#C7D2FE", fontSize: 12, fontWeight: "700" },
-
-  dailyWrap: { borderRadius: 14, backgroundColor: "rgba(255,255,255,0.85)", padding: 10, borderWidth: 1, borderColor: "#DBEAFE", gap: 8 },
-  dailyTitle: { fontSize: 13, fontWeight: "800", color: "#1E293B" },
-  dailyRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  dailyItem: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#F8FAFC", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 5 },
-  dailyItemText: { fontSize: 11, fontWeight: "700", color: "#334155" },
-
-  cardsWrap: { gap: 10 },
-  card: { borderRadius: 18, borderWidth: 2, padding: 14, minHeight: 94, flexDirection: "row", alignItems: "center", gap: 12 },
-  cardPressed: { opacity: 0.88, transform: [{ scale: 0.985 }] },
-  cardIcon: { width: 52, height: 52, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
-  cardTitle: { flex: 1, color: "#fff", fontSize: 19, fontWeight: "900" },
+  safeArea: { flex: 1, backgroundColor: "#071120" },
+  glowOne: { position: "absolute", width: 220, height: 220, borderRadius: 110, backgroundColor: "rgba(59,130,246,0.2)", top: -50, right: -40 },
+  glowTwo: { position: "absolute", width: 240, height: 240, borderRadius: 120, backgroundColor: "rgba(139,92,246,0.16)", bottom: 20, left: -80 },
+  content: { padding: 16, gap: 14, paddingBottom: 40 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  centerText: { color: "#CBD5E1" },
+  headerRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  avatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: "#111D34", alignItems: "center", justifyContent: "center" },
+  title: { flex: 1, color: "#E2E8F0", fontSize: 26, fontWeight: "900" },
+  badge: { backgroundColor: "#13233F", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  badgeText: { color: "#BFDBFE", fontWeight: "800", fontSize: 11 },
+  dailyRow: { flexDirection: "row", gap: 8 },
+  dailyCard: { flex: 1, backgroundColor: "#0D1A2D", borderRadius: 14, padding: 10, borderWidth: 1, borderColor: "#1E2D46" },
+  dailyTop: { color: "#94A3B8", fontSize: 11, fontWeight: "700" },
+  dailyMid: { color: "#F8FAFC", fontSize: 18, fontWeight: "900", marginVertical: 4 },
+  dailyBottom: { color: "#67E8F9", fontSize: 11, fontWeight: "700" },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  gameCard: { width: "48%", borderRadius: 18, overflow: "hidden" },
+  gradient: { borderRadius: 18, minHeight: 150, padding: 12, gap: 6, borderWidth: 1, borderColor: "#223352" },
+  gameTitle: { color: "#F8FAFC", fontSize: 16, fontWeight: "900" },
+  gameSubtitle: { color: "#94A3B8", fontSize: 11, fontWeight: "700" },
+  cardFoot: { marginTop: "auto", flexDirection: "row", justifyContent: "space-between" },
+  footText: { color: "#BAE6FD", fontSize: 10, fontWeight: "800" },
+  pressed: { opacity: 0.86, transform: [{ scale: 0.98 }] },
 });
