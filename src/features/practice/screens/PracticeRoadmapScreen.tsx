@@ -51,7 +51,7 @@ export default function PracticeRoadmapScreen({ practiceId }: Props) {
       <View style={styles.bgTop} />
       <View style={styles.bgMid} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Pressable style={styles.backButton} onPress={() => router.replace("/practice" as any)}>
+        <Pressable style={styles.backButton} onPress={() => router.replace("/achievements" as any)}>
           <Ionicons name="chevron-back" size={16} color="#BBF7D0" />
           <Text style={styles.backButtonText}>Back</Text>
         </Pressable>
