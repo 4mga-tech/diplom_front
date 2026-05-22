@@ -105,7 +105,9 @@ export default function PracticeHubScreen() {
             const completedStages = progress?.completedStages ?? 0;
             const totalStages = progress?.totalStages ?? (practice.tasksCount || 0);
             const earnedXp = progress?.earnedXp ?? (practice.xpReward ?? 0);
-            const rowProgress = Math.max(0, Math.min((progress?.progressPercent ?? 0) / 100, 1));
+            const rawPercent = progress?.progressPercent ?? 0;
+            const progressWidth = rawPercent <= 1 ? rawPercent * 100 : rawPercent;
+            const clampedProgressWidth = Math.max(0, Math.min(100, progressWidth));
             return (
               <Pressable
                 key={practice.id}
@@ -120,7 +122,7 @@ export default function PracticeHubScreen() {
                     <Ionicons name="chevron-forward" size={16} color="#7F92BA" />
                   </View>
                   <Text style={styles.rowMeta}>{`${completedStages}/${totalStages} stages`} • {`${earnedXp} XP earned`}</Text>
-                  <View style={styles.rowProgressTrack}><View style={[styles.rowProgressBar, { width: `${rowProgress * 100}%` }]} /></View>
+                  <View style={styles.rowProgressTrack}><View style={[styles.rowProgressBar, { width: `${clampedProgressWidth}%` }]} /></View>
                 </View>
               </Pressable>
             );
