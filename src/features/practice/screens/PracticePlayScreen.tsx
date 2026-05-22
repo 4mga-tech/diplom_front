@@ -130,18 +130,10 @@ const apiBaseUrl = (api.defaults.baseURL || "")
     }, 820);
   }, [animateFeedback, current, feedback, idx, questionFade, tasks.length]);
 
-  const onSentencePartPress = useCallback((word: string, sourceIndex: number) => {
-    console.log("isSentenceOrder:", isSentenceOrder, "practiceType:", practice?.type, "currentType:", current?.type);
+  const onSentencePartPress = useCallback((sourceIndex: number) => {
     if (!current || feedback || !isSentenceOrder) return;
-    console.log("chip pressed", word, sourceIndex);
-    setSelectedWordIndexes((previous) => [...previous, sourceIndex]);
-  }, [current, feedback, isSentenceOrder, practice?.type]);
-
-  const onSentencePartPressIn = useCallback((word: string, sourceIndex: number) => {
-    console.log("isSentenceOrder:", isSentenceOrder, "practiceType:", practice?.type, "currentType:", current?.type);
-    if (!current || feedback || !isSentenceOrder) return;
-    console.log("chip press in", word, sourceIndex);
-  }, [current, feedback, isSentenceOrder, practice?.type]);
+    setSelectedWordIndexes((previous) => previous.includes(sourceIndex) ? previous : [...previous, sourceIndex]);
+  }, [current, feedback, isSentenceOrder]);
 
   const onSentenceSelectedPress = useCallback((selectionIndex: number) => {
     if (feedback) return;
@@ -149,7 +141,6 @@ const apiBaseUrl = (api.defaults.baseURL || "")
   }, [feedback]);
 
   const onSentenceCheck = useCallback(() => {
-    console.log("isSentenceOrder:", isSentenceOrder, "practiceType:", practice?.type, "currentType:", current?.type);
     if (!current || feedback || !isSentenceOrder) return;
     const selectedAnswerText = selectedWordIndexes.map((wordIndex) => sentenceOrderParts[wordIndex]).filter(Boolean).join(" ").trim();
     const selectedAnswer = selectedAnswerText.toLowerCase();
@@ -157,8 +148,11 @@ const apiBaseUrl = (api.defaults.baseURL || "")
     const isCorrect = selectedAnswer.length > 0 && selectedAnswer === correct;
     setSelectedOptionId(null);
     setFeedback(isCorrect ? "correct" : "wrong");
-    setAnswers((s) => ({ ...s, [current.id]: selectedAnswerText }));
+    if (isCorrect) {
+      setAnswers((s) => ({ ...s, [current.id]: selectedAnswerText }));
+    }
     animateFeedback(isCorrect);
+    if (!isCorrect) return;
     timeoutRef.current = setTimeout(() => {
       setFeedback(null);
       setSelectedWordIndexes([]);
@@ -169,14 +163,13 @@ const apiBaseUrl = (api.defaults.baseURL || "")
         });
       }
     }, 820);
-  }, [animateFeedback, current, feedback, idx, isSentenceOrder, practice?.type, questionFade, selectedWordIndexes, sentenceOrderParts, tasks.length]);
+  }, [animateFeedback, current, feedback, idx, isSentenceOrder, questionFade, selectedWordIndexes, sentenceOrderParts, tasks.length]);
 
-  useEffect(() => {
-    if (!current || !isSentenceOrder || feedback) return;
-    if (sentenceOrderParts.length > 0 && selectedWordIndexes.length === sentenceOrderParts.length) {
-      onSentenceCheck();
-    }
-  }, [current, feedback, isSentenceOrder, onSentenceCheck, selectedWordIndexes.length, sentenceOrderParts.length]);
+  const onSentenceTryAgain = useCallback(() => {
+    setFeedback(null);
+    setSelectedWordIndexes([]);
+    setSelectedOptionId(null);
+  }, []);
 
   useEffect(() => {
     setSelectedWordIndexes([]);
@@ -222,8 +215,8 @@ const apiBaseUrl = (api.defaults.baseURL || "")
         </View>
         {sentenceOrderParts.length === 0 ? <Text style={styles.buildText}>No word parts configured.</Text> : <View style={styles.chipsRow}>
           {sentenceOrderParts.map((part, sourceIndex) => {
-            if (selectedWordIndexes.includes(sourceIndex)) return null;
-            return <Pressable key={`${part}-${sourceIndex}`} style={styles.wordChip} onPressIn={() => onSentencePartPressIn(part, sourceIndex)} onPress={() => onSentencePartPress(part, sourceIndex)} hitSlop={8} disabled={feedback !== null}><Text style={styles.wordChipText}>{part}</Text></Pressable>;
+            const isSelected = selectedWordIndexes.includes(sourceIndex);
+            return <Pressable key={`${part}-${sourceIndex}`} style={[styles.wordChip, isSelected && styles.wordChipInactive]} onPress={() => onSentencePartPress(sourceIndex)} hitSlop={8} disabled={feedback !== null || isSelected}><Text style={[styles.wordChipText, isSelected && styles.wordChipTextInactive]}>{part}</Text></Pressable>;
           })}
         </View>}
       </View>}
@@ -265,7 +258,8 @@ const apiBaseUrl = (api.defaults.baseURL || "")
       </View>}
     </Animated.View>
 
-    {isSentenceOrder ? <Pressable style={styles.finish} onPress={onSentenceCheck} disabled={sentenceAnswerText.length === 0 || feedback !== null}><Text style={styles.finishText}>Check answer</Text></Pressable> : null}
+    {isSentenceOrder ? <Pressable style={[styles.finish, (sentenceAnswerText.length === 0 || feedback !== null) && styles.finishDisabled]} onPress={onSentenceCheck} disabled={sentenceAnswerText.length === 0 || feedback !== null}><Text style={styles.finishText}>Check answer</Text></Pressable> : null}
+    {isSentenceOrder && feedback === "wrong" ? <Pressable style={styles.tryAgainButton} onPress={onSentenceTryAgain}><Text style={styles.finishText}>Try Again</Text></Pressable> : null}
     {practice?.type !== "image_choice" && practice?.type !== "sentence_order" && <View style={styles.options}>{current.options.map((o) => <Pressable key={o.id} style={styles.opt} onPress={() => onPick(o.id)}><Text style={styles.optText}>{o.text}</Text></Pressable>)}</View>}
     {feedback === "correct" && <Animated.View pointerEvents="none" style={[styles.xpPop, { opacity: xpPop, transform: [{ translateY: xpPop.interpolate({ inputRange: [0, 1], outputRange: [16, -8] }) }] }]}><Text style={styles.xpPopText}>+{stageXp} XP</Text></Animated.View>}
     {isLast && answers[current.id] && <Pressable style={styles.finish} onPress={() => void onFinish()}><Text style={styles.finishText}>Complete Stage</Text></Pressable>}
@@ -295,7 +289,9 @@ const styles = StyleSheet.create({
   sentenceOrderWrap: { gap: 10, zIndex: 10, elevation: 10 },
   chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center", zIndex: 10, elevation: 10 },
   wordChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: "#1E293B", borderWidth: 1, borderColor: "#3B82F6", zIndex: 11, elevation: 11 },
+  wordChipInactive: { opacity: 0.45, backgroundColor: "#334155", borderColor: "#64748B" },
   wordChipText: { color: "#DBEAFE", fontWeight: "700" },
+  wordChipTextInactive: { color: "#CBD5E1" },
   selectedChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: "#172554", borderWidth: 1, borderColor: "#60A5FA" },
   selectedChipText: { color: "#BFDBFE", fontWeight: "700" },
   imageGrid: { gap: 10, flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
@@ -315,5 +311,7 @@ const styles = StyleSheet.create({
   xpPop: { position: "absolute", alignSelf: "center", bottom: 96, backgroundColor: "#14532D", borderRadius: 999, borderWidth: 1, borderColor: "#22C55E", paddingHorizontal: 12, paddingVertical: 6 },
   xpPopText: { color: "#DCFCE7", fontWeight: "900", fontSize: 12 },
   finish: { backgroundColor: "#2563EB", borderRadius: 14, padding: 14 },
+  finishDisabled: { opacity: 0.5 },
+  tryAgainButton: { backgroundColor: "#334155", borderRadius: 14, padding: 14 },
   finishText: { color: "#fff", textAlign: "center", fontWeight: "900" },
 });
