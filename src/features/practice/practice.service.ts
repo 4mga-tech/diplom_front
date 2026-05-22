@@ -37,7 +37,7 @@ function normalizeTaskType(value: unknown): PracticeTaskType {
   const normalized = String(value ?? "").trim().toLowerCase() as PracticeTaskType;
   const allowed: PracticeTaskType[] = [
     "single_choice", "multiple_choice", "fill_in_blank", "matching", "ordering", "speaking", "listening", "writing",
-    "missing_letter", "letter_match", "meaning_match", "word_builder", "daily_challenge", "sentence_order",
+    "missing_letter", "letter_match", "meaning_match", "word_builder", "daily_challenge", "sentence_order", "image_choice",
   ];
   return allowed.includes(normalized) ? normalized : "unknown";
 }
