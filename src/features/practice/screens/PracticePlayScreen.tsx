@@ -136,6 +136,11 @@ const apiBaseUrl = (api.defaults.baseURL || "")
     setSelectedWordIndexes((previous) => [...previous, sourceIndex]);
   }, [current, feedback]);
 
+  const onSentencePartPressIn = useCallback((word: string, sourceIndex: number) => {
+    if (!current || feedback || current.type !== "sentence_order") return;
+    console.log("chip press in", word, sourceIndex);
+  }, [current, feedback]);
+
   const onSentenceSelectedPress = useCallback((selectionIndex: number) => {
     if (feedback) return;
     setSelectedWordIndexes((previous) => previous.filter((_, index) => index !== selectionIndex));
@@ -215,7 +220,7 @@ const apiBaseUrl = (api.defaults.baseURL || "")
         {sentenceOrderParts.length === 0 ? <Text style={styles.buildText}>No word parts configured.</Text> : <View style={styles.chipsRow}>
           {sentenceOrderParts.map((part, sourceIndex) => {
             if (selectedWordIndexes.includes(sourceIndex)) return null;
-            return <Pressable key={`${part}-${sourceIndex}`} style={styles.wordChip} onPress={() => onSentencePartPress(part, sourceIndex)}><Text style={styles.wordChipText}>{part}</Text></Pressable>;
+            return <Pressable key={`${part}-${sourceIndex}`} style={styles.wordChip} onPressIn={() => onSentencePartPressIn(part, sourceIndex)} onPress={() => onSentencePartPress(part, sourceIndex)} hitSlop={8} disabled={feedback !== null}><Text style={styles.wordChipText}>{part}</Text></Pressable>;
           })}
         </View>}
       </View>}
@@ -259,7 +264,7 @@ const apiBaseUrl = (api.defaults.baseURL || "")
 
     {isSentenceOrder ? <Pressable style={styles.finish} onPress={onSentenceCheck} disabled={sentenceAnswerText.length === 0 || feedback !== null}><Text style={styles.finishText}>Check answer</Text></Pressable> : null}
     {practice?.type !== "image_choice" && practice?.type !== "sentence_order" && <View style={styles.options}>{current.options.map((o) => <Pressable key={o.id} style={styles.opt} onPress={() => onPick(o.id)}><Text style={styles.optText}>{o.text}</Text></Pressable>)}</View>}
-    {feedback === "correct" && <Animated.View style={[styles.xpPop, { opacity: xpPop, transform: [{ translateY: xpPop.interpolate({ inputRange: [0, 1], outputRange: [16, -8] }) }] }]}><Text style={styles.xpPopText}>+{stageXp} XP</Text></Animated.View>}
+    {feedback === "correct" && <Animated.View pointerEvents="none" style={[styles.xpPop, { opacity: xpPop, transform: [{ translateY: xpPop.interpolate({ inputRange: [0, 1], outputRange: [16, -8] }) }] }]}><Text style={styles.xpPopText}>+{stageXp} XP</Text></Animated.View>}
     {isLast && answers[current.id] && <Pressable style={styles.finish} onPress={() => void onFinish()}><Text style={styles.finishText}>Complete Stage</Text></Pressable>}
   </View></SafeAreaView>;
 }
@@ -284,9 +289,9 @@ const styles = StyleSheet.create({
   image: { height: 180, borderRadius: 16, borderWidth: 1, borderColor: "#1E3A8A", alignItems: "center", justifyContent: "center" },
   buildArea: { minHeight: 70, borderRadius: 14, borderWidth: 1, borderColor: "#334155", alignItems: "center", justifyContent: "center", padding: 10 },
   buildText: { color: "#CBD5E1", fontWeight: "700" },
-  sentenceOrderWrap: { gap: 10 },
-  chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
-  wordChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: "#1E293B", borderWidth: 1, borderColor: "#3B82F6" },
+  sentenceOrderWrap: { gap: 10, zIndex: 10, elevation: 10 },
+  chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center", zIndex: 10, elevation: 10 },
+  wordChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: "#1E293B", borderWidth: 1, borderColor: "#3B82F6", zIndex: 11, elevation: 11 },
   wordChipText: { color: "#DBEAFE", fontWeight: "700" },
   selectedChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: "#172554", borderWidth: 1, borderColor: "#60A5FA" },
   selectedChipText: { color: "#BFDBFE", fontWeight: "700" },
