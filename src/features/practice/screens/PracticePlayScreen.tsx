@@ -116,8 +116,11 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
     const ok = isCorrectAnswer(current, optionId);
     setSelectedOptionId(optionId);
     setFeedback(ok ? "correct" : "wrong");
-    setAnswers((s) => ({ ...s, [current.id]: optionId }));
+    if (ok) {
+      setAnswers((s) => ({ ...s, [current.id]: optionId }));
+    }
     animateFeedback(ok);
+    if (!ok) return;
     timeoutRef.current = setTimeout(() => {
       setFeedback(null);
       setSelectedOptionId(null);
@@ -168,6 +171,11 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
   const onSentenceTryAgain = useCallback(() => {
     setFeedback(null);
     setSelectedWordIndexes([]);
+    setSelectedOptionId(null);
+  }, []);
+
+  const onImageTryAgain = useCallback(() => {
+    setFeedback(null);
     setSelectedOptionId(null);
   }, []);
 
@@ -254,12 +262,14 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
               {(status === "error" || !img) && <View style={styles.imageOverlay}><Ionicons name="image-outline" size={22} color="#94A3B8" /><Text style={styles.fallbackText}>Image unavailable</Text></View>}
               {isCorrect && feedback && <View style={styles.mark}><Ionicons name="checkmark-circle" size={22} color="#86EFAC" /></View>}
             </View>
-            <Text style={styles.imageLabel} numberOfLines={2}>{o.label || o.text}</Text>
           </Pressable>;
         })}
       </View>}
     </Animated.View>
 
+
+    {practice?.type === "image_choice" && feedback === "wrong" ? <View style={styles.feedbackWrap}><Text style={styles.feedbackWrongText}>Wrong</Text><Text style={styles.feedbackHint}>Try Again</Text><Pressable style={styles.tryAgainButton} onPress={onImageTryAgain}><Text style={styles.finishText}>Try Again</Text></Pressable></View> : null}
+    {practice?.type === "image_choice" && feedback === "correct" ? <View style={styles.feedbackWrap}><Text style={styles.feedbackCorrectText}>Correct!</Text></View> : null}
     {isSentenceOrder ? <Pressable style={[styles.finish, (sentenceAnswerText.length === 0 || feedback !== null) && styles.finishDisabled]} onPress={onSentenceCheck} disabled={sentenceAnswerText.length === 0 || feedback !== null}><Text style={styles.finishText}>Check answer</Text></Pressable> : null}
     {isSentenceOrder && feedback === "wrong" ? <Pressable style={styles.tryAgainButton} onPress={onSentenceTryAgain}><Text style={styles.finishText}>Try Again</Text></Pressable> : null}
     {practice?.type !== "image_choice" && practice?.type !== "sentence_order" && <View style={styles.options}>{current.options.map((o) => <Pressable key={o.id} style={styles.opt} onPress={() => onPick(o.id)}><Text style={styles.optText}>{o.text}</Text></Pressable>)}</View>}
@@ -297,15 +307,14 @@ const styles = StyleSheet.create({
   selectedChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: "#172554", borderWidth: 1, borderColor: "#60A5FA" },
   selectedChipText: { color: "#BFDBFE", fontWeight: "700" },
   imageGrid: { gap: 10, flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
-  imageCard: { width: "48%", borderRadius: 18, backgroundColor: "#121E36", borderWidth: 1, borderColor: "#2A3A64", padding: 8, gap: 7 },
-  imageCardSelected: { borderColor: "#60A5FA", transform: [{ scale: 0.985 }] },
+  imageCard: { width: "48%", borderRadius: 18, backgroundColor: "#121E36", borderWidth: 1, borderColor: "#2A3A64", padding: 8, shadowColor: "#60A5FA", shadowOffset: { width: 0, height: 0 }, shadowRadius: 0, shadowOpacity: 0 },
+  imageCardSelected: { borderColor: "#60A5FA", shadowOpacity: 0.5, shadowRadius: 12, elevation: 3 },
   imageCardCorrect: { borderColor: "#22C55E", shadowColor: "#22C55E", shadowOpacity: 0.45, shadowRadius: 10 },
   imageCardWrong: { borderColor: "#EF4444", shadowColor: "#EF4444", shadowOpacity: 0.35, shadowRadius: 8 },
   imageFrame: { height: 112, borderRadius: 14, overflow: "hidden", backgroundColor: "#0A1325", alignItems: "center", justifyContent: "center" },
   imageThumb: { width: "100%", height: "100%" },
   imageOverlay: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(10,19,37,0.75)", gap: 4 },
   fallbackText: { color: "#94A3B8", fontSize: 11, fontWeight: "600" },
-  imageLabel: { color: "#E2E8F0", textAlign: "center", fontWeight: "700", fontSize: 13, minHeight: 32 },
   mark: { position: "absolute", top: 6, right: 6, backgroundColor: "rgba(15,23,42,0.85)", borderRadius: 999, padding: 2 },
   options: { gap: 10 },
   opt: { borderRadius: 14, backgroundColor: "#12233D", borderWidth: 1, borderColor: "#2B3D5B", padding: 14 },
@@ -315,5 +324,9 @@ const styles = StyleSheet.create({
   finish: { backgroundColor: "#2563EB", borderRadius: 14, padding: 14 },
   finishDisabled: { opacity: 0.5 },
   tryAgainButton: { backgroundColor: "#334155", borderRadius: 14, padding: 14 },
+  feedbackWrap: { gap: 8 },
+  feedbackWrongText: { color: "#FCA5A5", textAlign: "center", fontWeight: "900", fontSize: 18 },
+  feedbackCorrectText: { color: "#86EFAC", textAlign: "center", fontWeight: "900", fontSize: 18 },
+  feedbackHint: { color: "#CBD5E1", textAlign: "center", fontWeight: "700" },
   finishText: { color: "#fff", textAlign: "center", fontWeight: "900" },
 });
