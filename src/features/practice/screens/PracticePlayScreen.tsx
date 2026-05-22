@@ -74,16 +74,16 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
     return null;
   }, [current]);
   const progress = tasks.length ? (idx + 1) / tasks.length : 0;
-const apiBaseUrl = (api.defaults.baseURL || "")
-  .replace(/\/api\/?$/, "")
-  .replace(/\/+$/, "");  const stageXp = practice?.roadmap.find((x) => x.id === stageId)?.xpReward ?? 12;
+  const apiBaseUrl = (api.defaults.baseURL || "")
+    .replace(/\/api\/?$/, "")
+    .replace(/\/+$/, ""); const stageXp = practice?.roadmap.find((x) => x.id === stageId)?.xpReward ?? 12;
 
   const resolveImageUrl = useCallback((imageUrl?: string | null) => {
-  if (!imageUrl) return null;
-  if (/^https?:\/\//i.test(imageUrl)) return imageUrl;
-  if (!apiBaseUrl) return imageUrl;
-  return `${apiBaseUrl}${imageUrl.startsWith("/") ? imageUrl : `/${imageUrl}`}`;
-}, [apiBaseUrl]);
+    if (!imageUrl) return null;
+    if (/^https?:\/\//i.test(imageUrl)) return imageUrl;
+    if (!apiBaseUrl) return imageUrl;
+    return `${apiBaseUrl}${imageUrl.startsWith("/") ? imageUrl : `/${imageUrl}`}`;
+  }, [apiBaseUrl]);
 
   const animateFeedback = useCallback((isCorrect: boolean) => {
     if (isCorrect) {
@@ -200,7 +200,9 @@ const apiBaseUrl = (api.defaults.baseURL || "")
       feedback === "correct" && styles.correct,
       feedback === "wrong" && styles.wrong,
     ]}>
-      <Text style={styles.prompt}>{current.prompt}</Text>
+      {practice?.type !== "dialogue_fill" ? (
+        <Text style={styles.prompt}>{current.prompt}</Text>
+      ) : null}
       {helperSubtitle ? <Text style={styles.subtitle}>{helperSubtitle}</Text> : null}
       {practice?.type === "image_choice" && <Text style={styles.subtitle}>Pick the image that best matches the prompt.</Text>}
       {practice?.type === "dialogue_fill" && <View style={styles.dialog}><Text style={styles.bubbleA}>A: {current.prompt}</Text><Text style={styles.bubbleB}>B: ________</Text></View>}
