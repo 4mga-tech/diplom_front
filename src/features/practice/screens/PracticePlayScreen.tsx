@@ -64,6 +64,7 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
 
   const current = tasks[idx];
   const isSentenceOrder = practice?.type === "sentence_order" || current?.type === "sentence_order";
+  const supportsRetry = !isSentenceOrder;
   const sentenceOrderParts = useMemo(() => {
     if (!current || !isSentenceOrder) return [];
     return getSentenceParts(current);
@@ -116,21 +117,7 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
 
   const onPick = useCallback(async (optionId: string) => {
     if (!current || feedback) return;
-    const selectedOption = current.options.find((option) => option.id === optionId);
-    const answerPayload = { questionId: current.id, answer: optionId };
-    console.log("IMAGE SUBMIT", {
-      selectedOptionId: optionId,
-      selectedOption,
-      answerPayload,
-      correctAnswer: current.correctAnswer,
-    });
     const ok = isCorrectAnswer(current, optionId, practice?.type);
-    console.log("IMAGE CHECK", {
-      selectedOptionId: optionId,
-      correctOptionId: current.correctOptionId,
-      correctAnswer: current.correctAnswer,
-      isCorrect: ok
-    });
     setSelectedOptionId(optionId);
     setFeedback(ok ? "correct" : "wrong");
     if (ok) {
@@ -299,11 +286,17 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
     </Animated.View>
 
 
-    {practice?.type === "image_choice" && feedback === "wrong" ? <View style={styles.feedbackWrap}><Text style={styles.feedbackWrongText}>Wrong</Text><Text style={styles.feedbackHint}>Try Again</Text><Pressable style={styles.tryAgainButton} onPress={onImageTryAgain}><Text style={styles.finishText}>Try Again</Text></Pressable></View> : null}
+    {practice?.type === "image_choice" && feedback === "wrong" ? <View style={styles.feedbackWrap}><Text style={styles.feedbackWrongText}>Wrong</Text><Text style={styles.feedbackHint}>Try Again</Text></View> : null}
     {practice?.type === "image_choice" && feedback === "correct" ? <View style={styles.feedbackWrap}><Text style={styles.feedbackCorrectText}>Correct!</Text></View> : null}
     {isSentenceOrder ? <Pressable style={[styles.finish, (sentenceAnswerText.length === 0 || feedback !== null) && styles.finishDisabled]} onPress={onSentenceCheck} disabled={sentenceAnswerText.length === 0 || feedback !== null}><Text style={styles.finishText}>Check answer</Text></Pressable> : null}
     {isSentenceOrder && feedback === "wrong" ? <Pressable style={styles.tryAgainButton} onPress={onSentenceTryAgain}><Text style={styles.finishText}>Try Again</Text></Pressable> : null}
-    {practice?.type !== "image_choice" && practice?.type !== "sentence_order" && <View style={styles.options}>{current.options.map((o) => <Pressable key={o.id} style={styles.opt} onPress={() => onPick(o.id)}><Text style={styles.optText}>{o.text}</Text></Pressable>)}</View>}
+    {practice?.type !== "image_choice" && practice?.type !== "sentence_order" && <View style={styles.options}>{current.options.map((o) => {
+      const isSelected = selectedOptionId === o.id;
+      const isCorrect = feedback === "correct" && isSelected;
+      const isWrong = feedback === "wrong" && isSelected;
+      return <Pressable key={o.id} style={[styles.opt, isCorrect && styles.optCorrect, isWrong && styles.optWrong]} onPress={() => onPick(o.id)} disabled={feedback !== null}><Text style={styles.optText}>{o.text}</Text></Pressable>;
+    })}</View>}
+    {supportsRetry && feedback === "wrong" ? <Pressable style={styles.tryAgainButton} onPress={onImageTryAgain}><Text style={styles.finishText}>Try Again</Text></Pressable> : null}
     {feedback === "correct" && <Animated.View pointerEvents="none" style={[styles.xpPop, { opacity: xpPop, transform: [{ translateY: xpPop.interpolate({ inputRange: [0, 1], outputRange: [16, -8] }) }] }]}><Text style={styles.xpPopText}>+{stageXp} XP</Text></Animated.View>}
     {isLast && answers[current.id] && <Pressable style={styles.finish} onPress={() => void onFinish()}><Text style={styles.finishText}>Complete Stage</Text></Pressable>}
   </View></SafeAreaView>;
@@ -349,6 +342,8 @@ const styles = StyleSheet.create({
   mark: { position: "absolute", top: 6, right: 6, backgroundColor: "rgba(15,23,42,0.85)", borderRadius: 999, padding: 2 },
   options: { gap: 10 },
   opt: { borderRadius: 14, backgroundColor: "#12233D", borderWidth: 1, borderColor: "#2B3D5B", padding: 14 },
+  optCorrect: { borderColor: "#22C55E", backgroundColor: "#14532D" },
+  optWrong: { borderColor: "#EF4444", backgroundColor: "#7F1D1D" },
   optText: { color: "#E2E8F0", fontWeight: "800", textAlign: "center" },
   xpPop: { position: "absolute", alignSelf: "center", bottom: 96, backgroundColor: "#14532D", borderRadius: 999, borderWidth: 1, borderColor: "#22C55E", paddingHorizontal: 12, paddingVertical: 6 },
   xpPopText: { color: "#DCFCE7", fontWeight: "900", fontSize: 12 },
