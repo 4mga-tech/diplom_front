@@ -9,8 +9,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 type Props = { practiceId: string; stageId?: string };
 
-function isCorrectAnswer(task: PracticeTask, answerValue: string): boolean {
-  if (task.type === "image_choice") {
+function isCorrectAnswer(task: PracticeTask, answerValue: string, practiceType?: string | null): boolean {
+  if (task.type === "image_choice" || practiceType === "image_choice") {
     return answerValue === (task.correctAnswer || "");
   }
   if (task.type === "sentence_order") {
@@ -124,7 +124,13 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
       answerPayload,
       correctAnswer: current.correctAnswer,
     });
-    const ok = isCorrectAnswer(current, optionId);
+    const ok = isCorrectAnswer(current, optionId, practice?.type);
+    console.log("IMAGE CHECK", {
+      selectedOptionId: optionId,
+      correctOptionId: current.correctOptionId,
+      correctAnswer: current.correctAnswer,
+      isCorrect: ok
+    });
     setSelectedOptionId(optionId);
     setFeedback(ok ? "correct" : "wrong");
     if (ok) {
@@ -200,7 +206,7 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
 
   const onFinish = useCallback(async () => {
     if (!practice) return;
-    const correctCount = tasks.filter((t) => answers[t.id] && isCorrectAnswer(t, answers[t.id])).length;
+    const correctCount = tasks.filter((t) => answers[t.id] && isCorrectAnswer(t, answers[t.id], practice?.type)).length;
     const score = tasks.length ? Math.round((correctCount / tasks.length) * 100) : 0;
     const answersPayload = tasks
       .filter((task) => typeof answers[task.id] === "string" && answers[task.id].length > 0)
@@ -259,7 +265,7 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
           const img = resolveImageUrl(o.imageUrl);
           const status = imageLoadState[o.id] || "loading";
           const isSelected = selectedOptionId === o.id;
-          const isCorrect = feedback && isCorrectAnswer(current, o.id);
+          const isCorrect = feedback && isCorrectAnswer(current, o.id, practice?.type);
           const isWrongSelected = feedback === "wrong" && isSelected;
           return <Pressable
             key={o.id}
