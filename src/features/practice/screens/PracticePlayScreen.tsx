@@ -9,9 +9,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 type Props = { practiceId: string; stageId?: string };
 
-function isCorrectAnswer(task: PracticeTask, optionId: string): boolean {
-  if (task.correctOptionId) return task.correctOptionId === optionId;
-  const selectedOption = task.options.find((o) => o.id === optionId);
+function isCorrectAnswer(task: PracticeTask, answerValue: string): boolean {
+  if (task.type === "sentence_order") {
+    return answerValue.trim().toLowerCase() === (task.correctAnswer || "").trim().toLowerCase();
+  }
+  if (task.correctOptionId) return task.correctOptionId === answerValue;
+  const selectedOption = task.options.find((o) => o.id === answerValue);
   return (selectedOption?.text || "").trim().toLowerCase() === (task.correctAnswer || "").trim().toLowerCase();
 }
 
@@ -23,6 +26,7 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [sentenceOrderSelection, setSentenceOrderSelection] = useState<string[]>([]);
   const [imageLoadState, setImageLoadState] = useState<Record<string, "loading" | "loaded" | "error">>({});
   const [questionFade] = useState(new Animated.Value(1));
   const [correctScale] = useState(new Animated.Value(1));
@@ -48,6 +52,26 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
   }, [practice, stageId]);
 
   const current = tasks[idx];
+  const isSentenceOrder = current?.type === "sentence_order";
+  const sentenceOrderParts = useMemo(() => {
+    if (!current || current.type !== "sentence_order") return [];
+    if (Array.isArray(current.parts) && current.parts.length > 0) {
+      return current.parts.map((part) => part.trim()).filter(Boolean);
+    }
+    const optionText = current.options[0]?.text?.trim();
+    if (optionText && optionText.includes("|")) {
+      return optionText.split("|").map((part) => part.trim()).filter(Boolean);
+    }
+    return (current.correctAnswer ?? "").split(/\s+/).map((part) => part.trim()).filter(Boolean);
+  }, [current]);
+  const sentenceAnswerText = useMemo(() => sentenceOrderSelection.join(" ").trim(), [sentenceOrderSelection]);
+  const helperSubtitle = useMemo(() => {
+    if (!current) return null;
+    const taskSubtitle = current.subtitle?.trim();
+    if (taskSubtitle) return taskSubtitle;
+    if (current.meaningEn && current.meaningEn !== current.prompt) return current.meaningEn;
+    return null;
+  }, [current]);
   const progress = tasks.length ? (idx + 1) / tasks.length : 0;
 const apiBaseUrl = (api.defaults.baseURL || "")
   .replace(/\/api\/?$/, "")
@@ -105,6 +129,38 @@ const apiBaseUrl = (api.defaults.baseURL || "")
     }, 820);
   }, [animateFeedback, current, feedback, idx, questionFade, tasks.length]);
 
+  const onSentencePartPress = useCallback((part: string, sourceIndex: number) => {
+    if (!current || feedback || current.type !== "sentence_order") return;
+    setSentenceOrderSelection((previous) => [...previous, `${part}__${sourceIndex}`]);
+  }, [current, feedback]);
+
+  const onSentenceSelectedPress = useCallback((selectionIndex: number) => {
+    if (feedback) return;
+    setSentenceOrderSelection((previous) => previous.filter((_, index) => index !== selectionIndex));
+  }, [feedback]);
+
+  const onSentenceCheck = useCallback(() => {
+    if (!current || feedback || current.type !== "sentence_order") return;
+    const selectedParts = sentenceOrderSelection.map((item) => item.replace(/__\d+$/, ""));
+    const selectedAnswer = selectedParts.join(" ").trim().toLowerCase();
+    const correct = (current.correctAnswer ?? "").trim().toLowerCase();
+    const isCorrect = selectedAnswer.length > 0 && selectedAnswer === correct;
+    setSelectedOptionId(null);
+    setFeedback(isCorrect ? "correct" : "wrong");
+    setAnswers((s) => ({ ...s, [current.id]: selectedParts.join(" ").trim() }));
+    animateFeedback(isCorrect);
+    timeoutRef.current = setTimeout(() => {
+      setFeedback(null);
+      setSentenceOrderSelection([]);
+      if (idx < tasks.length - 1) {
+        Animated.timing(questionFade, { toValue: 0, duration: 160, useNativeDriver: true }).start(() => {
+          setIdx((v) => v + 1);
+          Animated.timing(questionFade, { toValue: 1, duration: 190, useNativeDriver: true }).start();
+        });
+      }
+    }, 820);
+  }, [animateFeedback, current, feedback, idx, questionFade, sentenceOrderSelection, tasks.length]);
+
   useEffect(() => () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
   }, []);
@@ -122,7 +178,7 @@ const apiBaseUrl = (api.defaults.baseURL || "")
   const isLast = idx === tasks.length - 1;
 
   return <SafeAreaView style={styles.safeArea}><View style={styles.wrap}>
-    <View style={styles.top}><Pressable onPress={() => router.replace(`/practice/${encodeURIComponent(practiceId)}/roadmap` as any)}><Ionicons name="chevron-back" size={20} color="#BFDBFE" /></Pressable><View style={styles.bar}><View style={[styles.barFill, { width: `${progress * 100}%` }]} /></View><Text style={styles.xp}>+{12}XP</Text></View>
+    <View style={styles.top}><Pressable hitSlop={10} style={styles.backButton} onPress={() => router.replace(`/practice/${encodeURIComponent(practiceId)}/roadmap` as any)}><Ionicons name="chevron-back" size={20} color="#BFDBFE" /></Pressable><View style={styles.bar}><View style={[styles.barFill, { width: `${progress * 100}%` }]} /></View><Text style={styles.xp}>+{12}XP</Text></View>
 
     <Animated.View style={[
       styles.card,
@@ -131,9 +187,26 @@ const apiBaseUrl = (api.defaults.baseURL || "")
       feedback === "wrong" && styles.wrong,
     ]}>
       <Text style={styles.prompt}>{current.prompt}</Text>
+      {helperSubtitle ? <Text style={styles.subtitle}>{helperSubtitle}</Text> : null}
       {practice?.type === "image_choice" && <Text style={styles.subtitle}>Pick the image that best matches the prompt.</Text>}
       {practice?.type === "dialogue_fill" && <View style={styles.dialog}><Text style={styles.bubbleA}>A: {current.prompt}</Text><Text style={styles.bubbleB}>B: ________</Text></View>}
-      {practice?.type === "sentence_order" && <View style={styles.buildArea}><Text style={styles.buildText}>{answers[current.id] ? current.options.find((o) => o.id === answers[current.id])?.text : "Tap words to build sentence"}</Text></View>}
+      {isSentenceOrder && <View style={styles.sentenceOrderWrap}>
+        <View style={styles.buildArea}>
+          <View style={styles.chipsRow}>
+            {sentenceOrderSelection.length === 0 ? <Text style={styles.buildText}>Tap words to build sentence</Text> : sentenceOrderSelection.map((selected, selectionIndex) => {
+              const cleanText = selected.replace(/__\d+$/, "");
+              return <Pressable key={`${selected}-${selectionIndex}`} style={styles.selectedChip} onPress={() => onSentenceSelectedPress(selectionIndex)}><Text style={styles.selectedChipText}>{cleanText}</Text></Pressable>;
+            })}
+          </View>
+        </View>
+        <View style={styles.chipsRow}>
+          {sentenceOrderParts.map((part, sourceIndex) => {
+            const usedCount = sentenceOrderSelection.filter((selected) => selected === `${part}__${sourceIndex}`).length;
+            if (usedCount > 0) return null;
+            return <Pressable key={`${part}-${sourceIndex}`} style={styles.wordChip} onPress={() => onSentencePartPress(part, sourceIndex)}><Text style={styles.wordChipText}>{part}</Text></Pressable>;
+          })}
+        </View>
+      </View>}
       {practice?.type === "image_choice" && <View style={styles.imageGrid}>
         {current.options.map((o) => {
           console.log("OPTION:", o);
@@ -174,7 +247,8 @@ console.log("RAW IMAGE URL:", o.imageUrl);
       </View>}
     </Animated.View>
 
-    {practice?.type !== "image_choice" && <View style={styles.options}>{current.options.map((o) => <Pressable key={o.id} style={styles.opt} onPress={() => onPick(o.id)}><Text style={styles.optText}>{o.text}</Text></Pressable>)}</View>}
+    {isSentenceOrder ? <Pressable style={styles.finish} onPress={onSentenceCheck} disabled={sentenceAnswerText.length === 0 || Boolean(feedback)}><Text style={styles.finishText}>Check answer</Text></Pressable> : null}
+    {practice?.type !== "image_choice" && !isSentenceOrder && <View style={styles.options}>{current.options.map((o) => <Pressable key={o.id} style={styles.opt} onPress={() => onPick(o.id)}><Text style={styles.optText}>{o.text}</Text></Pressable>)}</View>}
     {feedback === "correct" && <Animated.View style={[styles.xpPop, { opacity: xpPop, transform: [{ translateY: xpPop.interpolate({ inputRange: [0, 1], outputRange: [16, -8] }) }] }]}><Text style={styles.xpPopText}>+{stageXp} XP</Text></Animated.View>}
     {isLast && answers[current.id] && <Pressable style={styles.finish} onPress={() => void onFinish()}><Text style={styles.finishText}>Complete Stage</Text></Pressable>}
   </View></SafeAreaView>;
@@ -185,6 +259,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   wrap: { flex: 1, padding: 16, gap: 14 },
   top: { flexDirection: "row", alignItems: "center", gap: 10 },
+  backButton: { minWidth: 44, minHeight: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
   bar: { flex: 1, height: 10, borderRadius: 999, backgroundColor: "#1E293B", overflow: "hidden" },
   barFill: { height: "100%", backgroundColor: "#22C55E" },
   xp: { color: "#FDE68A", fontWeight: "900", fontSize: 12 },
@@ -199,6 +274,12 @@ const styles = StyleSheet.create({
   image: { height: 180, borderRadius: 16, borderWidth: 1, borderColor: "#1E3A8A", alignItems: "center", justifyContent: "center" },
   buildArea: { minHeight: 70, borderRadius: 14, borderWidth: 1, borderColor: "#334155", alignItems: "center", justifyContent: "center", padding: 10 },
   buildText: { color: "#CBD5E1", fontWeight: "700" },
+  sentenceOrderWrap: { gap: 10 },
+  chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
+  wordChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: "#1E293B", borderWidth: 1, borderColor: "#3B82F6" },
+  wordChipText: { color: "#DBEAFE", fontWeight: "700" },
+  selectedChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: "#172554", borderWidth: 1, borderColor: "#60A5FA" },
+  selectedChipText: { color: "#BFDBFE", fontWeight: "700" },
   imageGrid: { gap: 10, flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
   imageCard: { width: "48%", borderRadius: 18, backgroundColor: "#121E36", borderWidth: 1, borderColor: "#2A3A64", padding: 8, gap: 7 },
   imageCardSelected: { borderColor: "#60A5FA", transform: [{ scale: 0.985 }] },

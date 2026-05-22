@@ -37,7 +37,7 @@ function normalizeTaskType(value: unknown): PracticeTaskType {
   const normalized = String(value ?? "").trim().toLowerCase() as PracticeTaskType;
   const allowed: PracticeTaskType[] = [
     "single_choice", "multiple_choice", "fill_in_blank", "matching", "ordering", "speaking", "listening", "writing",
-    "missing_letter", "letter_match", "meaning_match", "word_builder", "daily_challenge",
+    "missing_letter", "letter_match", "meaning_match", "word_builder", "daily_challenge", "sentence_order",
   ];
   return allowed.includes(normalized) ? normalized : "unknown";
 }
@@ -73,6 +73,8 @@ function normalizeTask(raw: unknown, index: number): PracticeTask {
     correctAnswer: toStringOrNull(task.correctAnswer ?? task.answer),
     result: toStringOrNull(task.result),
     meaningEn: toStringOrNull(task.meaningEn ?? task.meaning_en),
+    subtitle: toStringOrNull(task.subtitle),
+    parts: Array.isArray(task.parts) ? task.parts.map((part) => String(part)).filter((part) => part.trim().length > 0) : undefined,
   };
 }
 
