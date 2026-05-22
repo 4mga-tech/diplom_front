@@ -12,6 +12,7 @@ export type PracticeTaskType =
   | "meaning_match"
   | "word_builder"
   | "daily_challenge"
+  | "sentence_order"
   | "unknown";
 
 export type PracticeProgress = {
@@ -47,6 +48,8 @@ export type PracticeTaskOption = {
   imageUrl?: string | null;
   result?: string | null;
   meaningEn?: string | null;
+  subtitle?: string | null;
+  parts?: string[];
 };
 
 export type PracticeTask = {
@@ -59,6 +62,8 @@ export type PracticeTask = {
   correctAnswer: string | null;
   result?: string | null;
   meaningEn?: string | null;
+  subtitle?: string | null;
+  parts?: string[];
 };
 
 export type PracticeRoadmapStage = {

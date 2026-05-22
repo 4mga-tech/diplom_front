@@ -91,7 +91,7 @@ export default function PracticeRoadmapScreen({ practiceId }: Props) {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.topBar}>
-          <Pressable style={styles.back} onPress={() => router.replace("/(tabs)/achievements" as any)}>
+          <Pressable hitSlop={10} style={styles.back} onPress={() => router.replace("/(tabs)/achievements" as any)}>
             <Ionicons name="chevron-back" size={16} color="#DDD6FE" />
             <Text style={styles.backT}>Practice hub</Text>
           </Pressable>
@@ -242,10 +242,13 @@ const styles = StyleSheet.create({
   back: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    minWidth: 44,
+    minHeight: 44,
     gap: 4,
     paddingHorizontal: 10,
     paddingVertical: 7,
-    borderRadius: 999,
+    borderRadius: 22,
     backgroundColor: "rgba(18,24,45,0.9)",
     borderWidth: 1,
     borderColor: "rgba(192,132,252,0.35)",
