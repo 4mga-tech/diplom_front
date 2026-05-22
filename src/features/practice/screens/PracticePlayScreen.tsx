@@ -131,15 +131,17 @@ const apiBaseUrl = (api.defaults.baseURL || "")
   }, [animateFeedback, current, feedback, idx, questionFade, tasks.length]);
 
   const onSentencePartPress = useCallback((word: string, sourceIndex: number) => {
-    if (!current || feedback || current.type !== "sentence_order") return;
+    console.log("isSentenceOrder:", isSentenceOrder, "practiceType:", practice?.type, "currentType:", current?.type);
+    if (!current || feedback || !isSentenceOrder) return;
     console.log("chip pressed", word, sourceIndex);
     setSelectedWordIndexes((previous) => [...previous, sourceIndex]);
-  }, [current, feedback]);
+  }, [current, feedback, isSentenceOrder, practice?.type]);
 
   const onSentencePartPressIn = useCallback((word: string, sourceIndex: number) => {
-    if (!current || feedback || current.type !== "sentence_order") return;
+    console.log("isSentenceOrder:", isSentenceOrder, "practiceType:", practice?.type, "currentType:", current?.type);
+    if (!current || feedback || !isSentenceOrder) return;
     console.log("chip press in", word, sourceIndex);
-  }, [current, feedback]);
+  }, [current, feedback, isSentenceOrder, practice?.type]);
 
   const onSentenceSelectedPress = useCallback((selectionIndex: number) => {
     if (feedback) return;
@@ -147,7 +149,8 @@ const apiBaseUrl = (api.defaults.baseURL || "")
   }, [feedback]);
 
   const onSentenceCheck = useCallback(() => {
-    if (!current || feedback || current.type !== "sentence_order") return;
+    console.log("isSentenceOrder:", isSentenceOrder, "practiceType:", practice?.type, "currentType:", current?.type);
+    if (!current || feedback || !isSentenceOrder) return;
     const selectedAnswerText = selectedWordIndexes.map((wordIndex) => sentenceOrderParts[wordIndex]).filter(Boolean).join(" ").trim();
     const selectedAnswer = selectedAnswerText.toLowerCase();
     const correct = (current.correctAnswer ?? "").trim().toLowerCase();
@@ -166,14 +169,14 @@ const apiBaseUrl = (api.defaults.baseURL || "")
         });
       }
     }, 820);
-  }, [animateFeedback, current, feedback, idx, questionFade, selectedWordIndexes, sentenceOrderParts, tasks.length]);
+  }, [animateFeedback, current, feedback, idx, isSentenceOrder, practice?.type, questionFade, selectedWordIndexes, sentenceOrderParts, tasks.length]);
 
   useEffect(() => {
-    if (!current || current.type !== "sentence_order" || feedback) return;
+    if (!current || !isSentenceOrder || feedback) return;
     if (sentenceOrderParts.length > 0 && selectedWordIndexes.length === sentenceOrderParts.length) {
       onSentenceCheck();
     }
-  }, [current, feedback, onSentenceCheck, selectedWordIndexes.length, sentenceOrderParts.length]);
+  }, [current, feedback, isSentenceOrder, onSentenceCheck, selectedWordIndexes.length, sentenceOrderParts.length]);
 
   useEffect(() => {
     setSelectedWordIndexes([]);
