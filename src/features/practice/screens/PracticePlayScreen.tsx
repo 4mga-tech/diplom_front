@@ -10,6 +10,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 type Props = { practiceId: string; stageId?: string };
 
 function isCorrectAnswer(task: PracticeTask, answerValue: string): boolean {
+  if (task.type === "image_choice") {
+    return answerValue === (task.correctAnswer || "");
+  }
   if (task.type === "sentence_order") {
     return answerValue.trim().toLowerCase() === (task.correctAnswer || "").trim().toLowerCase();
   }
@@ -113,6 +116,14 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
 
   const onPick = useCallback(async (optionId: string) => {
     if (!current || feedback) return;
+    const selectedOption = current.options.find((option) => option.id === optionId);
+    const answerPayload = { questionId: current.id, answer: optionId };
+    console.log("IMAGE SUBMIT", {
+      selectedOptionId: optionId,
+      selectedOption,
+      answerPayload,
+      correctAnswer: current.correctAnswer,
+    });
     const ok = isCorrectAnswer(current, optionId);
     setSelectedOptionId(optionId);
     setFeedback(ok ? "correct" : "wrong");
@@ -191,7 +202,19 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
     if (!practice) return;
     const correctCount = tasks.filter((t) => answers[t.id] && isCorrectAnswer(t, answers[t.id])).length;
     const score = tasks.length ? Math.round((correctCount / tasks.length) * 100) : 0;
-    await practiceService.submitAttempt(practice.id, { score, correctCount, totalCount: tasks.length, stageId });
+    const answersPayload = tasks
+      .filter((task) => typeof answers[task.id] === "string" && answers[task.id].length > 0)
+      .map((task) => ({
+        questionId: task.id,
+        answer: answers[task.id],
+      }));
+    await practiceService.submitAttempt(practice.id, {
+      score,
+      correctCount,
+      totalCount: tasks.length,
+      stageId,
+      answers: answersPayload,
+    });
     router.replace(`/practice/${encodeURIComponent(practiceId)}/roadmap` as any);
   }, [answers, practice, practiceId, router, stageId, tasks]);
 

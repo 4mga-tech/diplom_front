@@ -13,6 +13,7 @@ export type PracticeTaskType =
   | "word_builder"
   | "daily_challenge"
   | "sentence_order"
+  | "image_choice"
   | "unknown";
 
 export type PracticeProgress = {
@@ -88,6 +89,10 @@ export type PracticeAttemptPayload = {
   correctCount: number;
   totalCount: number;
   stageId?: string;
+  answers?: Array<{
+    questionId: string;
+    answer: string;
+  }>;
 };
 
 export type PracticeAttemptResult = {
