@@ -265,7 +265,9 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
           const img = resolveImageUrl(o.imageUrl);
           const status = imageLoadState[o.id] || "loading";
           const isSelected = selectedOptionId === o.id;
-          const isCorrect = feedback && isCorrectAnswer(current, o.id, practice?.type);
+          const isCorrect =
+            feedback === "correct" &&
+            isCorrectAnswer(current, o.id, practice?.type);
           const isWrongSelected = feedback === "wrong" && isSelected;
           return <Pressable
             key={o.id}
@@ -289,7 +291,7 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
               /> : null}
               {status === "loading" && <View style={styles.imageOverlay}><ActivityIndicator size="small" color="#93C5FD" /></View>}
               {(status === "error" || !img) && <View style={styles.imageOverlay}><Ionicons name="image-outline" size={22} color="#94A3B8" /><Text style={styles.fallbackText}>Image unavailable</Text></View>}
-              {isCorrect && feedback && <View style={styles.mark}><Ionicons name="checkmark-circle" size={22} color="#86EFAC" /></View>}
+              {isCorrect ? <View style={styles.mark}><Ionicons name="checkmark-circle" size={22} color="#86EFAC" /></View> : null}
             </View>
           </Pressable>;
         })}
