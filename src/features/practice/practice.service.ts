@@ -76,6 +76,18 @@ function normalizeTask(raw: unknown, index: number): PracticeTask {
   };
 }
 
+
+function normalizeProgress(raw: unknown) {
+  const progress = (raw ?? {}) as Record<string, unknown>;
+  return {
+    completedStages: toNumberOrNull(progress.completedStages) ?? 0,
+    totalStages: toNumberOrNull(progress.totalStages) ?? 0,
+    progressPercent: toNumberOrNull(progress.progressPercent) ?? 0,
+    earnedXp: toNumberOrNull(progress.earnedXp) ?? 0,
+    nextStageId: toStringOrNull(progress.nextStageId),
+  };
+}
+
 function normalizePracticeSummary(raw: unknown): PracticeSummary {
   const item = (raw ?? {}) as Record<string, unknown>;
   return {
@@ -93,6 +105,7 @@ function normalizePracticeSummary(raw: unknown): PracticeSummary {
     difficulty: toStringOrNull(item.difficulty ?? item.level),
     estimatedDurationMinutes: toNumberOrNull(item.estimatedDurationMinutes ?? item.durationMinutes ?? item.duration),
     tasksCount: toNumberOrNull(item.tasksCount ?? item.questionsCount ?? ((item.tasks as unknown[] | undefined)?.length)) ?? 0,
+    progress: item.progress ? normalizeProgress(item.progress) : null,
   };
 }
 
@@ -107,6 +120,7 @@ function normalizeRoadmapStage(raw: unknown, index: number): PracticeRoadmapStag
     order: toNumberOrNull(stage.order ?? index + 1) ?? index + 1,
     xpReward: toNumberOrNull(stage.xpReward ?? stage.xp ?? 0) ?? 0,
     isUnlocked: Boolean(stage.isUnlocked),
+    isCompleted: typeof stage.isCompleted === "boolean" ? stage.isCompleted : undefined,
     questionIds,
   };
 }

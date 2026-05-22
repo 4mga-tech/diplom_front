@@ -14,6 +14,14 @@ export type PracticeTaskType =
   | "daily_challenge"
   | "unknown";
 
+export type PracticeProgress = {
+  completedStages: number;
+  totalStages: number;
+  progressPercent: number;
+  earnedXp: number;
+  nextStageId?: string | null;
+};
+
 export type PracticeSummary = {
   id: string;
   type: string | null;
@@ -29,6 +37,7 @@ export type PracticeSummary = {
   difficulty: string | null;
   estimatedDurationMinutes: number | null;
   tasksCount: number;
+  progress?: PracticeProgress | null;
 };
 
 export type PracticeTaskOption = {
@@ -59,6 +68,7 @@ export type PracticeRoadmapStage = {
   order: number;
   xpReward: number;
   isUnlocked: boolean;
+  isCompleted?: boolean;
   questionIds: string[];
 };
 
