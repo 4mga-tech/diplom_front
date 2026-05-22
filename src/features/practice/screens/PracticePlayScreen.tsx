@@ -204,7 +204,7 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
         <Text style={styles.prompt}>{current.prompt}</Text>
       ) : null}
       {helperSubtitle ? <Text style={styles.subtitle}>{helperSubtitle}</Text> : null}
-      {practice?.type === "image_choice" && <Text style={styles.subtitle}>Pick the image that best matches the prompt.</Text>}
+      {/* {practice?.type === "image_choice" && <Text style={styles.subtitle}>Pick the image that best matches the prompt.</Text>} */}
       {practice?.type === "dialogue_fill" && <View style={styles.dialog}><Text style={styles.bubbleA}>A: {current.prompt}</Text><Text style={styles.bubbleB}>B: ________</Text></View>}
       {isSentenceOrder && <View style={styles.sentenceOrderWrap}>
         <View style={styles.buildArea}>
