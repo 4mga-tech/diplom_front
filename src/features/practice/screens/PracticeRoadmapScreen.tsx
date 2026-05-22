@@ -185,10 +185,11 @@ export default function PracticeRoadmapScreen({ practiceId }: Props) {
                     <Text style={[styles.stageTitle, isLocked && styles.lockedText]}>
                       {stage.title || `Stage ${index + 1}`}
                     </Text>
-                    <Text style={[styles.stageSubtitle, isLocked && styles.lockedText]}>
-                      {isLocked ? "Locked" : isCompleted ? "Completed" : "Ready to play"}
-                      {isSpecial ? " • Milestone" : ""}
-                    </Text>
+                    {stage.subtitle ? (
+  <Text style={[styles.stageTranslation, isLocked && styles.lockedText]}>
+    {stage.subtitle}
+  </Text>
+) : null}
                     <View style={styles.rewardRow}>
                       <Ionicons name="flash" size={12} color={isLocked ? "#64748B" : "#FDE68A"} />
                       <Text style={[styles.rewardText, isLocked && styles.lockedText]}>
@@ -291,6 +292,12 @@ const styles = StyleSheet.create({
     borderColor: "rgba(125,211,252,0.55)",
     borderRadius: 100,
   },
+  stageTranslation: {
+  color: "#94A3B8",
+  fontSize: 11,
+  fontWeight: "600",
+  marginTop: -2,
+},
   connectorFromLeft: { left: 78, transform: [{ rotate: "14deg" }] },
   connectorFromRight: { right: 78, transform: [{ rotate: "-14deg" }] },
   connectorLocked: { borderColor: "rgba(100,116,139,0.45)" },
