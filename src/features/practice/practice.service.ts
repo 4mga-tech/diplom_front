@@ -74,7 +74,7 @@ function normalizeTask(raw: unknown, index: number): PracticeTask {
     result: toStringOrNull(task.result),
     meaningEn: toStringOrNull(task.meaningEn ?? task.meaning_en),
     subtitle: toStringOrNull(task.subtitle),
-    parts: Array.isArray(task.parts) ? task.parts.map((part) => String(part)).filter((part) => part.trim().length > 0) : undefined,
+    parts: Array.isArray(task.parts) ? task.parts.map(String) : undefined,
   };
 }
 
