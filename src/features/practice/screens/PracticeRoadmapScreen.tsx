@@ -64,7 +64,7 @@ export default function PracticeRoadmapScreen({ practiceId }: Props) {
 
   const sortedStages = useMemo(() => [...stages].sort((a, b) => a.order - b.order), [stages]);
   const completedCount = useMemo(
-    () => sortedStages.filter((_, index) => !!sortedStages[index + 1]?.isUnlocked).length,
+    () => sortedStages.filter((stage, index) => (typeof stage.isCompleted === "boolean" ? stage.isCompleted : !!sortedStages[index + 1]?.isUnlocked)).length,
     [sortedStages]
   );
   const totalXp = useMemo(
@@ -113,7 +113,7 @@ export default function PracticeRoadmapScreen({ practiceId }: Props) {
 
         <View style={styles.path}>
           {sortedStages.map((stage, index) => {
-            const isCompleted = !!sortedStages[index + 1]?.isUnlocked;
+            const isCompleted = typeof stage.isCompleted === "boolean" ? stage.isCompleted : !!sortedStages[index + 1]?.isUnlocked;
             const isLocked = !stage.isUnlocked;
             const isActive = stage.isUnlocked && !isCompleted;
             const isSpecial = (index + 1) % 4 === 0;

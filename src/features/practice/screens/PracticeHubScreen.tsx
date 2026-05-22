@@ -10,10 +10,10 @@ const HUB_TYPES = ["dialogue_fill", "image_choice", "sentence_order"] as const;
 
 type DailyTask = { id: string; title: string; progress: number; total: number; xp: number; reset: string; done?: boolean };
 
-const TYPE_META: Record<string, { title: string; subtitle: string; icon: keyof typeof Ionicons.glyphMap; xpHint: string }> = {
-  dialogue_fill: { title: "Dialogue Fill", subtitle: "Pick the natural reply", icon: "chatbubbles-outline", xpHint: "+12 XP" },
-  image_choice: { title: "Image Choice", subtitle: "Match word to visual", icon: "image-outline", xpHint: "+10 XP" },
-  sentence_order: { title: "Sentence Order", subtitle: "Arrange fluent phrases", icon: "reorder-three-outline", xpHint: "+14 XP" },
+const TYPE_META: Record<string, { title: string; subtitle: string; icon: keyof typeof Ionicons.glyphMap }> = {
+  dialogue_fill: { title: "Dialogue Fill", subtitle: "Pick the natural reply", icon: "chatbubbles-outline" },
+  image_choice: { title: "Image Choice", subtitle: "Match word to visual", icon: "image-outline" },
+  sentence_order: { title: "Sentence Order", subtitle: "Arrange fluent phrases", icon: "reorder-three-outline" },
 };
 
 export default function PracticeHubScreen() {
@@ -97,11 +97,15 @@ export default function PracticeHubScreen() {
           {mappedModes.map((practice, index) => {
             const isQuick = practice.type === "quick_challenge";
             const meta = isQuick
-              ? { title: "Quick Challenge", subtitle: "Daily mixed sprint", icon: "flash-outline" as const, xpHint: "+20 XP" }
+              ? { title: "Quick Challenge", subtitle: "Daily mixed sprint", icon: "flash-outline" as const }
               : TYPE_META[practice.type ?? ""];
             if (!meta) return null;
 
-            const rowProgress = Math.min(practice.stageCount / 10, 1);
+            const progress = practice.progress;
+            const completedStages = progress?.completedStages ?? 0;
+            const totalStages = progress?.totalStages ?? (practice.tasksCount || 0);
+            const earnedXp = progress?.earnedXp ?? (practice.xpReward ?? 0);
+            const rowProgress = Math.max(0, Math.min((progress?.progressPercent ?? 0) / 100, 1));
             return (
               <Pressable
                 key={practice.id}
@@ -115,7 +119,7 @@ export default function PracticeHubScreen() {
                     <Text style={styles.rowTitle}>{meta.title}</Text>
                     <Ionicons name="chevron-forward" size={16} color="#7F92BA" />
                   </View>
-                  <Text style={styles.rowMeta}>{practice.stageCount} stages • {meta.xpHint}</Text>
+                  <Text style={styles.rowMeta}>{`${completedStages}/${totalStages} stages`} • {`${earnedXp} XP earned`}</Text>
                   <View style={styles.rowProgressTrack}><View style={[styles.rowProgressBar, { width: `${rowProgress * 100}%` }]} /></View>
                 </View>
               </Pressable>
