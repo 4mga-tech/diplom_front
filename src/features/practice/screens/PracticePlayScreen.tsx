@@ -18,6 +18,14 @@ function isCorrectAnswer(task: PracticeTask, answerValue: string): boolean {
   return (selectedOption?.text || "").trim().toLowerCase() === (task.correctAnswer || "").trim().toLowerCase();
 }
 
+
+
+const getSentenceParts = (task: PracticeTask): string[] => {
+  if (task.parts?.length) return task.parts;
+  const first = task.options?.[0]?.text;
+  if (first?.includes("|")) return first.split("|").map((x) => x.trim()).filter(Boolean);
+  return (task.correctAnswer ?? "").split(" ").filter(Boolean);
+};
 export default function PracticePlayScreen({ practiceId, stageId }: Props) {
   const router = useRouter();
   const [practice, setPractice] = useState<PracticeDetails | null>(null);
@@ -53,18 +61,11 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
   }, [practice, stageId]);
 
   const current = tasks[idx];
-  const isSentenceOrder = current?.type === "sentence_order";
+  const isSentenceOrder = practice?.type === "sentence_order" || current?.type === "sentence_order";
   const sentenceOrderParts = useMemo(() => {
-    if (!current || current.type !== "sentence_order") return [];
-    if (Array.isArray(current.parts) && current.parts.length > 0) {
-      return current.parts.map((part) => part.trim()).filter(Boolean);
-    }
-    const optionText = current.options[0]?.text?.trim();
-    if (optionText && optionText.includes("|")) {
-      return optionText.split("|").map((part) => part.trim()).filter(Boolean);
-    }
-    return (current.correctAnswer ?? "").split(/\s+/).map((part) => part.trim()).filter(Boolean);
-  }, [current]);
+    if (!current || !isSentenceOrder) return [];
+    return getSentenceParts(current);
+  }, [current, isSentenceOrder]);
   const sentenceAnswerText = useMemo(() => selectedWords.join(" ").trim(), [selectedWords]);
   const helperSubtitle = useMemo(() => {
     if (!current) return null;
@@ -172,6 +173,11 @@ const apiBaseUrl = (api.defaults.baseURL || "")
     }
   }, [current, feedback, onSentenceCheck, selectedWords.length, sentenceOrderParts.length]);
 
+  useEffect(() => {
+    setSelectedWords([]);
+    setSelectedIndexes([]);
+  }, [idx]);
+
   useEffect(() => () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
   }, []);
@@ -209,19 +215,17 @@ const apiBaseUrl = (api.defaults.baseURL || "")
             })}
           </View>
         </View>
-        <View style={styles.chipsRow}>
+        {sentenceOrderParts.length === 0 ? <Text style={styles.buildText}>No word parts configured.</Text> : <View style={styles.chipsRow}>
           {sentenceOrderParts.map((part, sourceIndex) => {
             if (selectedIndexes.includes(sourceIndex)) return null;
             return <Pressable key={`${part}-${sourceIndex}`} style={styles.wordChip} onPress={() => onSentencePartPress(part, sourceIndex)}><Text style={styles.wordChipText}>{part}</Text></Pressable>;
           })}
-        </View>
+        </View>}
       </View>}
       {practice?.type === "image_choice" && <View style={styles.imageGrid}>
         {current.options.map((o) => {
-          console.log("OPTION:", o);
-console.log("RAW IMAGE URL:", o.imageUrl);
+
           const img = resolveImageUrl(o.imageUrl);
-          console.log("IMAGE URL:", resolveImageUrl(o.imageUrl));
           const status = imageLoadState[o.id] || "loading";
           const isSelected = selectedOptionId === o.id;
           const isCorrect = feedback && isCorrectAnswer(current, o.id);
