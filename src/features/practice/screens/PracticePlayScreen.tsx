@@ -34,8 +34,7 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
-  const [selectedWords, setSelectedWords] = useState<string[]>([]);
-  const [selectedIndexes, setSelectedIndexes] = useState<number[]>([]);
+  const [selectedWordIndexes, setSelectedWordIndexes] = useState<number[]>([]);
   const [imageLoadState, setImageLoadState] = useState<Record<string, "loading" | "loaded" | "error">>({});
   const [questionFade] = useState(new Animated.Value(1));
   const [correctScale] = useState(new Animated.Value(1));
@@ -66,7 +65,7 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
     if (!current || !isSentenceOrder) return [];
     return getSentenceParts(current);
   }, [current, isSentenceOrder]);
-  const sentenceAnswerText = useMemo(() => selectedWords.join(" ").trim(), [selectedWords]);
+  const sentenceAnswerText = useMemo(() => selectedWordIndexes.map((wordIndex) => sentenceOrderParts[wordIndex]).filter(Boolean).join(" ").trim(), [selectedWordIndexes, sentenceOrderParts]);
   const helperSubtitle = useMemo(() => {
     if (!current) return null;
     const taskSubtitle = current.subtitle?.trim();
@@ -131,21 +130,20 @@ const apiBaseUrl = (api.defaults.baseURL || "")
     }, 820);
   }, [animateFeedback, current, feedback, idx, questionFade, tasks.length]);
 
-  const onSentencePartPress = useCallback((part: string, sourceIndex: number) => {
+  const onSentencePartPress = useCallback((word: string, sourceIndex: number) => {
     if (!current || feedback || current.type !== "sentence_order") return;
-    setSelectedWords((previous) => [...previous, part]);
-    setSelectedIndexes((previous) => [...previous, sourceIndex]);
+    console.log("chip pressed", word, sourceIndex);
+    setSelectedWordIndexes((previous) => [...previous, sourceIndex]);
   }, [current, feedback]);
 
   const onSentenceSelectedPress = useCallback((selectionIndex: number) => {
     if (feedback) return;
-    setSelectedWords((previous) => previous.filter((_, index) => index !== selectionIndex));
-    setSelectedIndexes((previous) => previous.filter((_, index) => index !== selectionIndex));
+    setSelectedWordIndexes((previous) => previous.filter((_, index) => index !== selectionIndex));
   }, [feedback]);
 
   const onSentenceCheck = useCallback(() => {
     if (!current || feedback || current.type !== "sentence_order") return;
-    const selectedAnswerText = selectedWords.join(" ").trim();
+    const selectedAnswerText = selectedWordIndexes.map((wordIndex) => sentenceOrderParts[wordIndex]).filter(Boolean).join(" ").trim();
     const selectedAnswer = selectedAnswerText.toLowerCase();
     const correct = (current.correctAnswer ?? "").trim().toLowerCase();
     const isCorrect = selectedAnswer.length > 0 && selectedAnswer === correct;
@@ -155,8 +153,7 @@ const apiBaseUrl = (api.defaults.baseURL || "")
     animateFeedback(isCorrect);
     timeoutRef.current = setTimeout(() => {
       setFeedback(null);
-      setSelectedWords([]);
-      setSelectedIndexes([]);
+      setSelectedWordIndexes([]);
       if (idx < tasks.length - 1) {
         Animated.timing(questionFade, { toValue: 0, duration: 160, useNativeDriver: true }).start(() => {
           setIdx((v) => v + 1);
@@ -164,18 +161,17 @@ const apiBaseUrl = (api.defaults.baseURL || "")
         });
       }
     }, 820);
-  }, [animateFeedback, current, feedback, idx, questionFade, selectedWords, tasks.length]);
+  }, [animateFeedback, current, feedback, idx, questionFade, selectedWordIndexes, sentenceOrderParts, tasks.length]);
 
   useEffect(() => {
     if (!current || current.type !== "sentence_order" || feedback) return;
-    if (sentenceOrderParts.length > 0 && selectedWords.length === sentenceOrderParts.length) {
+    if (sentenceOrderParts.length > 0 && selectedWordIndexes.length === sentenceOrderParts.length) {
       onSentenceCheck();
     }
-  }, [current, feedback, onSentenceCheck, selectedWords.length, sentenceOrderParts.length]);
+  }, [current, feedback, onSentenceCheck, selectedWordIndexes.length, sentenceOrderParts.length]);
 
   useEffect(() => {
-    setSelectedWords([]);
-    setSelectedIndexes([]);
+    setSelectedWordIndexes([]);
   }, [idx]);
 
   useEffect(() => () => {
@@ -210,14 +206,15 @@ const apiBaseUrl = (api.defaults.baseURL || "")
       {isSentenceOrder && <View style={styles.sentenceOrderWrap}>
         <View style={styles.buildArea}>
           <View style={styles.chipsRow}>
-            {selectedWords.length === 0 ? <Text style={styles.buildText}>Tap words to build sentence</Text> : selectedWords.map((selectedWord, selectionIndex) => {
-              return <Pressable key={`${selectedWord}-${selectionIndex}`} style={styles.selectedChip} onPress={() => onSentenceSelectedPress(selectionIndex)}><Text style={styles.selectedChipText}>{selectedWord}</Text></Pressable>;
+            {selectedWordIndexes.length === 0 ? <Text style={styles.buildText}>Tap words to build sentence</Text> : selectedWordIndexes.map((sourceIndex, selectionIndex) => {
+              const selectedWord = sentenceOrderParts[sourceIndex];
+              return <Pressable key={`${selectedWord}-${sourceIndex}-${selectionIndex}`} style={styles.selectedChip} onPress={() => onSentenceSelectedPress(selectionIndex)}><Text style={styles.selectedChipText}>{selectedWord}</Text></Pressable>;
             })}
           </View>
         </View>
         {sentenceOrderParts.length === 0 ? <Text style={styles.buildText}>No word parts configured.</Text> : <View style={styles.chipsRow}>
           {sentenceOrderParts.map((part, sourceIndex) => {
-            if (selectedIndexes.includes(sourceIndex)) return null;
+            if (selectedWordIndexes.includes(sourceIndex)) return null;
             return <Pressable key={`${part}-${sourceIndex}`} style={styles.wordChip} onPress={() => onSentencePartPress(part, sourceIndex)}><Text style={styles.wordChipText}>{part}</Text></Pressable>;
           })}
         </View>}
@@ -260,7 +257,7 @@ const apiBaseUrl = (api.defaults.baseURL || "")
       </View>}
     </Animated.View>
 
-    {isSentenceOrder ? <Pressable style={styles.finish} onPress={onSentenceCheck} disabled={sentenceAnswerText.length === 0 || Boolean(feedback)}><Text style={styles.finishText}>Check answer</Text></Pressable> : null}
+    {isSentenceOrder ? <Pressable style={styles.finish} onPress={onSentenceCheck} disabled={sentenceAnswerText.length === 0 || feedback !== null}><Text style={styles.finishText}>Check answer</Text></Pressable> : null}
     {practice?.type !== "image_choice" && practice?.type !== "sentence_order" && <View style={styles.options}>{current.options.map((o) => <Pressable key={o.id} style={styles.opt} onPress={() => onPick(o.id)}><Text style={styles.optText}>{o.text}</Text></Pressable>)}</View>}
     {feedback === "correct" && <Animated.View style={[styles.xpPop, { opacity: xpPop, transform: [{ translateY: xpPop.interpolate({ inputRange: [0, 1], outputRange: [16, -8] }) }] }]}><Text style={styles.xpPopText}>+{stageXp} XP</Text></Animated.View>}
     {isLast && answers[current.id] && <Pressable style={styles.finish} onPress={() => void onFinish()}><Text style={styles.finishText}>Complete Stage</Text></Pressable>}
