@@ -12,7 +12,7 @@ type Props = { practiceId: string; stageId?: string };
 
 function isCorrectAnswer(task: PracticeTask, answerValue: string, practiceType?: string | null): boolean {
   if (task.type === "image_choice" || practiceType === "image_choice") {
-    return answerValue === (task.correctAnswer || "");
+    return answerValue === (task.correctOptionId || task.correctAnswer || "");
   }
   if (task.type === "sentence_order") {
     return answerValue.trim().toLowerCase() === (task.correctAnswer || "").trim().toLowerCase();
@@ -24,6 +24,21 @@ function isCorrectAnswer(task: PracticeTask, answerValue: string, practiceType?:
   const selectedOption = task.options.find((o) => o.id === answerValue);
   return (selectedOption?.text || "").trim().toLowerCase() === (task.correctAnswer || "").trim().toLowerCase();
 }
+
+
+function getAnswerValueForSubmission(task: PracticeTask, optionId: string, practiceType?: string | null): string {
+  const selectedOption = task.options.find((o) => o.id === optionId);
+  const selectedText = selectedOption?.text ?? "";
+  const resolvedType = String(practiceType ?? task.type ?? "").toLowerCase();
+
+  if (resolvedType === "audio_choice") return selectedText;
+  if (resolvedType === "dialogue_fill") return selectedText;
+  if (resolvedType === "missing_word") return selectedText;
+  if (resolvedType === "image_choice") return optionId;
+
+  return optionId;
+}
+
 
 
 
@@ -176,7 +191,7 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
     if (!current || feedback) return;
     const selectedOption = current.options.find((o) => o.id === optionId);
     const selectedText = selectedOption?.text ?? "";
-    const answerValue = isAudioChoice ? selectedText : optionId;
+    const answerValue = getAnswerValueForSubmission(current, optionId, practice?.type);
     const ok = isCorrectAnswer(current, answerValue, practice?.type);
     setSelectedOptionId(optionId);
     setSelectedOptionText(selectedText || null);
@@ -279,13 +294,16 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
         questionId: task.id,
         answer: answers[task.id],
       }));
-    await practiceService.submitAttempt(practice.id, {
+    const payload = {
       score,
       correctCount,
       totalCount: tasks.length,
       stageId,
       answers: answersPayload,
-    });
+    };
+    console.log("PRACTICE SUBMIT", payload);
+    await practiceService.submitAttempt(practice.id, payload);
+
     router.replace(`/practice/${encodeURIComponent(practiceId)}/roadmap` as any);
   }, [answers, practice, practiceId, router, stageId, tasks]);
 
