@@ -3,6 +3,7 @@ import { practiceService } from "@/src/features/practice/practice.service";
 import { PracticeDetails, PracticeTask } from "@/src/features/practice/practice.types";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { Audio } from "expo-av";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,6 +16,9 @@ function isCorrectAnswer(task: PracticeTask, answerValue: string, practiceType?:
   }
   if (task.type === "sentence_order") {
     return answerValue.trim().toLowerCase() === (task.correctAnswer || "").trim().toLowerCase();
+  }
+  if (task.type === "audio_choice" || practiceType === "audio_choice") {
+    return answerValue === (task.correctAnswer || "");
   }
   if (task.correctOptionId) return task.correctOptionId === answerValue;
   const selectedOption = task.options.find((o) => o.id === answerValue);
@@ -44,6 +48,9 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
   const [shakeX] = useState(new Animated.Value(0));
   const [xpPop] = useState(new Animated.Value(0));
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const [audioPlaying, setAudioPlaying] = useState(false);
+  const [audioLoading, setAudioLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -64,6 +71,7 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
 
   const current = tasks[idx];
   const isSentenceOrder = practice?.type === "sentence_order" || current?.type === "sentence_order";
+  const isAudioChoice = practice?.type === "audio_choice" || current?.type === "audio_choice";
   const supportsRetry = !isSentenceOrder;
   const sentenceOrderParts = useMemo(() => {
     if (!current || !isSentenceOrder) return [];
@@ -81,6 +89,54 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
   const apiBaseUrl = (api.defaults.baseURL || "")
     .replace(/\/api\/?$/, "")
     .replace(/\/+$/, ""); const stageXp = practice?.roadmap.find((x) => x.id === stageId)?.xpReward ?? 12;
+
+  const resolveAudioUrl = useCallback((audioUrl?: string | null) => {
+    if (!audioUrl) return null;
+    if (/^https?:\/\//i.test(audioUrl)) return audioUrl;
+    if (!apiBaseUrl) return audioUrl;
+    return `${apiBaseUrl}${audioUrl.startsWith("/") ? audioUrl : `/${audioUrl}`}`;
+  }, [apiBaseUrl]);
+
+  const unloadSound = useCallback(async () => {
+    if (!soundRef.current) return;
+    await soundRef.current.stopAsync().catch(() => undefined);
+    await soundRef.current.unloadAsync().catch(() => undefined);
+    soundRef.current.setOnPlaybackStatusUpdate(null);
+    soundRef.current = null;
+    setAudioPlaying(false);
+    setAudioLoading(false);
+  }, []);
+
+  const onPlayAudio = useCallback(async () => {
+    if (!current || !isAudioChoice) return;
+    const uri = resolveAudioUrl(current.audioUrl);
+    if (!uri) return;
+
+    setAudioLoading(true);
+    await unloadSound();
+
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        { uri },
+        { shouldPlay: true },
+        (status) => {
+          if (!status.isLoaded) {
+            if (status.error) setAudioPlaying(false);
+            return;
+          }
+          setAudioPlaying(status.isPlaying);
+          if (status.didJustFinish) setAudioPlaying(false);
+        },
+      );
+      soundRef.current = sound;
+      setAudioPlaying(true);
+    } catch (error) {
+      console.log("Failed to play audio", error);
+      setAudioPlaying(false);
+    } finally {
+      setAudioLoading(false);
+    }
+  }, [current, isAudioChoice, resolveAudioUrl, unloadSound]);
 
   const resolveImageUrl = useCallback((imageUrl?: string | null) => {
     if (!imageUrl) return null;
@@ -121,7 +177,9 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
     setSelectedOptionId(optionId);
     setFeedback(ok ? "correct" : "wrong");
     if (ok) {
-      setAnswers((s) => ({ ...s, [current.id]: optionId }));
+      const selectedOption = current.options.find((o) => o.id === optionId);
+      const answerValue = isAudioChoice ? (selectedOption?.text ?? optionId) : optionId;
+      setAnswers((s) => ({ ...s, [current.id]: answerValue }));
     }
     animateFeedback(ok);
     if (!ok) return;
@@ -135,7 +193,7 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
         });
       }
     }, 820);
-  }, [animateFeedback, current, feedback, idx, questionFade, tasks.length]);
+  }, [animateFeedback, current, feedback, idx, isAudioChoice, questionFade, tasks.length]);
 
   const onSentencePartPress = useCallback((sourceIndex: number) => {
     if (!current || feedback || !isSentenceOrder) return;
@@ -189,7 +247,12 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
 
   useEffect(() => () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-  }, []);
+    void unloadSound();
+  }, [unloadSound]);
+
+  useEffect(() => {
+    void unloadSound();
+  }, [current?.id, unloadSound]);
 
   const onFinish = useCallback(async () => {
     if (!practice) return;
@@ -246,6 +309,15 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
           })}
         </View>}
       </View>}
+      {isAudioChoice && <View style={styles.audioChoiceWrap}>
+        <View style={styles.audioCard}>
+          <Pressable style={[styles.playButton, audioPlaying && styles.playButtonActive]} onPress={() => void onPlayAudio()} disabled={audioLoading}>
+            {audioLoading ? <ActivityIndicator color="#DBEAFE" /> : <Ionicons name={audioPlaying ? "refresh" : "play"} size={30} color="#DBEAFE" />}
+          </Pressable>
+          <Text style={styles.audioHint}>Listen carefully</Text>
+          <Text style={styles.audioSubHint}>Choose the word you hear</Text>
+        </View>
+      </View>}
       {practice?.type === "image_choice" && <View style={styles.imageGrid}>
         {current.options.map((o) => {
 
@@ -290,7 +362,7 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
     {practice?.type === "image_choice" && feedback === "correct" ? <View style={styles.feedbackWrap}><Text style={styles.feedbackCorrectText}>Correct!</Text></View> : null}
     {isSentenceOrder ? <Pressable style={[styles.finish, (sentenceAnswerText.length === 0 || feedback !== null) && styles.finishDisabled]} onPress={onSentenceCheck} disabled={sentenceAnswerText.length === 0 || feedback !== null}><Text style={styles.finishText}>Check answer</Text></Pressable> : null}
     {isSentenceOrder && feedback === "wrong" ? <Pressable style={styles.tryAgainButton} onPress={onSentenceTryAgain}><Text style={styles.finishText}>Try Again</Text></Pressable> : null}
-    {practice?.type !== "image_choice" && practice?.type !== "sentence_order" && <View style={styles.options}>{current.options.map((o) => {
+    {practice?.type !== "image_choice" && practice?.type !== "sentence_order" && <View style={[styles.options, isAudioChoice && styles.audioOptions]}>{current.options.map((o) => {
       const isSelected = selectedOptionId === o.id;
       const isCorrect = feedback === "correct" && isSelected;
       const isWrong = feedback === "wrong" && isSelected;
@@ -340,7 +412,14 @@ const styles = StyleSheet.create({
   imageOverlay: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(10,19,37,0.75)", gap: 4 },
   fallbackText: { color: "#94A3B8", fontSize: 11, fontWeight: "600" },
   mark: { position: "absolute", top: 6, right: 6, backgroundColor: "rgba(15,23,42,0.85)", borderRadius: 999, padding: 2 },
+  audioChoiceWrap: { alignItems: "center", marginBottom: 8 },
+  audioCard: { width: "100%", borderRadius: 20, borderWidth: 1, borderColor: "#334155", backgroundColor: "#0B162A", paddingVertical: 22, paddingHorizontal: 16, alignItems: "center", gap: 10 },
+  playButton: { width: 92, height: 92, borderRadius: 46, backgroundColor: "#1D4ED8", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#60A5FA" },
+  playButtonActive: { backgroundColor: "#1E40AF" },
+  audioHint: { color: "#E2E8F0", fontSize: 16, fontWeight: "800" },
+  audioSubHint: { color: "#93C5FD", fontSize: 13, fontWeight: "600" },
   options: { gap: 10 },
+  audioOptions: { marginTop: 4 },
   opt: { borderRadius: 14, backgroundColor: "#12233D", borderWidth: 1, borderColor: "#2B3D5B", padding: 14 },
   optCorrect: { borderColor: "#22C55E", backgroundColor: "#14532D" },
   optWrong: { borderColor: "#EF4444", backgroundColor: "#7F1D1D" },

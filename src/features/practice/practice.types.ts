@@ -14,6 +14,7 @@ export type PracticeTaskType =
   | "daily_challenge"
   | "sentence_order"
   | "image_choice"
+  | "audio_choice"
   | "unknown";
 
 export type PracticeProgress = {
@@ -65,6 +66,7 @@ export type PracticeTask = {
   meaningEn?: string | null;
   subtitle?: string | null;
   parts?: string[];
+  audioUrl?: string | null;
 };
 
 export type PracticeRoadmapStage = {

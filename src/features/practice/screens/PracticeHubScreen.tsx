@@ -6,7 +6,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const HUB_TYPES = ["dialogue_fill", "image_choice", "sentence_order"] as const;
+const HUB_TYPES = ["dialogue_fill", "image_choice", "sentence_order", "audio_choice"] as const;
 
 type DailyTask = { id: string; title: string; progress: number; total: number; xp: number; reset: string; done?: boolean };
 
@@ -14,6 +14,7 @@ const TYPE_META: Record<string, { title: string; subtitle: string; icon: keyof t
   dialogue_fill: { title: "Dialogue Fill", subtitle: "Pick the natural reply", icon: "chatbubbles-outline" },
   image_choice: { title: "Image Choice", subtitle: "Match word to visual", icon: "image-outline" },
   sentence_order: { title: "Sentence Order", subtitle: "Arrange fluent phrases", icon: "reorder-three-outline" },
+  audio_choice: { title: "Сонсож сонгох", subtitle: "Listen and choose the correct word", icon: "volume-high-outline" },
 };
 
 export default function PracticeHubScreen() {
