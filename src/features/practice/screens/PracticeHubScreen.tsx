@@ -14,7 +14,7 @@ const TYPE_META: Record<string, { title: string; subtitle: string; icon: keyof t
   dialogue_fill: { title: "Dialogue Fill", subtitle: "Pick the natural reply", icon: "chatbubbles-outline" },
   image_choice: { title: "Image Choice", subtitle: "Match word to visual", icon: "image-outline" },
   sentence_order: { title: "Sentence Order", subtitle: "Arrange fluent phrases", icon: "reorder-three-outline" },
-  audio_choice: { title: "Сонсож сонгох", subtitle: "Listen and choose the correct word", icon: "volume-high-outline" },
+  audio_choice: { title: "Listen & Choose", subtitle: "Listen and choose the correct word", icon: "volume-high-outline" },
 };
 
 export default function PracticeHubScreen() {

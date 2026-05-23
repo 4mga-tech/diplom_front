@@ -18,7 +18,7 @@ function isCorrectAnswer(task: PracticeTask, answerValue: string, practiceType?:
     return answerValue.trim().toLowerCase() === (task.correctAnswer || "").trim().toLowerCase();
   }
   if (task.type === "audio_choice" || practiceType === "audio_choice") {
-    return answerValue === (task.correctAnswer || "");
+    return answerValue.trim().toLowerCase() === (task.correctAnswer || "").trim().toLowerCase();
   }
   if (task.correctOptionId) return task.correctOptionId === answerValue;
   const selectedOption = task.options.find((o) => o.id === answerValue);
@@ -41,6 +41,7 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [selectedOptionText, setSelectedOptionText] = useState<string | null>(null);
   const [selectedWordIndexes, setSelectedWordIndexes] = useState<number[]>([]);
   const [imageLoadState, setImageLoadState] = useState<Record<string, "loading" | "loaded" | "error">>({});
   const [questionFade] = useState(new Animated.Value(1));
@@ -173,12 +174,22 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
 
   const onPick = useCallback(async (optionId: string) => {
     if (!current || feedback) return;
-    const ok = isCorrectAnswer(current, optionId, practice?.type);
+    const selectedOption = current.options.find((o) => o.id === optionId);
+    const selectedText = selectedOption?.text ?? "";
+    const answerValue = isAudioChoice ? selectedText : optionId;
+    const ok = isCorrectAnswer(current, answerValue, practice?.type);
     setSelectedOptionId(optionId);
+    setSelectedOptionText(selectedText || null);
     setFeedback(ok ? "correct" : "wrong");
+    if (isAudioChoice) {
+      console.log("AUDIO CHECK", {
+        selectedOptionId: optionId,
+        selectedText,
+        correctAnswer: current.correctAnswer,
+        isCorrect: ok,
+      });
+    }
     if (ok) {
-      const selectedOption = current.options.find((o) => o.id === optionId);
-      const answerValue = isAudioChoice ? (selectedOption?.text ?? optionId) : optionId;
       setAnswers((s) => ({ ...s, [current.id]: answerValue }));
     }
     animateFeedback(ok);
@@ -186,6 +197,7 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
     timeoutRef.current = setTimeout(() => {
       setFeedback(null);
       setSelectedOptionId(null);
+      setSelectedOptionText(null);
       if (idx < tasks.length - 1) {
         Animated.timing(questionFade, { toValue: 0, duration: 160, useNativeDriver: true }).start(() => {
           setIdx((v) => v + 1);
@@ -212,6 +224,7 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
     const correct = (current.correctAnswer ?? "").trim().toLowerCase();
     const isCorrect = selectedAnswer.length > 0 && selectedAnswer === correct;
     setSelectedOptionId(null);
+    setSelectedOptionText(null);
     setFeedback(isCorrect ? "correct" : "wrong");
     if (isCorrect) {
       setAnswers((s) => ({ ...s, [current.id]: selectedAnswerText }));
@@ -234,11 +247,13 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
     setFeedback(null);
     setSelectedWordIndexes([]);
     setSelectedOptionId(null);
+    setSelectedOptionText(null);
   }, []);
 
   const onImageTryAgain = useCallback(() => {
     setFeedback(null);
     setSelectedOptionId(null);
+    setSelectedOptionText(null);
   }, []);
 
   useEffect(() => {
