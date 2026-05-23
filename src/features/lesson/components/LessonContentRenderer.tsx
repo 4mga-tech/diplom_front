@@ -226,7 +226,12 @@ function TextContentBlock({
 }
 
 function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps) {
-  const letters = asArray<any>(content.letters);
+  const letters =
+    asArray<any>(content.letters).length > 0
+      ? asArray<any>(content.letters)
+      : asArray<any>(content.items).length > 0
+        ? asArray<any>(content.items)
+        : asArray<any>(content.rows);
 
   if (letters.length === 0) {
     return <EmptyBlock message="No letters available yet." styles={styles} />;
@@ -248,10 +253,23 @@ function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps)
           {!!letter?.nameMn ? (
             <BlockText styles={styles}>Call: {letter.nameMn}</BlockText>
           ) : null}
+          {!!letter?.transcription ? (
+            <BlockText styles={styles}>
+              Transcription: {letter.transcription}
+            </BlockText>
+          ) : null}
           {!!letter?.pronunciation ? (
             <BlockText styles={styles}>
               Pronunciation: {letter.pronunciation}
             </BlockText>
+          ) : null}
+          {!!letter?.audioUrl ? (
+            <LessonActionButton
+              label="Play audio"
+              onPress={() => openLink(letter.audioUrl)}
+              styles={styles}
+              icon="play"
+            />
           ) : null}
         </View>
       ))}
@@ -1135,10 +1153,23 @@ function VideoContentBlock({ content, styles }: ContentBlockProps) {
 }
 
 function QuizContentBlock({
+  item,
   styles,
   onOpenQuiz,
   isFinalExam,
 }: ContentBlockProps) {
+  const quizContent = (item?.content ?? {}) as any;
+  const hasQuizLink = Boolean(
+    quizContent.quiz_link ??
+      quizContent.quizLink ??
+      quizContent.quizId ??
+      quizContent.quiz_id ??
+      quizContent.url,
+  );
+  if (!hasQuizLink) {
+    return null;
+  }
+
   return (
     <View style={styles.stack}>
       <BlockText styles={styles}>
