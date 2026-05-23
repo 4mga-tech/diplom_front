@@ -196,14 +196,6 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
     setSelectedOptionId(optionId);
     setSelectedOptionText(selectedText || null);
     setFeedback(ok ? "correct" : "wrong");
-    if (isAudioChoice) {
-      console.log("AUDIO CHECK", {
-        selectedOptionId: optionId,
-        selectedText,
-        correctAnswer: current.correctAnswer,
-        isCorrect: ok,
-      });
-    }
     if (ok) {
       setAnswers((s) => ({ ...s, [current.id]: answerValue }));
     }
@@ -301,7 +293,6 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
       stageId,
       answers: answersPayload,
     };
-    console.log("PRACTICE SUBMIT", payload);
     await practiceService.submitAttempt(practice.id, payload);
 
     router.replace(`/practice/${encodeURIComponent(practiceId)}/roadmap` as any);

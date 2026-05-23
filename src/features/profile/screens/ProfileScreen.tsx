@@ -17,16 +17,7 @@ import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { TextInput } from "react-native-gesture-handler";
 
 type LearningStats = {
@@ -60,35 +51,15 @@ function StatCard({
   );
 }
 
-function InfoRow({
-  icon,
-  iconColor,
-  label,
-  value,
-  styles,
-  theme,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  iconColor: string;
-  label: string;
-  value: string;
-  styles: ReturnType<typeof createStyles>;
-  theme: AppTheme;
-}) {
-  return (
-    <LinearGradient colors={theme.colors.cardGradient} style={styles.infoCard}>
-      <View style={styles.infoRow}>
-        <View style={styles.infoIconWrap}>
-          <Ionicons name={icon} size={18} color={iconColor} />
-        </View>
-        <View style={styles.infoTextWrap}>
-          <Text style={styles.infoLabel}>{label}</Text>
-          <Text style={styles.infoValue}>{value}</Text>
-        </View>
-      </View>
-    </LinearGradient>
-  );
-}
+const MOCK_RANKING = [
+  { rank: 1, name: "Mino", xp: 3820 },
+  { rank: 2, name: "Jennie", xp: 2500 },
+  { rank: 3, name: "Vinxen", xp: 2200 },
+  { rank: 4, name: "Zico", xp: 1800 },
+  { rank: 5, name: "Loopy", xp: 1600 },
+  { rank: 6, name: "You", xp: 1500, isCurrentUser: true },
+  { rank: 7, name: "Flowsik", xp: 800 },
+];
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -358,8 +329,7 @@ export default function ProfileScreen() {
               <View style={styles.nameDisplay}>
                 <Text style={styles.nameText}>{user?.name || "No name"}</Text>
                 <Text style={styles.profileSubtext}>
-                  Keep your photo and display name updated for a polished
-                  profile.
+                  {user?.email || "No email"}
                 </Text>
                 {isRefreshingProfile && isHydrated ? (
                   <Text style={styles.refreshingText}>Refreshing profile...</Text>
@@ -404,86 +374,33 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
-          <Text style={styles.sectionSubtitle}>Your saved profile details</Text>
-          <View style={styles.infoList}>
-            <InfoRow
-              icon="mail"
-              iconColor="#60A5FA"
-              label="E-mail"
-              value={user?.email || "-"}
-              styles={styles}
-              theme={theme}
-            />
-
-            <LinearGradient
-              colors={theme.colors.cardGradient}
-              style={styles.achievementsCard}
-            >
-              <View style={styles.achievementsHeader}>
-                <View>
-                  <Text style={styles.achievementsTitle}>Achievements</Text>
-                  <Text style={styles.achievementsSubtitle}>
-                    Small milestones from your journey
-                  </Text>
-                </View>
-                <View style={styles.achievementsHeaderIcon}>
-                  <Ionicons name="ribbon-outline" size={18} color="#FBBF24" />
-                </View>
-              </View>
-
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.badgesRow}>
-                  <View style={styles.badgeCard}>
-                    <View
-                      style={[
-                        styles.badgeIconWrap,
-                        { backgroundColor: "rgba(250,204,21,0.18)" },
-                      ]}
-                    >
-                      <Ionicons
-                        name="trophy-outline"
-                        size={22}
-                        color="#FACC15"
-                      />
+          <Text style={styles.sectionTitle}>Weekly Ranking</Text>
+          <Text style={styles.sectionSubtitle}>You are #6 this week</Text>
+          <LinearGradient colors={theme.colors.cardGradient} style={styles.rankingCard}>
+            <View style={styles.topThreeRow}>
+              {[MOCK_RANKING[1], MOCK_RANKING[0], MOCK_RANKING[2]].map((entry) => {
+                const isFirst = entry.rank === 1;
+                return (
+                  <View key={entry.rank} style={styles.topThreeItem}>
+                    <View style={[styles.topAvatar, isFirst && styles.topAvatarFirst]}>
+                      <Text style={styles.topAvatarRank}>#{entry.rank}</Text>
                     </View>
-                    <Text style={styles.badgeTitle}>Champion</Text>
-                    <Text style={styles.badgeCaption}>Top effort</Text>
+                    <Text style={styles.topName}>{entry.name}</Text>
+                    <Text style={styles.topXp}>{entry.xp} XP</Text>
                   </View>
-
-                  <View style={styles.badgeCard}>
-                    <View
-                      style={[
-                        styles.badgeIconWrap,
-                        { backgroundColor: "rgba(96,165,250,0.18)" },
-                      ]}
-                    >
-                      <Ionicons
-                        name="flash-outline"
-                        size={22}
-                        color="#60A5FA"
-                      />
-                    </View>
-                    <Text style={styles.badgeTitle}>Focused</Text>
-                    <Text style={styles.badgeCaption}>XP builder</Text>
-                  </View>
-
-                  <View style={styles.badgeCard}>
-                    <View
-                      style={[
-                        styles.badgeIconWrap,
-                        { backgroundColor: "rgba(167,139,250,0.18)" },
-                      ]}
-                    >
-                      <Ionicons name="bulb-outline" size={22} color="#A78BFA" />
-                    </View>
-                    <Text style={styles.badgeTitle}>Curious</Text>
-                    <Text style={styles.badgeCaption}>Keeps learning</Text>
-                  </View>
+                );
+              })}
+            </View>
+            <View style={styles.rankList}>
+              {MOCK_RANKING.slice(3).map((entry) => (
+                <View key={entry.rank} style={[styles.rankRow, entry.isCurrentUser && styles.rankRowCurrent]}>
+                  <Text style={styles.rankNumber}>#{entry.rank}</Text>
+                  <Text style={styles.rankName}>{entry.name}</Text>
+                  <Text style={styles.rankXp}>{entry.xp} XP</Text>
                 </View>
-              </ScrollView>
-            </LinearGradient>
-          </View>
+              ))}
+            </View>
+          </LinearGradient>
         </View>
 
         <Pressable
@@ -750,113 +667,93 @@ const createStyles = (theme: AppTheme) =>
       fontWeight: "800",
       marginTop: 4,
     },
-    infoList: {
-      gap: theme.s(1.5),
-    },
-    infoCard: {
+    rankingCard: {
       borderRadius: theme.r.xl,
+      padding: theme.s(2),
       borderWidth: 1,
       borderColor: "rgba(51,65,85,0.55)",
-      padding: theme.s(2),
       shadowColor: "#000",
       shadowOpacity: 0.16,
       shadowRadius: 12,
       shadowOffset: { width: 0, height: 8 },
       elevation: 5,
     },
-    infoRow: {
+    topThreeRow: {
       flexDirection: "row",
-      alignItems: "center",
-      gap: theme.s(1.5),
+      justifyContent: "space-around",
+      alignItems: "flex-end",
+      marginBottom: 16,
     },
-    infoIconWrap: {
-      width: 40,
-      height: 40,
-      borderRadius: 14,
-      backgroundColor: "rgba(51,65,85,0.35)",
-      borderWidth: 1,
-      borderColor: "rgba(51,65,85,0.55)",
+    topThreeItem: {
       alignItems: "center",
-      justifyContent: "center",
-    },
-    infoTextWrap: {
       flex: 1,
     },
-    infoLabel: {
-      color: "rgba(148,163,184,0.7)",
-      fontSize: 11,
-      fontWeight: "800",
-    },
-    infoValue: {
-      color: theme.colors.text,
-      fontSize: 15,
-      fontWeight: "700",
-      marginTop: 2,
-    },
-    achievementsCard: {
-      borderRadius: theme.r.xl,
-      padding: theme.s(2),
+    topAvatar: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: "rgba(59,130,246,0.2)",
       borderWidth: 1,
-      borderColor: "rgba(51,65,85,0.55)",
-      shadowColor: "#000",
-      shadowOpacity: 0.16,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 8 },
-      elevation: 5,
-    },
-    achievementsHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 14,
-    },
-    achievementsTitle: {
-      color: theme.colors.text,
-      fontSize: 16,
-      fontWeight: "800",
-    },
-    achievementsSubtitle: {
-      color: theme.colors.muted,
-      fontSize: 12,
-      marginTop: 4,
-    },
-    achievementsHeaderIcon: {
-      width: 38,
-      height: 38,
-      borderRadius: 12,
+      borderColor: "rgba(96,165,250,0.45)",
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "rgba(250,204,21,0.12)",
+      marginBottom: 8,
     },
-    badgesRow: {
-      flexDirection: "row",
-      gap: 12,
+    topAvatarFirst: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: "rgba(99,102,241,0.34)",
+      borderColor: "rgba(129,140,248,0.6)",
     },
-    badgeCard: {
-      width: 124,
-      borderRadius: 18,
-      backgroundColor: "rgba(15,23,42,0.82)",
-      borderWidth: 1,
-      borderColor: "rgba(148,163,184,0.12)",
-      padding: 14,
+    topAvatarRank: {
+      color: theme.colors.text,
+      fontSize: 14,
+      fontWeight: "800",
     },
-    badgeIconWrap: {
-      width: 44,
-      height: 44,
-      borderRadius: 14,
-      alignItems: "center",
-      justifyContent: "center",
-      marginBottom: 12,
-    },
-    badgeTitle: {
+    topName: {
       color: theme.colors.text,
       fontSize: 14,
       fontWeight: "700",
     },
-    badgeCaption: {
+    topXp: {
       color: theme.colors.muted,
       fontSize: 12,
-      marginTop: 4,
+      marginTop: 2,
+    },
+    rankList: {
+      gap: 10,
+    },
+    rankRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderRadius: 14,
+      backgroundColor: "rgba(15,23,42,0.6)",
+      borderWidth: 1,
+      borderColor: "rgba(148,163,184,0.12)",
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    rankRowCurrent: {
+      backgroundColor: "rgba(79,70,229,0.24)",
+      borderColor: "rgba(129,140,248,0.5)",
+    },
+    rankNumber: {
+      color: theme.colors.text,
+      fontSize: 14,
+      fontWeight: "700",
+      width: 36,
+    },
+    rankName: {
+      color: theme.colors.text,
+      fontSize: 15,
+      fontWeight: "700",
+      flex: 1,
+    },
+    rankXp: {
+      color: theme.colors.muted,
+      fontSize: 13,
+      fontWeight: "600",
     },
     logoutBtn: {
       width: "100%",
