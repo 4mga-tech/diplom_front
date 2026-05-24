@@ -7,7 +7,7 @@ import LetterPracticeModal from "@/src/features/lesson/components/LetterPractice
 import { LessonStyles } from "@/src/features/lesson/lesson.styles";
 import * as Linking from "expo-linking";
 import React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Animated, Modal, Pressable, Text, View } from "react-native";
 
 type LessonContentRendererProps = {
   item: LessonContentItem;
@@ -248,6 +248,9 @@ function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps)
     [content.letters, content.items, content.rows],
   );
   const [selectedLetterIndex, setSelectedLetterIndex] = React.useState(0);
+  const [isDetailVisible, setDetailVisible] = React.useState(false);
+  const [interactionCount, setInteractionCount] = React.useState(0);
+  const [gameChoice, setGameChoice] = React.useState<string | null>(null);
 
   if (letters.length === 0) {
     return <EmptyBlock message="No letters available yet." styles={styles} />;
@@ -258,9 +261,42 @@ function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps)
     letters.length - 1,
   );
   const selectedLetter = letters[safeSelectedLetterIndex];
+  const heroFloat = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(heroFloat, { toValue: -5, duration: 1800, useNativeDriver: true }),
+        Animated.timing(heroFloat, { toValue: 0, duration: 1800, useNativeDriver: true }),
+      ]),
+    ).start();
+  }, [heroFloat]);
+
+  const openLetter = (idx: number) => {
+    const letter = letters[idx];
+    setSelectedLetterIndex(idx);
+    setInteractionCount((count) => count + 1);
+    const resolvedAudioUrl = resolveBackendMediaUrl(letter?.audioUrl);
+    if (resolvedAudioUrl) void playAudio(resolvedAudioUrl);
+    setDetailVisible(true);
+  };
+
+  const gameTarget = letters[Math.min(2, letters.length - 1)];
+  const gameOptions = [0, 1, 2]
+    .map((i) => letters[i])
+    .filter(Boolean)
+    .map((entry) => entry?.printUpper ?? entry?.upper ?? "")
+    .filter(Boolean);
 
   return (
     <View style={styles.stack}>
+      <View style={styles.vowelHeroCard}>
+        <Text style={styles.vowelHeroTitle}>Meet the Mongolian vowels</Text>
+        <Text style={styles.vowelHeroSubtitle}>7 letters • Audio • Tracing</Text>
+        <Animated.View style={{ transform: [{ translateY: heroFloat }] }}>
+          <Text style={styles.vowelHeroLetters}>А Э И О У Ө Ү</Text>
+        </Animated.View>
+      </View>
       <View style={styles.alphabetGrid}>
         {letters.map((letter, idx) => {
           const upper = letter?.printUpper ?? letter?.upper ?? "";
@@ -270,7 +306,7 @@ function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps)
           return (
             <Pressable
               key={`${item.id}-letter-${idx}`}
-              onPress={() => setSelectedLetterIndex(idx)}
+              onPress={() => openLetter(idx)}
               style={({ pressed }) => [
                 styles.alphabetTile,
                 safeSelectedLetterIndex === idx ? styles.alphabetTileSelected : null,
@@ -286,42 +322,56 @@ function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps)
           );
         })}
       </View>
-      <View style={styles.innerCard}>
-        <View style={styles.rowBetween}>
-          <Text style={styles.letterText}>
-            {selectedLetter?.printUpper ?? selectedLetter?.upper ?? ""}{" "}
-            {selectedLetter?.printLower ?? selectedLetter?.lower ?? ""}
-          </Text>
-          {selectedLetter?.group ? (
-            <Text style={styles.groupBadge}>{selectedLetter.group}</Text>
-          ) : null}
+      {interactionCount >= 3 ? (
+        <View style={styles.traceCtaCard}>
+          <Text style={styles.traceCtaTitle}>Ready to trace?</Text>
+          <LessonActionButton label="Start tracing" onPress={() => setDetailVisible(true)} styles={styles} icon="create" />
         </View>
-        {!!selectedLetter?.transcription ? (
-          <BlockText styles={styles}>Call: {selectedLetter.transcription}</BlockText>
-        ) : null}
-        {!!selectedLetter?.nameMn ? (
-          <BlockText styles={styles}>
-            Name: {selectedLetter.nameMn}
-          </BlockText>
-        ) : null}
-        {!!selectedLetter?.pronunciation ? (
-          <BlockText styles={styles}>
-            Sound: {selectedLetter.pronunciation}
-          </BlockText>
-        ) : null}
-        {!!selectedLetter?.audioUrl ? (
+      ) : null}
+      {gameOptions.length >= 3 ? (
+        <View style={styles.listenGameCard}>
+          <Text style={styles.innerTitle}>Which sound did you hear?</Text>
           <LessonActionButton
-            label="Play audio"
+            label="Play sound"
             onPress={() => {
-              const resolvedAudioUrl = resolveBackendMediaUrl(selectedLetter.audioUrl);
-              if (!resolvedAudioUrl) return;
-              void playAudio(resolvedAudioUrl);
+              const resolvedAudioUrl = resolveBackendMediaUrl(gameTarget?.audioUrl);
+              if (resolvedAudioUrl) void playAudio(resolvedAudioUrl);
             }}
             styles={styles}
-            icon="play"
+            icon="volume-high"
           />
-        ) : null}
-      </View>
+          <View style={styles.alphabetGrid}>
+            {gameOptions.map((option) => {
+              const isCorrect = option === (gameTarget?.printUpper ?? gameTarget?.upper ?? "");
+              const selected = option === gameChoice;
+              return (
+                <Pressable key={option} onPress={() => setGameChoice(option)} style={[styles.alphabetTile, selected && (isCorrect ? styles.gameCorrect : styles.gameWrong)]}>
+                  <Text style={styles.alphabetTileUpper}>{option}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      ) : null}
+      <Modal visible={isDetailVisible} transparent animationType="slide">
+        <Pressable style={styles.lessonSheetBackdrop} onPress={() => setDetailVisible(false)}>
+          <Pressable style={styles.lessonSheet}>
+            <Text style={styles.letterText}>
+              {selectedLetter?.printUpper ?? selectedLetter?.upper ?? ""} {selectedLetter?.printLower ?? selectedLetter?.lower ?? ""}
+            </Text>
+            <Text style={styles.alphabetTileSubtext}>{selectedLetter?.transcription ?? selectedLetter?.pronunciation ?? ""}</Text>
+            <Text style={styles.groupBadge}>{selectedLetter?.group ?? "Vowel"}</Text>
+            <Text style={styles.contentBody}>Examples: аав • алим</Text>
+            <View style={styles.row}>
+              <LessonActionButton label="Listen" onPress={() => {
+                const resolvedAudioUrl = resolveBackendMediaUrl(selectedLetter?.audioUrl);
+                if (resolvedAudioUrl) void playAudio(resolvedAudioUrl);
+              }} styles={styles} icon="play" />
+              <LessonActionButton label="Trace" onPress={() => setDetailVisible(false)} styles={styles} icon="create" />
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -376,31 +426,13 @@ function ClassificationContentBlock({
   );
 }
 function HeroIntroContentBlock({
-  content,
   styles,
 }: ContentBlockProps) {
-  const stats = asArray<any>(content.stats);
-
   return (
-    <View style={styles.stack}>
-      {!!content.textMn ? (
-        <Text style={styles.heroMn}>{content.textMn}</Text>
-      ) : null}
-
-      {!!content.textEn ? (
-        <Text style={styles.heroEn}>{content.textEn}</Text>
-      ) : null}
-
-      {stats.length > 0 ? (
-        <View style={styles.heroStatsRow}>
-          {stats.map((stat, idx) => (
-            <View key={idx} style={styles.heroStatCard}>
-              <Text style={styles.heroStatValue}>{stat.value}</Text>
-              <Text style={styles.heroStatLabel}>{stat.label}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
+    <View style={styles.vowelHeroCard}>
+      <Text style={styles.vowelHeroTitle}>Meet the Mongolian vowels</Text>
+      <Text style={styles.vowelHeroSubtitle}>7 letters • Audio • Tracing</Text>
+      <Text style={styles.vowelHeroLetters}>А Э И О У Ө Ү</Text>
     </View>
   );
 }
