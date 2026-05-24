@@ -676,6 +676,33 @@ export const createLessonStyles = (theme: AppTheme) =>
       lineHeight: 14,
       textAlign: "center",
     },
+    letterDetailBackdrop: {
+      flex: 1,
+      backgroundColor: "rgba(2,6,23,0.68)",
+      justifyContent: "flex-end",
+      padding: theme.s(1.2),
+    },
+    letterDetailModal: {
+      borderRadius: 22,
+      padding: theme.s(1.2),
+      backgroundColor: theme.mode === "dark" ? "#0F172A" : "#FFFFFF",
+      borderWidth: 1,
+      borderColor: theme.mode === "dark" ? "rgba(148,163,184,0.26)" : "rgba(148,163,184,0.2)",
+      gap: 10,
+    },
+    letterDetailCloseButton: {
+      minHeight: 38,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.mode === "dark" ? "rgba(51,65,85,0.7)" : "rgba(226,232,240,0.8)",
+    },
+    letterDetailCloseButtonText: {
+      color: theme.colors.text,
+      fontSize: 13,
+      fontWeight: "800",
+    },
     writeGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
