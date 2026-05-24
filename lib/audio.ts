@@ -8,6 +8,10 @@ type AlphabetAudioItem = {
   audioKey: string;
 };
 export async function playAudio(audioUrl: string): Promise<void> {
+  if (!audioUrl) {
+    return;
+  }
+
   try {
     // console.log("Playing audio:", audioUrl);
 
@@ -23,7 +27,7 @@ export async function playAudio(audioUrl: string): Promise<void> {
 
     currentSound = sound;
   } catch (error) {
-    console.error("Error playing audio:", audioUrl, error);
+    console.warn("Audio unavailable:", audioUrl);
   }
 }
 

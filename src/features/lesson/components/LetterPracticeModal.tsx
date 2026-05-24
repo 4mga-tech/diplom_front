@@ -65,6 +65,7 @@ export default function LetterPracticeModal({
   const [strokes, setStrokes] = React.useState<Point[][]>([]);
   const [canvasFrame, setCanvasFrame] = React.useState<CanvasFrame | null>(null);
   const [isPlaying, setIsPlaying] = React.useState(false);
+  const [isAudioUnavailable, setIsAudioUnavailable] = React.useState(false);
   const canvasRef = React.useRef<View | null>(null);
 
  const handlePlayAudio = React.useCallback(async () => {
@@ -73,16 +74,17 @@ export default function LetterPracticeModal({
   const audioUrl = directAudioUrl || (audioKey ? getAudioUrl(audioKey) : "");
 
   if (!audioUrl) {
-    console.warn("Audio not available for this letter.");
+    setIsAudioUnavailable(true);
     return;
   }
 
   setIsPlaying(true);
+  setIsAudioUnavailable(false);
 
   try {
     await playAudio(audioUrl);
   } catch (error) {
-    console.warn("Audio not available for this letter.");
+    setIsAudioUnavailable(true);
   } finally {
     setIsPlaying(false);
   }
@@ -92,6 +94,7 @@ export default function LetterPracticeModal({
     if (!visible) {
       setStrokes([]);
       setIsPlaying(false);
+      setIsAudioUnavailable(false);
       void stopAudio();
     } else if (letter?.audioUrl || letter?.audioKey || getLetterAudioKey(letter?.primary)) {
       handlePlayAudio();
@@ -239,31 +242,6 @@ export default function LetterPracticeModal({
             </View>
 
             <View style={styles.headerControls}>
-              {canPlayAudio ? (
-                <Pressable
-                  onPress={handlePlayAudio}
-                  disabled={isPlaying || !canPlayAudio}
-                  style={[
-                    styles.headerButton,
-                    {
-                      backgroundColor:
-                        theme.mode === "dark"
-                          ? "rgba(59,130,246,0.15)"
-                          : "rgba(59,130,246,0.1)",
-                      borderColor:
-                        theme.mode === "dark"
-                          ? "rgba(96,165,250,0.25)"
-                          : "rgba(59,130,246,0.2)",
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name={isPlaying ? "pause" : "play"}
-                    size={16}
-                    color="#3B82F6"
-                  />
-                </Pressable>
-              ) : null}
               <Pressable
                 onPress={onClose}
                 style={[
@@ -334,6 +312,11 @@ export default function LetterPracticeModal({
           <Text style={[styles.instruction, { color: theme.colors.muted }]}>
             Trace the guide letter in the practice area.
           </Text>
+          {isAudioUnavailable ? (
+            <Text style={[styles.audioHint, { color: theme.colors.muted }]}>
+              Audio unavailable
+            </Text>
+          ) : null}
 
           <View
             {...panResponder.panHandlers}
@@ -384,6 +367,20 @@ export default function LetterPracticeModal({
 
           <View style={styles.footer}>
             <Pressable
+              onPress={() => {
+                void handlePlayAudio();
+              }}
+              disabled={isPlaying || !canPlayAudio}
+              style={[
+                styles.primaryButton,
+                (!canPlayAudio || isPlaying) ? styles.disabledButton : null,
+              ]}
+            >
+              <Text style={styles.primaryButtonText}>
+                {isPlaying ? "Playing..." : "Play"}
+              </Text>
+            </Pressable>
+            <Pressable
               onPress={handleReset}
               style={[
                 styles.secondaryButton,
@@ -404,8 +401,8 @@ export default function LetterPracticeModal({
               </Text>
             </Pressable>
 
-            <Pressable style={styles.primaryButton} onPress={onClose}>
-              <Text style={styles.primaryButtonText}>Done</Text>
+            <Pressable style={styles.secondaryButton} onPress={onClose}>
+              <Text style={[styles.secondaryButtonText, { color: theme.colors.text }]}>Close</Text>
             </Pressable>
           </View>
         </Pressable>
@@ -538,6 +535,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
   },
+  audioHint: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
   secondaryButton: {
     flex: 1,
     minHeight: 48,
@@ -557,6 +558,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#2563EB",
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   primaryButtonText: {
     color: "#FFFFFF",

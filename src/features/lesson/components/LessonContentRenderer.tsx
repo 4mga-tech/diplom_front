@@ -273,16 +273,11 @@ function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps)
   }, []);
 
   const handleOpenLetter = React.useCallback(
-    async (idx: number) => {
+    (idx: number) => {
       setSelectedLetterIndex(idx);
       setIsDetailOpen(true);
-
-      const nextLetter = letters[idx];
-      const resolvedAudioUrl = resolveBackendMediaUrl(nextLetter?.audioUrl);
-      if (!resolvedAudioUrl) return;
-      await playAudio(resolvedAudioUrl);
     },
-    [letters],
+    [],
   );
 
   React.useEffect(() => () => {
@@ -318,47 +313,36 @@ function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps)
           );
         })}
       </View>
-      <Modal
+      <LetterPracticeModal
         visible={isDetailOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={handleCloseModal}
-      >
-        <Pressable style={styles.letterDetailBackdrop} onPress={handleCloseModal}>
-          <Pressable style={styles.letterDetailModal} onPress={() => {}}>
-            <View style={styles.rowBetween}>
-              <Text style={styles.letterText}>
-                {selectedLetter?.printUpper ?? selectedLetter?.upper ?? ""}{" "}
-                {selectedLetter?.printLower ?? selectedLetter?.lower ?? ""}
-              </Text>
-              <Pressable style={styles.letterDetailCloseButton} onPress={handleCloseModal}>
-                <Text style={styles.letterDetailCloseButtonText}>Close</Text>
-              </Pressable>
-            </View>
-            {!!selectedLetter?.transcription ? (
-              <BlockText styles={styles}>Call: {selectedLetter.transcription}</BlockText>
-            ) : null}
-            {!!selectedLetter?.pronunciation ? (
-              <BlockText styles={styles}>Sound: {selectedLetter.pronunciation}</BlockText>
-            ) : null}
-            {!!selectedLetter?.nameMn ? (
-              <BlockText styles={styles}>Mongolian name: {selectedLetter.nameMn}</BlockText>
-            ) : null}
-            {!!selectedLetter?.audioUrl ? (
-              <LessonActionButton
-                label="Play again"
-                onPress={() => {
-                  const resolvedAudioUrl = resolveBackendMediaUrl(selectedLetter.audioUrl);
-                  if (!resolvedAudioUrl) return;
-                  void playAudio(resolvedAudioUrl);
-                }}
-                styles={styles}
-                icon="play"
-              />
-            ) : null}
-          </Pressable>
-        </Pressable>
-      </Modal>
+        onClose={handleCloseModal}
+        letter={
+          isDetailOpen && selectedLetter
+            ? {
+                primary:
+                  selectedLetter?.printUpper ??
+                  selectedLetter?.upper ??
+                  selectedLetter?.primary ??
+                  "",
+                uppercase: selectedLetter?.printUpper ?? selectedLetter?.upper ?? null,
+                lowercase: selectedLetter?.printLower ?? selectedLetter?.lower ?? null,
+                printForm:
+                  [
+                    selectedLetter?.printUpper ?? selectedLetter?.upper ?? "",
+                    selectedLetter?.printLower ?? selectedLetter?.lower ?? "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")
+                    .trim() || null,
+                transcription: selectedLetter?.transcription ?? null,
+                pronunciation: selectedLetter?.pronunciation ?? null,
+                nameMn: selectedLetter?.nameMn ?? null,
+                audioKey: selectedLetter?.audioKey ?? null,
+                audioUrl: resolveBackendMediaUrl(selectedLetter?.audioUrl) ?? null,
+              }
+            : null
+        }
+      />
     </View>
   );
 }
