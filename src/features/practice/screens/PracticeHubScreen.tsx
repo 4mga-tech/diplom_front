@@ -108,11 +108,12 @@ export default function PracticeHubScreen() {
             const earnedXp = progress?.earnedXp ?? (practice.xpReward ?? 0);
             const rawPercent = progress?.progressPercent ?? 0;
             const progressWidth = rawPercent <= 1 ? rawPercent * 100 : rawPercent;
-            const clampedProgressWidth = Math.max(0, Math.min(100, progressWidth));
+            const isCompleted = totalStages > 0 && completedStages >= totalStages;
+            const clampedProgressWidth = isCompleted ? 100 : Math.max(0, Math.min(100, progressWidth));
             return (
               <Pressable
                 key={practice.id}
-                style={({ pressed }) => [styles.lessonRow, pressed && styles.pressed]}
+                style={({ pressed }) => [styles.lessonRow, isCompleted && styles.lessonRowCompleted, pressed && styles.pressed]}
                 onPress={() => router.push(`/practice/${encodeURIComponent(practice.id.split("#")[0])}/roadmap` as any)}
               >
                 <Text style={styles.rowIndex}>{String(index + 1).padStart(2, "0")}</Text>
@@ -120,10 +121,13 @@ export default function PracticeHubScreen() {
                 <View style={styles.rowContent}>
                   <View style={styles.rowTopLine}>
                     <Text style={styles.rowTitle}>{meta.title}</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#7F92BA" />
+                    <View style={styles.rowActions}>
+                      {isCompleted ? <View style={styles.completedBadge}><Ionicons name="checkmark-circle" size={12} color="#14532D" /><Text style={styles.completedBadgeText}>Completed</Text></View> : null}
+                      <Ionicons name="chevron-forward" size={16} color="#7F92BA" />
+                    </View>
                   </View>
-                  <Text style={styles.rowMeta}>{`${completedStages}/${totalStages} stages`} • {`${earnedXp} XP earned`}</Text>
-                  <View style={styles.rowProgressTrack}><View style={[styles.rowProgressBar, { width: `${clampedProgressWidth}%` }]} /></View>
+                  <Text style={styles.rowMeta}>{`${completedStages}/${totalStages} stages`} • {`${earnedXp} XP earned`} • {isCompleted ? "Review" : "Start"}</Text>
+                  <View style={styles.rowProgressTrack}><View style={[styles.rowProgressBar, isCompleted && styles.rowProgressBarCompleted, { width: `${clampedProgressWidth}%` }]} /></View>
                 </View>
               </Pressable>
             );
@@ -158,15 +162,20 @@ const styles = StyleSheet.create({
   dailyChipMeta: { color: "#9EB0D6", fontSize: 11, fontWeight: "600", marginTop: 2 },
 
   listSection: { gap: 12 },
-  lessonRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 6 },
+  lessonRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: "transparent", paddingHorizontal: 8 },
+  lessonRowCompleted: { borderColor: "rgba(74,222,128,0.55)", backgroundColor: "rgba(34,197,94,0.08)", shadowColor: "#86EFAC", shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
   rowIndex: { width: 24, color: "#7284A9", fontSize: 12, fontWeight: "700", letterSpacing: 0.6 },
   rowIconWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(55,74,119,0.35)", borderWidth: 1, borderColor: "rgba(114,135,182,0.34)", alignItems: "center", justifyContent: "center" },
   rowContent: { flex: 1, borderBottomWidth: 1, borderBottomColor: "rgba(89,106,145,0.24)", paddingBottom: 10 },
   rowTopLine: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  rowActions: { flexDirection: "row", alignItems: "center", gap: 6 },
+  completedBadge: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: "#BBF7D0" },
+  completedBadgeText: { color: "#14532D", fontSize: 10, fontWeight: "800" },
   rowTitle: { color: "#F1F5F9", fontSize: 16, fontWeight: "700" },
   rowMeta: { color: "#8FA3CB", fontSize: 12, fontWeight: "600", marginTop: 3 },
   rowProgressTrack: { height: 3, borderRadius: 99, backgroundColor: "rgba(80,98,136,0.35)", marginTop: 9, overflow: "hidden" },
   rowProgressBar: { height: "100%", backgroundColor: "#7C8CFF" },
+  rowProgressBarCompleted: { backgroundColor: "#22C55E" },
 
   pressed: { opacity: 0.78 },
 });
