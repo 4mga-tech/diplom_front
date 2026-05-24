@@ -1,4 +1,5 @@
 import { getAudioUrl, playAudio } from "@/lib/audio";
+import { api } from "@/lib/api";
 import { LessonContentItem, LessonGlossaryItem } from "@/lib/learning";
 import GlossaryModal from "@/src/features/lesson/components/GlossaryModal";
 import LessonActionButton from "@/src/features/lesson/components/LessonActionButton";
@@ -42,6 +43,16 @@ function openLink(url?: string) {
   void Linking.openURL(url).catch((error) => {
     console.error("Could not open lesson media:", error);
   });
+}
+
+function resolveBackendMediaUrl(url?: string | null) {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+
+  const apiBaseUrl = (api.defaults.baseURL || "").replace(/\/+$/, "");
+  if (!apiBaseUrl) return url;
+
+  return `${apiBaseUrl}${url.startsWith("/") ? url : `/${url}`}`;
 }
 
 function normalizeGlossaryWord(value: string) {
@@ -285,23 +296,27 @@ function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps)
             <Text style={styles.groupBadge}>{selectedLetter.group}</Text>
           ) : null}
         </View>
-        {!!selectedLetter?.nameMn ? (
-          <BlockText styles={styles}>Call: {selectedLetter.nameMn}</BlockText>
-        ) : null}
         {!!selectedLetter?.transcription ? (
+          <BlockText styles={styles}>Call: {selectedLetter.transcription}</BlockText>
+        ) : null}
+        {!!selectedLetter?.nameMn ? (
           <BlockText styles={styles}>
-            Transcription: {selectedLetter.transcription}
+            Name: {selectedLetter.nameMn}
           </BlockText>
         ) : null}
         {!!selectedLetter?.pronunciation ? (
           <BlockText styles={styles}>
-            Pronunciation: {selectedLetter.pronunciation}
+            Sound: {selectedLetter.pronunciation}
           </BlockText>
         ) : null}
         {!!selectedLetter?.audioUrl ? (
           <LessonActionButton
             label="Play audio"
-            onPress={() => openLink(selectedLetter.audioUrl)}
+            onPress={() => {
+              const resolvedAudioUrl = resolveBackendMediaUrl(selectedLetter.audioUrl);
+              if (!resolvedAudioUrl) return;
+              void playAudio(resolvedAudioUrl);
+            }}
             styles={styles}
             icon="play"
           />
