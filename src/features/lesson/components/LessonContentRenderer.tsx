@@ -226,53 +226,87 @@ function TextContentBlock({
 }
 
 function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps) {
-  const letters =
-    asArray<any>(content.letters).length > 0
-      ? asArray<any>(content.letters)
-      : asArray<any>(content.items).length > 0
-        ? asArray<any>(content.items)
-        : asArray<any>(content.rows);
+  const letters = React.useMemo(
+    () =>
+      (asArray<any>(content.letters).length > 0
+        ? asArray<any>(content.letters)
+        : asArray<any>(content.items).length > 0
+          ? asArray<any>(content.items)
+          : asArray<any>(content.rows)
+      ).filter((letter) => Boolean(letter && typeof letter === "object")),
+    [content.letters, content.items, content.rows],
+  );
+  const [selectedLetterIndex, setSelectedLetterIndex] = React.useState(0);
 
   if (letters.length === 0) {
     return <EmptyBlock message="No letters available yet." styles={styles} />;
   }
 
+  const safeSelectedLetterIndex = Math.min(
+    Math.max(selectedLetterIndex, 0),
+    letters.length - 1,
+  );
+  const selectedLetter = letters[safeSelectedLetterIndex];
+
   return (
     <View style={styles.stack}>
-      {letters.map((letter, idx) => (
-        <View key={`${item.id}-letter-${idx}`} style={styles.innerCard}>
-          <View style={styles.rowBetween}>
-            <Text style={styles.letterText}>
-              {letter?.printUpper ?? letter?.upper ?? ""}{" "}
-              {letter?.printLower ?? letter?.lower ?? ""}
-            </Text>
-            {letter?.group ? (
-              <Text style={styles.groupBadge}>{letter.group}</Text>
-            ) : null}
-          </View>
-          {!!letter?.nameMn ? (
-            <BlockText styles={styles}>Call: {letter.nameMn}</BlockText>
-          ) : null}
-          {!!letter?.transcription ? (
-            <BlockText styles={styles}>
-              Transcription: {letter.transcription}
-            </BlockText>
-          ) : null}
-          {!!letter?.pronunciation ? (
-            <BlockText styles={styles}>
-              Pronunciation: {letter.pronunciation}
-            </BlockText>
-          ) : null}
-          {!!letter?.audioUrl ? (
-            <LessonActionButton
-              label="Play audio"
-              onPress={() => openLink(letter.audioUrl)}
-              styles={styles}
-              icon="play"
-            />
+      <View style={styles.alphabetGrid}>
+        {letters.map((letter, idx) => {
+          const upper = letter?.printUpper ?? letter?.upper ?? "";
+          const lower = letter?.printLower ?? letter?.lower ?? "";
+          const transcription = letter?.transcription ?? letter?.pronunciation ?? "";
+
+          return (
+            <Pressable
+              key={`${item.id}-letter-${idx}`}
+              onPress={() => setSelectedLetterIndex(idx)}
+              style={({ pressed }) => [
+                styles.alphabetTile,
+                safeSelectedLetterIndex === idx ? styles.alphabetTileSelected : null,
+                pressed ? styles.alphabetTilePressed : null,
+              ]}
+            >
+              <Text style={styles.alphabetTileUpper}>{upper}</Text>
+              <Text style={styles.alphabetTileLower}>{lower}</Text>
+              {transcription ? (
+                <Text style={styles.alphabetTileSubtext}>{transcription}</Text>
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </View>
+      <View style={styles.innerCard}>
+        <View style={styles.rowBetween}>
+          <Text style={styles.letterText}>
+            {selectedLetter?.printUpper ?? selectedLetter?.upper ?? ""}{" "}
+            {selectedLetter?.printLower ?? selectedLetter?.lower ?? ""}
+          </Text>
+          {selectedLetter?.group ? (
+            <Text style={styles.groupBadge}>{selectedLetter.group}</Text>
           ) : null}
         </View>
-      ))}
+        {!!selectedLetter?.nameMn ? (
+          <BlockText styles={styles}>Call: {selectedLetter.nameMn}</BlockText>
+        ) : null}
+        {!!selectedLetter?.transcription ? (
+          <BlockText styles={styles}>
+            Transcription: {selectedLetter.transcription}
+          </BlockText>
+        ) : null}
+        {!!selectedLetter?.pronunciation ? (
+          <BlockText styles={styles}>
+            Pronunciation: {selectedLetter.pronunciation}
+          </BlockText>
+        ) : null}
+        {!!selectedLetter?.audioUrl ? (
+          <LessonActionButton
+            label="Play audio"
+            onPress={() => openLink(selectedLetter.audioUrl)}
+            styles={styles}
+            icon="play"
+          />
+        ) : null}
+      </View>
     </View>
   );
 }

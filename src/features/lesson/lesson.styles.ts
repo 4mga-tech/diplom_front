@@ -615,6 +615,67 @@ export const createLessonStyles = (theme: AppTheme) =>
       flexWrap: "wrap",
       gap: 8,
     },
+    alphabetGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    alphabetTile: {
+      width: "31%",
+      minWidth: 92,
+      borderRadius: 14,
+      paddingVertical: theme.s(1),
+      paddingHorizontal: theme.s(0.8),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(30,41,59,0.82)"
+          : "rgba(248,250,252,0.94)",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(71,85,105,0.65)"
+          : "rgba(148,163,184,0.28)",
+      gap: 2,
+    },
+    alphabetTileSelected: {
+      borderColor: "#60A5FA",
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(37,99,235,0.22)"
+          : "rgba(59,130,246,0.12)",
+      shadowColor: "#60A5FA",
+      shadowOpacity: theme.mode === "dark" ? 0.35 : 0.16,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 0 },
+      elevation: 3,
+    },
+    alphabetTilePressed: {
+      opacity: 0.9,
+      transform: [{ scale: 0.98 }],
+    },
+    alphabetTileUpper: {
+      color: theme.colors.text,
+      fontSize: 28,
+      fontWeight: "900",
+      lineHeight: 30,
+      textAlign: "center",
+    },
+    alphabetTileLower: {
+      color: theme.mode === "dark" ? "#CBD5E1" : "#475569",
+      fontSize: 16,
+      fontWeight: "800",
+      lineHeight: 18,
+      textAlign: "center",
+    },
+    alphabetTileSubtext: {
+      color: theme.colors.muted,
+      fontSize: 11,
+      fontWeight: "700",
+      lineHeight: 14,
+      textAlign: "center",
+    },
     writeGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
