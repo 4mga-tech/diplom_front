@@ -10,19 +10,26 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 type Props = { practiceId: string; stageId?: string };
 
+function normalizeAnswerValue(value?: string | null): string {
+  return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
 function isCorrectAnswer(task: PracticeTask, answerValue: string, practiceType?: string | null): boolean {
-  if (task.type === "image_choice" || practiceType === "image_choice") {
-    return answerValue === (task.correctOptionId || task.correctAnswer || "");
+  const resolvedType = String(practiceType ?? task.type ?? "").toLowerCase();
+  if (resolvedType === "image_choice") {
+    return normalizeAnswerValue(answerValue) === normalizeAnswerValue(task.correctOptionId || task.correctAnswer || "");
   }
-  if (task.type === "sentence_order") {
-    return answerValue.trim().toLowerCase() === (task.correctAnswer || "").trim().toLowerCase();
+
+  if (resolvedType === "sentence_order") {
+    return normalizeAnswerValue(answerValue) === normalizeAnswerValue(task.correctAnswer || "");
   }
-  if (task.type === "audio_choice" || practiceType === "audio_choice") {
-    return answerValue.trim().toLowerCase() === (task.correctAnswer || "").trim().toLowerCase();
-  }
-  if (task.correctOptionId) return task.correctOptionId === answerValue;
-  const selectedOption = task.options.find((o) => o.id === answerValue);
-  return (selectedOption?.text || "").trim().toLowerCase() === (task.correctAnswer || "").trim().toLowerCase();
+
+  const answerText = (() => {
+    const selectedOption = task.options.find((o) => o.id === answerValue);
+    return selectedOption?.text ?? answerValue;
+  })();
+
+  return normalizeAnswerValue(answerText) === normalizeAnswerValue(task.correctAnswer || "");
 }
 
 
@@ -35,6 +42,7 @@ function getAnswerValueForSubmission(task: PracticeTask, optionId: string, pract
   if (resolvedType === "dialogue_fill") return selectedText;
   if (resolvedType === "missing_word") return selectedText;
   if (resolvedType === "image_choice") return optionId;
+  if (resolvedType === "sentence_order") return normalizeAnswerValue(selectedText);
 
   return optionId;
 }
@@ -193,6 +201,12 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
     const selectedText = selectedOption?.text ?? "";
     const answerValue = getAnswerValueForSubmission(current, optionId, practice?.type);
     const ok = isCorrectAnswer(current, answerValue, practice?.type);
+    console.log("ANSWER MAP", {
+      type: practice?.type,
+      selectedOptionId: optionId,
+      answerValue,
+      correctAnswer: current.correctAnswer,
+    });
     setSelectedOptionId(optionId);
     setSelectedOptionText(selectedText || null);
     setFeedback(ok ? "correct" : "wrong");
@@ -227,8 +241,8 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
   const onSentenceCheck = useCallback(() => {
     if (!current || feedback || !isSentenceOrder) return;
     const selectedAnswerText = selectedWordIndexes.map((wordIndex) => sentenceOrderParts[wordIndex]).filter(Boolean).join(" ").trim();
-    const selectedAnswer = selectedAnswerText.toLowerCase();
-    const correct = (current.correctAnswer ?? "").trim().toLowerCase();
+    const selectedAnswer = normalizeAnswerValue(selectedAnswerText);
+    const correct = normalizeAnswerValue(current.correctAnswer ?? "");
     const isCorrect = selectedAnswer.length > 0 && selectedAnswer === correct;
     setSelectedOptionId(null);
     setSelectedOptionText(null);
@@ -420,12 +434,12 @@ const styles = StyleSheet.create({
   buildText: { color: "#CBD5E1", fontWeight: "700" },
   sentenceOrderWrap: { gap: 10, zIndex: 10, elevation: 10 },
   chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center", zIndex: 10, elevation: 10 },
-  wordChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: "#1E293B", borderWidth: 1, borderColor: "#3B82F6", zIndex: 11, elevation: 11 },
+  wordChip: { paddingHorizontal: 17, paddingVertical: 12, borderRadius: 18, backgroundColor: "#1E293B", borderWidth: 1, borderColor: "#3B82F6", zIndex: 11, elevation: 11 },
   wordChipInactive: { opacity: 0.45, backgroundColor: "#334155", borderColor: "#64748B" },
-  wordChipText: { color: "#DBEAFE", fontWeight: "700" },
+  wordChipText: { color: "#DBEAFE", fontWeight: "700", fontSize: 16 },
   wordChipTextInactive: { color: "#CBD5E1" },
-  selectedChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: "#172554", borderWidth: 1, borderColor: "#60A5FA" },
-  selectedChipText: { color: "#BFDBFE", fontWeight: "700" },
+  selectedChip: { paddingHorizontal: 18, paddingVertical: 12, borderRadius: 999, backgroundColor: "#172554", borderWidth: 1, borderColor: "#60A5FA" },
+  selectedChipText: { color: "#BFDBFE", fontWeight: "700", fontSize: 16 },
   imageGrid: { gap: 10, flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
   imageCard: { width: "48%", borderRadius: 18, backgroundColor: "#121E36", borderWidth: 1, borderColor: "#2A3A64", padding: 8, shadowColor: "#60A5FA", shadowOffset: { width: 0, height: 0 }, shadowRadius: 0, shadowOpacity: 0 },
   imageCardSelected: { borderColor: "#60A5FA", shadowOpacity: 0.5, shadowRadius: 12, elevation: 3 },
