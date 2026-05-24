@@ -75,6 +75,11 @@ function UnitCard({
         <Text style={styles.cardTitle} numberOfLines={2}>
           {unit.title}
         </Text>
+        {!!unit.subtitle ? (
+          <Text style={styles.cardSubtitle} numberOfLines={2}>
+            {unit.subtitle}
+          </Text>
+        ) : null}
 
         <View style={styles.progressRow}>
           <View style={styles.track}>
@@ -433,6 +438,11 @@ const createStyles = (theme: AppTheme) =>
       fontSize: 12,
       fontWeight: "800",
       lineHeight: 17,
+    },
+    cardSubtitle: {
+      color: theme.colors.muted,
+      fontSize: 11,
+      lineHeight: 15,
     },
     progressRow: {
       flexDirection: "row",

@@ -49,7 +49,7 @@ function resolveBackendMediaUrl(url?: string | null) {
   if (!url) return null;
   if (/^https?:\/\//i.test(url)) return url;
 
-  const apiBaseUrl = (api.defaults.baseURL || "").replace(/\/+$/, "");
+  const apiBaseUrl = (api.defaults.baseURL || "").replace(/\/+$/, "").replace(/\/api$/i, "");
   if (!apiBaseUrl) return url;
 
   return `${apiBaseUrl}${url.startsWith("/") ? url : `/${url}`}`;
@@ -351,8 +351,17 @@ function ClassificationContentBlock({
         groups.map((group, idx) => (
           <View key={`${item.id}-group-${idx}`} style={styles.innerCard}>
             <Text style={styles.innerTitle}>{group?.title}</Text>
+            {!!group?.description ? (
+              <GlossaryText
+                text={String(group.description)}
+                styles={styles}
+                glossary={glossary}
+                onSelectGlossaryWord={onSelectGlossaryWord}
+                activeGlossaryWordKey={activeGlossaryWordKey}
+              />
+            ) : null}
             <GlossaryText
-              text={Array.isArray(group?.items) ? group.items.join(", ") : ""}
+              text={Array.isArray(group?.items) ? group.items.map((entry: any) => typeof entry === "string" ? entry : (entry?.text ?? entry?.word ?? entry?.label ?? "")).filter(Boolean).join(", ") : ""}
               styles={styles}
               glossary={glossary}
               onSelectGlossaryWord={onSelectGlossaryWord}
@@ -519,12 +528,31 @@ function VocabListContentBlock({
             variant="title"
           />
           <GlossaryText
-            text={String(vocabItem?.meaning ?? "")}
+            text={String(vocabItem?.transcription ?? vocabItem?.pronunciation ?? "")}
             styles={styles}
             glossary={glossary}
             onSelectGlossaryWord={onSelectGlossaryWord}
             activeGlossaryWordKey={activeGlossaryWordKey}
           />
+          <GlossaryText
+            text={String(vocabItem?.meaningEn ?? vocabItem?.meaning ?? "")}
+            styles={styles}
+            glossary={glossary}
+            onSelectGlossaryWord={onSelectGlossaryWord}
+            activeGlossaryWordKey={activeGlossaryWordKey}
+          />
+          {!!resolveBackendMediaUrl(vocabItem?.audioUrl) ? (
+            <LessonActionButton
+              label="Play"
+              onPress={() => {
+                const resolvedAudioUrl = resolveBackendMediaUrl(vocabItem?.audioUrl);
+                if (!resolvedAudioUrl) return;
+                void playAudio(resolvedAudioUrl);
+              }}
+              styles={styles}
+              icon="play"
+            />
+          ) : null}
         </View>
       ))}
     </View>
@@ -539,7 +567,7 @@ function ExerciseRepeatContentBlock({
   onSelectGlossaryWord,
   activeGlossaryWordKey,
 }: ContentBlockProps) {
-  const rows = asArray<any>(content.rows);
+  const rows = asArray<any>(content.items ?? content.rows ?? []);
   const hasLetterAudio = rows.some((row: any) => row?.audioKey || (row?.primary && !row?.audioUrl));
 
   const handleAudioPlay = React.useCallback(async (audioKey: string) => {
@@ -618,7 +646,7 @@ function ExerciseRepeatContentBlock({
               {!!row?.audioUrl ? (
                 <LessonActionButton
                   label="Play practice audio"
-                  onPress={() => openLink(row.audioUrl)}
+                  onPress={() => { const resolvedAudioUrl = resolveBackendMediaUrl(row.audioUrl); if (!resolvedAudioUrl) return; void playAudio(resolvedAudioUrl); }}
                   styles={styles}
                   icon="play"
                 />
@@ -988,7 +1016,7 @@ function ExerciseWordBuildContentBlock({
   onSelectGlossaryWord,
   activeGlossaryWordKey,
 }: ContentBlockProps) {
-  const questions = asArray<any>(content.questions);
+  const questions = asArray<any>(content.questions ?? content.items ?? content.rows ?? []);
   const example = content.example;
   const [answers, setAnswers] = React.useState<Record<number, string[]>>({});
   const [results, setResults] = React.useState<Record<number, boolean | null>>({});
@@ -1064,8 +1092,21 @@ function ExerciseWordBuildContentBlock({
             return (
               <View key={`${item.id}-wb-${idx}`} style={styles.wordBuildMiniCard}>
                 <Text style={styles.innerTitle}>
-                  Build the word: {question?.meaningEn}
+                  {question?.left || question?.right || question?.result
+                    ? `${question?.left ?? ""} + ${question?.right ?? ""} = ${question?.result ?? question?.answer ?? ""}`
+                    : `Build the word: ${question?.meaningEn ?? ""}`}
                 </Text>
+                {!!question?.transcription ? (
+                  <Text style={styles.supportingText}>{question.transcription}</Text>
+                ) : null}
+                {!!resolveBackendMediaUrl(question?.audioUrl) ? (
+                  <LessonActionButton
+                    label="Play"
+                    onPress={() => { const resolvedAudioUrl = resolveBackendMediaUrl(question?.audioUrl); if (!resolvedAudioUrl) return; void playAudio(resolvedAudioUrl); }}
+                    styles={styles}
+                    icon="play"
+                  />
+                ) : null}
 
                 <View style={styles.wordBuildLetters}>
                   {letters.map((letter, letterIndex) => (
@@ -1152,7 +1193,7 @@ function PronunciationContentBlock({
       {!!content.audioUrl ? (
         <LessonActionButton
           label="Play audio"
-          onPress={() => openLink(content.audioUrl)}
+          onPress={() => { const resolvedAudioUrl = resolveBackendMediaUrl(content.audioUrl); if (!resolvedAudioUrl) return; void playAudio(resolvedAudioUrl); }}
           styles={styles}
           icon="play"
         />
@@ -1182,7 +1223,7 @@ function AudioContentBlock({
       {!!content.audioUrl ? (
         <LessonActionButton
           label="Play audio"
-          onPress={() => openLink(content.audioUrl)}
+          onPress={() => { const resolvedAudioUrl = resolveBackendMediaUrl(content.audioUrl); if (!resolvedAudioUrl) return; void playAudio(resolvedAudioUrl); }}
           styles={styles}
           icon="play"
         />

@@ -160,10 +160,11 @@ export default function QuizScreen() {
       }
 
       try {
-        const [quizRes, lessonDetail] = await Promise.all([
-          api.get(`/lessons/${lessonId}/quiz`),
-          fetchLessonDetail(lessonId),
-        ]);
+        const lessonDetail = await fetchLessonDetail(lessonId);
+        const resolvedQuizId = lessonDetail?.quizId || routeQuizId || "";
+        const quizRes = resolvedQuizId
+          ? await api.get(`/quizzes/${encodeURIComponent(resolvedQuizId)}`)
+          : await api.get(`/lessons/${lessonId}/quiz`);
         const responseData = quizRes.data as any;
         const payload = responseData?.data ?? responseData;
         const nextQuestions = Array.isArray(payload?.questions)
@@ -171,18 +172,17 @@ export default function QuizScreen() {
               normalizeQuestion(question, index),
             )
           : [];
-        const resolvedQuizId =
-          (typeof payload?.id === "string" && payload.id) ||
-          lessonDetail?.quizId ||
-          routeQuizId ||
-          "";
 
         setQuestions(nextQuestions);
         setLessonDetail(lessonDetail);
-        setQuizId(resolvedQuizId);
+        setQuizId(resolvedQuizId || (typeof payload?.id === "string" ? payload.id : ""));
 
         if (!resolvedQuizId) {
           setError("We could not find this quiz right now.");
+        }
+
+        if (nextQuestions.length === 0) {
+          console.log("Quiz questions empty", { lessonId, quizId: resolvedQuizId || payload?.id || null });
         }
       } catch (loadError) {
         console.log("Quiz load error:", loadError);

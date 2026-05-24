@@ -30,6 +30,9 @@ export type LessonContentPayload = {
   textEn?: string;
   videoUrl?: string;
   quizId?: string;
+  quiz_link?: string;
+  quizLink?: string;
+  quiz_id?: string;
   url?: string;
   steps?: string[];
   stats?: {
@@ -618,6 +621,9 @@ export async function fetchLessonDetail(
           textEn: item?.content?.textEn,
           videoUrl: item?.content?.videoUrl,
           quizId: item?.content?.quizId,
+          quiz_link: item?.content?.quiz_link,
+          quizLink: item?.content?.quizLink,
+          quiz_id: item?.content?.quiz_id,
           url: item?.content?.url,
           steps: item?.content?.steps,
           stats: item?.content?.stats,
