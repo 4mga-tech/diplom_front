@@ -1,4 +1,4 @@
-import { getAudioUrl, playAudio } from "@/lib/audio";
+import { getAudioUrl, playAudio, stopAudio } from "@/lib/audio";
 import { api } from "@/lib/api";
 import { LessonContentItem, LessonGlossaryItem } from "@/lib/learning";
 import GlossaryModal from "@/src/features/lesson/components/GlossaryModal";
@@ -7,7 +7,7 @@ import LetterPracticeModal from "@/src/features/lesson/components/LetterPractice
 import { LessonStyles } from "@/src/features/lesson/lesson.styles";
 import * as Linking from "expo-linking";
 import React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Modal, Pressable, Text, View } from "react-native";
 
 type LessonContentRendererProps = {
   item: LessonContentItem;
@@ -49,10 +49,12 @@ function resolveBackendMediaUrl(url?: string | null) {
   if (!url) return null;
   if (/^https?:\/\//i.test(url)) return url;
 
-  const apiBaseUrl = (api.defaults.baseURL || "").replace(/\/+$/, "");
-  if (!apiBaseUrl) return url;
+  const API_ORIGIN = (api.defaults.baseURL || "")
+    .replace(/\/api\/?$/, "")
+    .replace(/\/+$/, "");
+  if (!API_ORIGIN) return url;
 
-  return `${apiBaseUrl}${url.startsWith("/") ? url : `/${url}`}`;
+  return `${API_ORIGIN}${url.startsWith("/") ? url : `/${url}`}`;
 }
 
 function normalizeGlossaryWord(value: string) {
@@ -248,6 +250,7 @@ function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps)
     [content.letters, content.items, content.rows],
   );
   const [selectedLetterIndex, setSelectedLetterIndex] = React.useState(0);
+  const [isDetailOpen, setIsDetailOpen] = React.useState(false);
 
   if (letters.length === 0) {
     return <EmptyBlock message="No letters available yet." styles={styles} />;
@@ -258,6 +261,28 @@ function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps)
     letters.length - 1,
   );
   const selectedLetter = letters[safeSelectedLetterIndex];
+
+  const handleCloseModal = React.useCallback(() => {
+    setIsDetailOpen(false);
+    void stopAudio();
+  }, []);
+
+  const handleOpenLetter = React.useCallback(
+    async (idx: number) => {
+      setSelectedLetterIndex(idx);
+      setIsDetailOpen(true);
+
+      const nextLetter = letters[idx];
+      const resolvedAudioUrl = resolveBackendMediaUrl(nextLetter?.audioUrl);
+      if (!resolvedAudioUrl) return;
+      await playAudio(resolvedAudioUrl);
+    },
+    [letters],
+  );
+
+  React.useEffect(() => () => {
+    void stopAudio();
+  }, []);
 
   return (
     <View style={styles.stack}>
@@ -270,7 +295,9 @@ function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps)
           return (
             <Pressable
               key={`${item.id}-letter-${idx}`}
-              onPress={() => setSelectedLetterIndex(idx)}
+              onPress={() => {
+                void handleOpenLetter(idx);
+              }}
               style={({ pressed }) => [
                 styles.alphabetTile,
                 safeSelectedLetterIndex === idx ? styles.alphabetTileSelected : null,
@@ -286,42 +313,47 @@ function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps)
           );
         })}
       </View>
-      <View style={styles.innerCard}>
-        <View style={styles.rowBetween}>
-          <Text style={styles.letterText}>
-            {selectedLetter?.printUpper ?? selectedLetter?.upper ?? ""}{" "}
-            {selectedLetter?.printLower ?? selectedLetter?.lower ?? ""}
-          </Text>
-          {selectedLetter?.group ? (
-            <Text style={styles.groupBadge}>{selectedLetter.group}</Text>
-          ) : null}
-        </View>
-        {!!selectedLetter?.transcription ? (
-          <BlockText styles={styles}>Call: {selectedLetter.transcription}</BlockText>
-        ) : null}
-        {!!selectedLetter?.nameMn ? (
-          <BlockText styles={styles}>
-            Name: {selectedLetter.nameMn}
-          </BlockText>
-        ) : null}
-        {!!selectedLetter?.pronunciation ? (
-          <BlockText styles={styles}>
-            Sound: {selectedLetter.pronunciation}
-          </BlockText>
-        ) : null}
-        {!!selectedLetter?.audioUrl ? (
-          <LessonActionButton
-            label="Play audio"
-            onPress={() => {
-              const resolvedAudioUrl = resolveBackendMediaUrl(selectedLetter.audioUrl);
-              if (!resolvedAudioUrl) return;
-              void playAudio(resolvedAudioUrl);
-            }}
-            styles={styles}
-            icon="play"
-          />
-        ) : null}
-      </View>
+      <Modal
+        visible={isDetailOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCloseModal}
+      >
+        <Pressable style={styles.letterDetailBackdrop} onPress={handleCloseModal}>
+          <Pressable style={styles.letterDetailModal} onPress={() => {}}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.letterText}>
+                {selectedLetter?.printUpper ?? selectedLetter?.upper ?? ""}{" "}
+                {selectedLetter?.printLower ?? selectedLetter?.lower ?? ""}
+              </Text>
+              <Pressable style={styles.letterDetailCloseButton} onPress={handleCloseModal}>
+                <Text style={styles.letterDetailCloseButtonText}>Close</Text>
+              </Pressable>
+            </View>
+            {!!selectedLetter?.transcription ? (
+              <BlockText styles={styles}>Call: {selectedLetter.transcription}</BlockText>
+            ) : null}
+            {!!selectedLetter?.pronunciation ? (
+              <BlockText styles={styles}>Sound: {selectedLetter.pronunciation}</BlockText>
+            ) : null}
+            {!!selectedLetter?.nameMn ? (
+              <BlockText styles={styles}>Mongolian name: {selectedLetter.nameMn}</BlockText>
+            ) : null}
+            {!!selectedLetter?.audioUrl ? (
+              <LessonActionButton
+                label="Play again"
+                onPress={() => {
+                  const resolvedAudioUrl = resolveBackendMediaUrl(selectedLetter.audioUrl);
+                  if (!resolvedAudioUrl) return;
+                  void playAudio(resolvedAudioUrl);
+                }}
+                styles={styles}
+                icon="play"
+              />
+            ) : null}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
