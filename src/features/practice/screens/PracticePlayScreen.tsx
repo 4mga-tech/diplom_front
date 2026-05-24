@@ -1,11 +1,11 @@
 import { api } from "@/lib/api";
 import { practiceService } from "@/src/features/practice/practice.service";
-import { PracticeDetails, PracticeTask } from "@/src/features/practice/practice.types";
+import { PracticeAttemptResult, PracticeDetails, PracticeTask } from "@/src/features/practice/practice.types";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Audio } from "expo-av";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Animated, Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type Props = { practiceId: string; stageId?: string };
@@ -49,6 +49,15 @@ function getAnswerValueForSubmission(task: PracticeTask, optionId: string, pract
 
 
 
+function getImageChoicePrompt(task: PracticeTask): string {
+  const prompt = task.prompt?.trim() ?? "";
+  if (/^(which one is|аль зураг нь)/i.test(prompt)) return prompt;
+
+  const correctOption = task.options.find((option) => option.id === (task.correctOptionId ?? task.correctAnswer));
+  const label = (correctOption?.label ?? correctOption?.text ?? task.correctAnswer ?? "").trim();
+  if (label) return `Which one is "${label}"?`;
+  return prompt || "Which one is this?";
+}
 
 const getSentenceParts = (task: PracticeTask): string[] => {
   if (task.parts?.length) return task.parts;
@@ -75,6 +84,11 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
   const soundRef = useRef<Audio.Sound | null>(null);
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [audioLoading, setAudioLoading] = useState(false);
+  const hasSubmittedStageRef = useRef(false);
+  const [completionModalVisible, setCompletionModalVisible] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [attemptResult, setAttemptResult] = useState<PracticeAttemptResult | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -102,17 +116,15 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
     return getSentenceParts(current);
   }, [current, isSentenceOrder]);
   const sentenceAnswerText = useMemo(() => selectedWordIndexes.map((wordIndex) => sentenceOrderParts[wordIndex]).filter(Boolean).join(" ").trim(), [selectedWordIndexes, sentenceOrderParts]);
-  const helperSubtitle = useMemo(() => {
-    if (!current) return null;
-    const taskSubtitle = current.subtitle?.trim();
-    if (taskSubtitle) return taskSubtitle;
-    if (current.meaningEn && current.meaningEn !== current.prompt) return current.meaningEn;
-    return null;
-  }, [current]);
   const progress = tasks.length ? (idx + 1) / tasks.length : 0;
   const apiBaseUrl = (api.defaults.baseURL || "")
     .replace(/\/api\/?$/, "")
     .replace(/\/+$/, ""); const stageXp = practice?.roadmap.find((x) => x.id === stageId)?.xpReward ?? 12;
+  const displayPrompt = useMemo(() => {
+    if (!current) return "";
+    if (practice?.type === "image_choice") return getImageChoicePrompt(current);
+    return current.prompt;
+  }, [current, practice?.type]);
 
   const resolveAudioUrl = useCallback((audioUrl?: string | null) => {
     if (!audioUrl) return null;
@@ -195,6 +207,41 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
     ]).start();
   }, [correctScale, shakeX, xpPop]);
 
+  const submitStage = useCallback(async (nextAnswers: Record<string, string>) => {
+    if (!practice || hasSubmittedStageRef.current || submitLoading) return;
+    hasSubmittedStageRef.current = true;
+    setSubmitError(null);
+    setSubmitLoading(true);
+
+    try {
+      const correctCount = tasks.filter((t) => nextAnswers[t.id] && isCorrectAnswer(t, nextAnswers[t.id], practice?.type)).length;
+      const score = tasks.length ? Math.round((correctCount / tasks.length) * 100) : 0;
+      const answersPayload = tasks
+        .filter((task) => typeof nextAnswers[task.id] === "string" && nextAnswers[task.id].length > 0)
+        .map((task) => ({
+          questionId: task.id,
+          answer: nextAnswers[task.id],
+        }));
+      const payload = {
+        score,
+        correctCount,
+        totalCount: tasks.length,
+        stageId,
+        answers: answersPayload,
+      };
+      const result = await practiceService.submitAttempt(practice.id, payload);
+      setAttemptResult(result);
+      setCompletionModalVisible(true);
+    } catch (error) {
+      console.log("Failed to submit stage", error);
+      hasSubmittedStageRef.current = false;
+      setSubmitError("Could not submit stage. Please retry.");
+    } finally {
+      setSubmitLoading(false);
+    }
+  }, [practice, stageId, submitLoading, tasks]);
+
+
   const onPick = useCallback(async (optionId: string) => {
     if (!current || feedback) return;
     const selectedOption = current.options.find((o) => o.id === optionId);
@@ -210,11 +257,17 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
     setSelectedOptionId(optionId);
     setSelectedOptionText(selectedText || null);
     setFeedback(ok ? "correct" : "wrong");
+    let nextAnswers = answers;
     if (ok) {
-      setAnswers((s) => ({ ...s, [current.id]: answerValue }));
+      nextAnswers = { ...answers, [current.id]: answerValue };
+      setAnswers(nextAnswers);
     }
     animateFeedback(ok);
     if (!ok) return;
+    if (idx === tasks.length - 1) {
+      void submitStage(nextAnswers);
+      return;
+    }
     timeoutRef.current = setTimeout(() => {
       setFeedback(null);
       setSelectedOptionId(null);
@@ -226,7 +279,7 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
         });
       }
     }, 820);
-  }, [animateFeedback, current, feedback, idx, isAudioChoice, questionFade, tasks.length]);
+  }, [animateFeedback, answers, current, feedback, idx, questionFade, submitStage, tasks.length]);
 
   const onSentencePartPress = useCallback((sourceIndex: number) => {
     if (!current || feedback || !isSentenceOrder) return;
@@ -247,11 +300,17 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
     setSelectedOptionId(null);
     setSelectedOptionText(null);
     setFeedback(isCorrect ? "correct" : "wrong");
+    let nextAnswers = answers;
     if (isCorrect) {
-      setAnswers((s) => ({ ...s, [current.id]: selectedAnswerText }));
+      nextAnswers = { ...answers, [current.id]: selectedAnswerText };
+      setAnswers(nextAnswers);
     }
     animateFeedback(isCorrect);
     if (!isCorrect) return;
+    if (idx === tasks.length - 1) {
+      void submitStage(nextAnswers);
+      return;
+    }
     timeoutRef.current = setTimeout(() => {
       setFeedback(null);
       setSelectedWordIndexes([]);
@@ -262,7 +321,7 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
         });
       }
     }, 820);
-  }, [animateFeedback, current, feedback, idx, isSentenceOrder, questionFade, selectedWordIndexes, sentenceOrderParts, tasks.length]);
+  }, [animateFeedback, answers, current, feedback, idx, isSentenceOrder, questionFade, selectedWordIndexes, sentenceOrderParts, submitStage, tasks.length]);
 
   const onSentenceTryAgain = useCallback(() => {
     setFeedback(null);
@@ -290,27 +349,10 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
     void unloadSound();
   }, [current?.id, unloadSound]);
 
-  const onFinish = useCallback(async () => {
-    if (!practice) return;
-    const correctCount = tasks.filter((t) => answers[t.id] && isCorrectAnswer(t, answers[t.id], practice?.type)).length;
-    const score = tasks.length ? Math.round((correctCount / tasks.length) * 100) : 0;
-    const answersPayload = tasks
-      .filter((task) => typeof answers[task.id] === "string" && answers[task.id].length > 0)
-      .map((task) => ({
-        questionId: task.id,
-        answer: answers[task.id],
-      }));
-    const payload = {
-      score,
-      correctCount,
-      totalCount: tasks.length,
-      stageId,
-      answers: answersPayload,
-    };
-    await practiceService.submitAttempt(practice.id, payload);
-
+  const onContinueToRoadmap = useCallback(() => {
+    setCompletionModalVisible(false);
     router.replace(`/practice/${encodeURIComponent(practiceId)}/roadmap` as any);
-  }, [answers, practice, practiceId, router, stageId, tasks]);
+  }, [practiceId, router]);
 
   if (loading || !current) return <SafeAreaView style={styles.safeArea}><View style={styles.center}><ActivityIndicator color="#93C5FD" /></View></SafeAreaView>;
 
@@ -326,9 +368,8 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
       feedback === "wrong" && styles.wrong,
     ]}>
       {practice?.type !== "dialogue_fill" ? (
-        <Text style={styles.prompt}>{current.prompt}</Text>
+        <Text style={styles.prompt}>{displayPrompt}</Text>
       ) : null}
-      {helperSubtitle ? <Text style={styles.subtitle}>{helperSubtitle}</Text> : null}
       {/* {practice?.type === "image_choice" && <Text style={styles.subtitle}>Pick the image that best matches the prompt.</Text>} */}
       {practice?.type === "dialogue_fill" && <View style={styles.dialog}><Text style={styles.bubbleA}>A: {current.prompt}</Text><Text style={styles.bubbleB}>B: ________</Text></View>}
       {isSentenceOrder && <View style={styles.sentenceOrderWrap}>
@@ -408,7 +449,20 @@ export default function PracticePlayScreen({ practiceId, stageId }: Props) {
     })}</View>}
     {supportsRetry && feedback === "wrong" ? <Pressable style={styles.tryAgainButton} onPress={onImageTryAgain}><Text style={styles.finishText}>Try Again</Text></Pressable> : null}
     {feedback === "correct" && <Animated.View pointerEvents="none" style={[styles.xpPop, { opacity: xpPop, transform: [{ translateY: xpPop.interpolate({ inputRange: [0, 1], outputRange: [16, -8] }) }] }]}><Text style={styles.xpPopText}>+{stageXp} XP</Text></Animated.View>}
-    {isLast && answers[current.id] && <Pressable style={styles.finish} onPress={() => void onFinish()}><Text style={styles.finishText}>Complete Stage</Text></Pressable>}
+    <Modal transparent visible={completionModalVisible} animationType="fade" onRequestClose={onContinueToRoadmap}>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.modalCard}>
+          <Text style={styles.modalTitle}>Stage complete!</Text>
+          <Text style={styles.modalMeta}>+{attemptResult?.xpEarned ?? stageXp} XP earned</Text>
+          <Text style={styles.modalScore}>Score: {attemptResult?.score ?? (tasks.length ? Math.round((Object.keys(answers).length / tasks.length) * 100) : 0)}%</Text>
+          <Text style={styles.modalScore}>Correct: {attemptResult?.correctAnswers ?? Object.keys(answers).length}/{attemptResult?.totalQuestions ?? tasks.length}</Text>
+          <Pressable style={styles.finish} onPress={onContinueToRoadmap}><Text style={styles.finishText}>Continue</Text></Pressable>
+          <Pressable style={styles.tryAgainButton} onPress={onContinueToRoadmap}><Text style={styles.finishText}>Back to Roadmap</Text></Pressable>
+        </View>
+      </View>
+    </Modal>
+
+    {submitError && !completionModalVisible ? <View style={styles.feedbackWrap}><Text style={styles.feedbackWrongText}>{submitError}</Text><Pressable style={styles.tryAgainButton} onPress={() => void submitStage(answers)} disabled={submitLoading}><Text style={styles.finishText}>{submitLoading ? "Submitting..." : "Retry submit"}</Text></Pressable></View> : null}
   </View></SafeAreaView>;
 }
 
@@ -472,4 +526,9 @@ const styles = StyleSheet.create({
   feedbackCorrectText: { color: "#86EFAC", textAlign: "center", fontWeight: "900", fontSize: 18 },
   feedbackHint: { color: "#CBD5E1", textAlign: "center", fontWeight: "700" },
   finishText: { color: "#fff", textAlign: "center", fontWeight: "900" },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(2,6,23,0.74)", alignItems: "center", justifyContent: "center", padding: 20 },
+  modalCard: { width: "100%", borderRadius: 18, borderWidth: 1, borderColor: "#2A3A64", backgroundColor: "#0D1A2D", padding: 18, gap: 10 },
+  modalTitle: { color: "#F8FAFC", fontWeight: "900", fontSize: 24, textAlign: "center" },
+  modalMeta: { color: "#86EFAC", textAlign: "center", fontWeight: "800", fontSize: 15 },
+  modalScore: { color: "#CBD5E1", textAlign: "center", fontWeight: "700" },
 });
