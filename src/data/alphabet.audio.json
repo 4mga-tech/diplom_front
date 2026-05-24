@@ -53,7 +53,7 @@
     "lowercase": "ү",
     "romanization": "ü",
     "group": "basic_vowel",
-    "audioKey": "letters/vvv.mp3"
+    "audioKey": ""
   },
   {
     "id": "letter-б",
@@ -275,8 +275,8 @@
     "id": "letter-ы",
     "letter": "Ы",
     "lowercase": "ы",
-    "romanization": "y",
+    "romanization": "ii",
     "group": "auxiliary_vowel",
-    "audioKey": "letters/er_i.mp3"
+    "audioKey": ""
   }
 ]

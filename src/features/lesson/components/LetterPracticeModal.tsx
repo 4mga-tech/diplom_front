@@ -12,6 +12,7 @@ import {
   Modal,
   PanResponder,
   Pressable,
+  SafeAreaView,
   StyleSheet,
   Text,
   View,
@@ -22,7 +23,11 @@ type LetterPracticeData = {
   lowercase?: string | null;
   printForm?: string | null;
   cursiveForm?: string | null;
-  audioKey?: string;
+  audioKey?: string | null;
+  audioUrl?: string | null;
+  transcription?: string | null;
+  pronunciation?: string | null;
+  nameMn?: string | null;
 };
 
 type Point = {
@@ -63,30 +68,32 @@ export default function LetterPracticeModal({
   const canvasRef = React.useRef<View | null>(null);
 
  const handlePlayAudio = React.useCallback(async () => {
-  const audioKey =
-    letter?.audioKey || getLetterAudioKey(letter?.primary);
+  const directAudioUrl = letter?.audioUrl?.trim();
+  const audioKey = letter?.audioKey || getLetterAudioKey(letter?.primary);
+  const audioUrl = directAudioUrl || (audioKey ? getAudioUrl(audioKey) : "");
 
-  if (!audioKey) return;
-
-  const audioUrl = getAudioUrl(audioKey);
+  if (!audioUrl) {
+    console.warn("Audio not available for this letter.");
+    return;
+  }
 
   setIsPlaying(true);
 
   try {
     await playAudio(audioUrl);
   } catch (error) {
-    console.error("Failed to play audio:", error);
+    console.warn("Audio not available for this letter.");
   } finally {
     setIsPlaying(false);
   }
-}, [letter?.audioKey, letter?.primary]);
+}, [letter?.audioKey, letter?.audioUrl, letter?.primary]);
 
   React.useEffect(() => {
     if (!visible) {
       setStrokes([]);
       setIsPlaying(false);
       void stopAudio();
-    } else if (letter?.audioKey || letter?.primary) {
+    } else if (letter?.audioUrl || letter?.audioKey || getLetterAudioKey(letter?.primary)) {
       handlePlayAudio();
     }
   }, [visible, letter?.audioKey, letter?.primary, handlePlayAudio]);
@@ -195,16 +202,17 @@ export default function LetterPracticeModal({
   }
 
   const detailRows = [
-    letter.uppercase && letter.lowercase
-      ? { label: "Upper / lower", value: `${letter.uppercase}  ${letter.lowercase}` }
-      : null,
-    letter.printForm ? { label: "Print", value: letter.printForm } : null,
-    letter.cursiveForm ? { label: "Cursive", value: letter.cursiveForm } : null,
+    letter?.transcription ? { label: "Call", value: letter.transcription } : null,
+    letter?.pronunciation ? { label: "Sound", value: letter.pronunciation } : null,
+    letter?.nameMn ? { label: "Mongolian name", value: letter.nameMn } : null,
   ].filter(Boolean) as { label: string; value: string }[];
+
+  const canPlayAudio = Boolean(letter?.audioUrl?.trim() || letter?.audioKey || getLetterAudioKey(letter?.primary));
 
   return (
     <Modal visible={visible} transparent animationType="fade">
       <Pressable style={styles.overlay} onPress={onClose}>
+        <SafeAreaView style={styles.safeWrap}>
         <Pressable
           onPress={() => {}}
           style={[
@@ -219,6 +227,7 @@ export default function LetterPracticeModal({
             },
           ]}
         >
+          <View style={styles.handle} />
           <View style={styles.header}>
             <View>
               <Text style={[styles.eyebrow, { color: theme.colors.muted }]}>
@@ -230,10 +239,10 @@ export default function LetterPracticeModal({
             </View>
 
             <View style={styles.headerControls}>
-              {letter?.audioKey || letter?.primary ? (
+              {canPlayAudio ? (
                 <Pressable
                   onPress={handlePlayAudio}
-                  disabled={isPlaying}
+                  disabled={isPlaying || !canPlayAudio}
                   style={[
                     styles.headerButton,
                     {
@@ -400,6 +409,7 @@ export default function LetterPracticeModal({
             </Pressable>
           </View>
         </Pressable>
+        </SafeAreaView>
       </Pressable>
     </Modal>
   );
@@ -409,14 +419,31 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(2,6,23,0.56)",
-    justifyContent: "center",
-    paddingHorizontal: 18,
+    justifyContent: "flex-end",
+    paddingHorizontal: 0,
+  },
+  safeWrap: {
+    width: "100%",
   },
   card: {
-    borderRadius: 24,
-    padding: 16,
+    width: "100%",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    paddingHorizontal: 24,
+    paddingTop: 18,
+    paddingBottom: 28,
     borderWidth: 1,
     gap: 14,
+  },
+  handle: {
+    width: 56,
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(148,163,184,0.5)",
+    alignSelf: "center",
+    marginBottom: 6,
   },
   header: {
     flexDirection: "row",
