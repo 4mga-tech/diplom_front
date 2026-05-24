@@ -10,11 +10,11 @@ const HUB_TYPES = ["dialogue_fill", "image_choice", "sentence_order", "audio_cho
 
 type DailyTask = { id: string; title: string; progress: number; total: number; xp: number; reset: string; done?: boolean };
 
-const TYPE_META: Record<string, { title: string; subtitle: string; icon: keyof typeof Ionicons.glyphMap }> = {
-  dialogue_fill: { title: "Dialogue Fill", subtitle: "Pick the natural reply", icon: "chatbubbles-outline" },
-  image_choice: { title: "Image Choice", subtitle: "Match word to visual", icon: "image-outline" },
-  sentence_order: { title: "Sentence Order", subtitle: "Arrange fluent phrases", icon: "reorder-three-outline" },
-  audio_choice: { title: "Listen & Choose", subtitle: "Listen and choose the correct word", icon: "volume-high-outline" },
+const TYPE_META: Record<string, { title: string; subtitle: string; icon: keyof typeof Ionicons.glyphMap; accent: string; bg: string }> = {
+  dialogue_fill: { title: "Dialogue Fill", subtitle: "Pick the natural reply", icon: "chatbubbles", accent: "#93C5FD", bg: "rgba(59,130,246,0.14)" },
+  image_choice: { title: "Image Choice", subtitle: "Match word to visual", icon: "images", accent: "#C4B5FD", bg: "rgba(139,92,246,0.14)" },
+  sentence_order: { title: "Sentence Order", subtitle: "Arrange fluent phrases", icon: "shuffle", accent: "#F9A8D4", bg: "rgba(236,72,153,0.14)" },
+  audio_choice: { title: "Listen & Choose", subtitle: "Listen and choose the correct word", icon: "headset", accent: "#67E8F9", bg: "rgba(6,182,212,0.14)" },
 };
 
 export default function PracticeHubScreen() {
@@ -98,7 +98,7 @@ export default function PracticeHubScreen() {
           {mappedModes.map((practice, index) => {
             const isQuick = practice.type === "quick_challenge";
             const meta = isQuick
-              ? { title: "Quick Challenge", subtitle: "Daily mixed sprint", icon: "flash-outline" as const }
+              ? { title: "Quick Challenge", subtitle: "Daily mixed sprint", icon: "flash" as const, accent: "#FDE68A", bg: "rgba(250,204,21,0.16)" }
               : TYPE_META[practice.type ?? ""];
             if (!meta) return null;
 
@@ -109,6 +109,8 @@ export default function PracticeHubScreen() {
             const rawPercent = progress?.progressPercent ?? 0;
             const progressWidth = rawPercent <= 1 ? rawPercent * 100 : rawPercent;
             const isCompleted = totalStages > 0 && completedStages >= totalStages;
+            const isStarted = completedStages > 0;
+            const ctaText = isCompleted ? "Review" : isStarted ? "Continue" : "Start";
             const clampedProgressWidth = isCompleted ? 100 : Math.max(0, Math.min(100, progressWidth));
             return (
               <Pressable
@@ -117,7 +119,7 @@ export default function PracticeHubScreen() {
                 onPress={() => router.push(`/practice/${encodeURIComponent(practice.id.split("#")[0])}/roadmap` as any)}
               >
                 <Text style={styles.rowIndex}>{String(index + 1).padStart(2, "0")}</Text>
-                <View style={styles.rowIconWrap}><Ionicons name={meta.icon} size={18} color="#BFD1FF" /></View>
+                <View style={[styles.rowIconWrap, { backgroundColor: meta.bg, borderColor: `${meta.accent}66` }]}><Ionicons name={meta.icon} size={18} color={meta.accent} /></View>
                 <View style={styles.rowContent}>
                   <View style={styles.rowTopLine}>
                     <Text style={styles.rowTitle}>{meta.title}</Text>
@@ -126,7 +128,8 @@ export default function PracticeHubScreen() {
                       <Ionicons name="chevron-forward" size={16} color="#7F92BA" />
                     </View>
                   </View>
-                  <Text style={styles.rowMeta}>{`${completedStages}/${totalStages} stages`} • {`${earnedXp} XP earned`} • {isCompleted ? "Review" : "Start"}</Text>
+                  <Text style={styles.rowMeta}>{`${completedStages}/${totalStages} stages`} • {`${earnedXp} XP earned`}</Text>
+                  <View style={styles.rowBottomLine}><View style={styles.ctaPill}><Text style={styles.ctaText}>{ctaText}</Text></View>{isCompleted ? <View style={styles.completedBadge}><Ionicons name="checkmark-circle" size={12} color="#14532D" /><Text style={styles.completedBadgeText}>Completed</Text></View> : null}</View>
                   <View style={styles.rowProgressTrack}><View style={[styles.rowProgressBar, isCompleted && styles.rowProgressBarCompleted, { width: `${clampedProgressWidth}%` }]} /></View>
                 </View>
               </Pressable>
@@ -166,13 +169,16 @@ const styles = StyleSheet.create({
   lessonRowCompleted: { borderColor: "rgba(74,222,128,0.55)", backgroundColor: "rgba(34,197,94,0.08)", shadowColor: "#86EFAC", shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
   rowIndex: { width: 24, color: "#7284A9", fontSize: 12, fontWeight: "700", letterSpacing: 0.6 },
   rowIconWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(55,74,119,0.35)", borderWidth: 1, borderColor: "rgba(114,135,182,0.34)", alignItems: "center", justifyContent: "center" },
-  rowContent: { flex: 1, borderBottomWidth: 1, borderBottomColor: "rgba(89,106,145,0.24)", paddingBottom: 10 },
+  rowContent: { flex: 1, borderBottomWidth: 1, borderBottomColor: "rgba(89,106,145,0.24)", paddingBottom: 10, gap: 6 },
   rowTopLine: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   rowActions: { flexDirection: "row", alignItems: "center", gap: 6 },
   completedBadge: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: "#BBF7D0" },
   completedBadgeText: { color: "#14532D", fontSize: 10, fontWeight: "800" },
   rowTitle: { color: "#F1F5F9", fontSize: 16, fontWeight: "700" },
-  rowMeta: { color: "#8FA3CB", fontSize: 12, fontWeight: "600", marginTop: 3 },
+  rowMeta: { color: "#9FB2D5", fontSize: 12, fontWeight: "600", marginTop: 2 },
+  rowBottomLine: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  ctaPill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: "rgba(71,85,105,0.45)", borderWidth: 1, borderColor: "rgba(147,163,184,0.35)" },
+  ctaText: { color: "#E2E8F0", fontWeight: "800", fontSize: 11 },
   rowProgressTrack: { height: 3, borderRadius: 99, backgroundColor: "rgba(80,98,136,0.35)", marginTop: 9, overflow: "hidden" },
   rowProgressBar: { height: "100%", backgroundColor: "#7C8CFF" },
   rowProgressBarCompleted: { backgroundColor: "#22C55E" },
