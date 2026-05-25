@@ -893,10 +893,10 @@ export const createLessonStyles = (theme: AppTheme) =>
     },
     repeatCard: {
       width: "48%",
-      minHeight: 84,
-      borderRadius: 16,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
+      minHeight: 72,
+      borderRadius: 14,
+      paddingHorizontal: 10,
+      paddingVertical: 9,
       backgroundColor: theme.mode === "dark" ? "rgba(30,41,59,0.82)" : "rgba(248,250,252,0.98)",
       borderWidth: 1,
       borderColor: theme.mode === "dark" ? "rgba(71,85,105,0.6)" : "rgba(148,163,184,0.22)",
@@ -910,7 +910,7 @@ export const createLessonStyles = (theme: AppTheme) =>
     },
     repeatCardLabel: {
       color: theme.colors.text,
-      fontSize: 18,
+      fontSize: 16,
       fontWeight: "900",
     },
     repeatCardSubtext: {
@@ -939,7 +939,7 @@ export const createLessonStyles = (theme: AppTheme) =>
     },
     repeatPlayingText: {
       color: "#93C5FD",
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: "800",
       textTransform: "uppercase",
     },
@@ -1147,8 +1147,18 @@ export const createLessonStyles = (theme: AppTheme) =>
     },
     wordBuildResultText: {
       color: theme.colors.text,
-      fontSize: 16,
+      fontSize: 18,
       fontWeight: "900",
+    },
+    wordBuildResultCenter: {
+      alignItems: "center",
+      marginTop: 2,
+    },
+    wordBuildResultCenterText: {
+      color: theme.colors.text,
+      fontSize: 22,
+      fontWeight: "900",
+      lineHeight: 26,
     },
     wordBuildLetters: {
       flexDirection: "row",
@@ -1432,6 +1442,39 @@ export const createLessonStyles = (theme: AppTheme) =>
           ? "rgba(30,41,59,0.32)"
           : "rgba(241,245,249,0.72)",
       gap: 6,
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark" ? "rgba(148,163,184,0.2)" : "rgba(148,163,184,0.22)",
+    },
+    wordBuildMiniCardPlaying: {
+      borderColor: "#60A5FA",
+      shadowColor: "#60A5FA",
+      shadowOpacity: 0.26,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 0 },
+      elevation: 2,
+    },
+    wordBuildAudioButton: {
+      marginTop: 2,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.mode === "dark" ? "rgba(96,165,250,0.4)" : "rgba(59,130,246,0.32)",
+      backgroundColor: theme.mode === "dark" ? "rgba(30,64,175,0.2)" : "rgba(219,234,254,0.9)",
+      paddingVertical: 7,
+      paddingHorizontal: 10,
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      gap: 6,
+    },
+    wordBuildAudioButtonPlaying: {
+      borderColor: "#60A5FA",
+      backgroundColor: theme.mode === "dark" ? "rgba(37,99,235,0.26)" : "rgba(191,219,254,0.95)",
+    },
+    wordBuildAudioButtonText: {
+      color: theme.colors.text,
+      fontSize: 12,
+      fontWeight: "800",
     },
 
     heroStatLabel: {
