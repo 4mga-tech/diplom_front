@@ -569,6 +569,27 @@ export const createLessonStyles = (theme: AppTheme) =>
           : "rgba(148,163,184,0.14)",
       gap: 5,
     },
+    compactGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+    vocabCard: {
+      width: "48%",
+      minWidth: 150,
+      borderRadius: 12,
+      padding: 9,
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(30,41,59,0.5)"
+          : "rgba(241,245,249,0.95)",
+      gap: 4,
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(71,85,105,0.45)"
+          : "rgba(148,163,184,0.2)",
+    },
     rowBetween: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -942,6 +963,21 @@ export const createLessonStyles = (theme: AppTheme) =>
       fontSize: 10,
       fontWeight: "800",
       textTransform: "uppercase",
+    },
+    comparisonCard: {
+      width: "48%",
+      minWidth: 150,
+      borderRadius: 12,
+      padding: 10,
+      backgroundColor: theme.mode === "dark" ? "rgba(30,41,59,0.82)" : "rgba(248,250,252,0.98)",
+      borderWidth: 1,
+      borderColor: theme.mode === "dark" ? "rgba(71,85,105,0.6)" : "rgba(148,163,184,0.22)",
+      gap: 8,
+    },
+    comparisonSide: { gap: 2 },
+    comparisonDivider: {
+      height: 1,
+      backgroundColor: theme.mode === "dark" ? "rgba(148,163,184,0.35)" : "rgba(148,163,184,0.25)",
     },
     audioCard: {
       flex: 1,
