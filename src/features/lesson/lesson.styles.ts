@@ -574,6 +574,70 @@ export const createLessonStyles = (theme: AppTheme) =>
       flexWrap: "wrap",
       gap: 8,
     },
+
+    vocabGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+    vocabListCard: {
+      width: "48%",
+      minWidth: 150,
+      borderRadius: 12,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(30,41,59,0.5)"
+          : "rgba(241,245,249,0.95)",
+      gap: 3,
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(71,85,105,0.45)"
+          : "rgba(148,163,184,0.2)",
+    },
+    vocabAudioButton: {
+      width: 24,
+      height: 24,
+      borderRadius: 999,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor:
+        theme.mode === "dark" ? "rgba(59,130,246,0.2)" : "rgba(59,130,246,0.12)",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark" ? "rgba(147,197,253,0.42)" : "rgba(37,99,235,0.22)",
+    },
+    vocabAudioIcon: {
+      color: theme.mode === "dark" ? "#BFDBFE" : "#1D4ED8",
+      fontSize: 11,
+      fontWeight: "900",
+      marginLeft: 1,
+    },
+    classificationGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+    classificationCard: {
+      width: "48%",
+      minWidth: 160,
+      borderRadius: 12,
+      paddingHorizontal: 10,
+      paddingVertical: 9,
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(30,41,59,0.5)"
+          : "rgba(241,245,249,0.95)",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(71,85,105,0.45)"
+          : "rgba(148,163,184,0.2)",
+      gap: 6,
+    },
+
     vocabCard: {
       width: "48%",
       minWidth: 150,
