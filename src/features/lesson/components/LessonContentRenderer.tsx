@@ -7,7 +7,8 @@ import LetterPracticeModal from "@/src/features/lesson/components/LetterPractice
 import { LessonStyles } from "@/src/features/lesson/lesson.styles";
 import * as Linking from "expo-linking";
 import React from "react";
-import { Animated, Modal, Pressable, Text, View } from "react-native";
+import { Animated, Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type LessonContentRendererProps = {
   item: LessonContentItem;
@@ -251,6 +252,7 @@ function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps)
   const [isDetailVisible, setDetailVisible] = React.useState(false);
   const [interactionCount, setInteractionCount] = React.useState(0);
   const [gameChoice, setGameChoice] = React.useState<string | null>(null);
+  const insets = useSafeAreaInsets();
 
   if (letters.length === 0) {
     return <EmptyBlock message="No letters available yet." styles={styles} />;
@@ -313,11 +315,12 @@ function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps)
                 pressed ? styles.alphabetTilePressed : null,
               ]}
             >
-              <Text style={styles.alphabetTileUpper}>{upper}</Text>
+              <View style={styles.alphabetTileHeader}>
+                <Text style={styles.alphabetTileUpper}>{upper}</Text>
+                {resolveBackendMediaUrl(letter?.audioUrl) ? <Text style={styles.alphabetTileAudioIcon}>▶</Text> : null}
+              </View>
               <Text style={styles.alphabetTileLower}>{lower}</Text>
-              {transcription ? (
-                <Text style={styles.alphabetTileSubtext}>{transcription}</Text>
-              ) : null}
+              {transcription ? <Text style={styles.alphabetTileSubtext}>{transcription}</Text> : null}
             </Pressable>
           );
         })}
@@ -355,20 +358,31 @@ function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps)
       ) : null}
       <Modal visible={isDetailVisible} transparent animationType="slide">
         <Pressable style={styles.lessonSheetBackdrop} onPress={() => setDetailVisible(false)}>
-          <Pressable style={styles.lessonSheet}>
-            <Text style={styles.letterText}>
-              {selectedLetter?.printUpper ?? selectedLetter?.upper ?? ""} {selectedLetter?.printLower ?? selectedLetter?.lower ?? ""}
-            </Text>
-            <Text style={styles.alphabetTileSubtext}>{selectedLetter?.transcription ?? selectedLetter?.pronunciation ?? ""}</Text>
-            <Text style={styles.groupBadge}>{selectedLetter?.group ?? "Vowel"}</Text>
-            <Text style={styles.contentBody}>Examples: аав • алим</Text>
-            <View style={styles.row}>
-              <LessonActionButton label="Listen" onPress={() => {
-                const resolvedAudioUrl = resolveBackendMediaUrl(selectedLetter?.audioUrl);
-                if (resolvedAudioUrl) void playAudio(resolvedAudioUrl);
-              }} styles={styles} icon="play" />
-              <LessonActionButton label="Trace" onPress={() => setDetailVisible(false)} styles={styles} icon="create" />
-            </View>
+          <Pressable style={[styles.lessonSheet, { paddingBottom: insets.bottom + 24 }]} onPress={(event) => event.stopPropagation()}>
+            <View style={styles.sheetHandle} />
+            <ScrollView bounces={false} contentContainerStyle={[styles.sheetContent, { paddingHorizontal: 24, paddingTop: 18 }]}>
+              <Text style={styles.sheetLetterTitle}>
+                {selectedLetter?.printUpper ?? selectedLetter?.upper ?? ""} {selectedLetter?.printLower ?? selectedLetter?.lower ?? ""}
+              </Text>
+              <Text style={styles.alphabetTileSubtext}>{selectedLetter?.transcription ?? selectedLetter?.pronunciation ?? ""}</Text>
+              <View style={styles.sheetInfoRow}><Text style={styles.sheetInfoLabel}>Call:</Text><Text style={styles.sheetInfoValue}>{selectedLetter?.latin ?? selectedLetter?.call ?? "—"}</Text></View>
+              <View style={styles.sheetInfoRow}><Text style={styles.sheetInfoLabel}>Sound:</Text><Text style={styles.sheetInfoValue}>{selectedLetter?.transcription ?? selectedLetter?.pronunciation ?? "—"}</Text></View>
+              <View style={styles.sheetInfoRow}><Text style={styles.sheetInfoLabel}>Type:</Text><Text style={styles.sheetInfoValue}>{selectedLetter?.group ?? "Basic vowel"}</Text></View>
+              <Text style={styles.sheetExamplesText}>Examples: {selectedLetter?.examples ?? "аав, алим"}</Text>
+              {resolveBackendMediaUrl(selectedLetter?.audioUrl) ? null : <Text style={styles.sheetMutedText}>Audio unavailable</Text>}
+              <View style={styles.row}>
+                <View style={styles.sheetButtonFlex}>
+                  <LessonActionButton label="Listen" onPress={() => {
+                    const resolvedAudioUrl = resolveBackendMediaUrl(selectedLetter?.audioUrl);
+                    if (!resolvedAudioUrl) return;
+                    void playAudio(resolvedAudioUrl);
+                  }} styles={styles} icon="play" disabled={!resolveBackendMediaUrl(selectedLetter?.audioUrl)} />
+                </View>
+                <View style={styles.sheetButtonFlex}>
+                  <LessonActionButton label="Trace" onPress={() => setDetailVisible(false)} styles={styles} icon="create" />
+                </View>
+              </View>
+            </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>
@@ -636,16 +650,23 @@ function ExerciseRepeatContentBlock({
   activeGlossaryWordKey,
 }: ContentBlockProps) {
   const rows = asArray<any>(content.items ?? content.rows ?? []);
-  const hasLetterAudio = rows.some((row: any) => row?.audioKey || (row?.primary && !row?.audioUrl));
+  const [playingKey, setPlayingKey] = React.useState<string | null>(null);
 
-  const handleAudioPlay = React.useCallback(async (audioKey: string) => {
-    const audioUrl = getAudioUrl(audioKey);
+  const normalizeAudio = (row: any) => resolveBackendMediaUrl(row?.audioUrl) ?? (row?.audioKey ? getAudioUrl(row.audioKey) : (row?.primary ? getAudioUrl(`letters/${String(row.primary).toLowerCase()}.mp3`) : null));
+
+  const handlePlay = React.useCallback(async (row: any, idx: number) => {
+    const audioUrl = normalizeAudio(row);
+    if (!audioUrl) return;
+    const key = `${item.id}-${idx}`;
+    setPlayingKey(key);
     try {
       await playAudio(audioUrl);
     } catch (error) {
       console.error("Failed to play audio:", error);
+    } finally {
+      setPlayingKey((current) => (current === key ? null : current));
     }
-  }, []);
+  }, [item.id]);
 
   return (
     <View style={styles.stack}>
@@ -658,70 +679,31 @@ function ExerciseRepeatContentBlock({
         activeGlossaryWordKey={activeGlossaryWordKey}
       />
       {rows.length > 0 ? (
-        hasLetterAudio ? (
-          <View style={styles.audioGrid}>
-            {rows.map((row, idx) => {
-              const audioKey = row?.audioKey || (row?.primary ? `letters/${row.primary.toLowerCase()}.mp3` : null);
-              if (!audioKey) return null;
-              return (
-                <Pressable
-                  key={`${item.id}-audio-${idx}`}
-                  onPress={() => handleAudioPlay(audioKey)}
-                  style={({ pressed }) => [
-                    styles.audioCard,
-                    pressed ? styles.audioCardPressed : null,
-                  ]}
-                >
-                  <Text style={styles.audioCardIcon}>▶</Text>
-                  {row?.primary ? (
-                    <Text style={styles.audioCardLabel}>{row.primary}</Text>
-                  ) : null}
-                </Pressable>
-              );
-            })}
-          </View>
-        ) : (
-          rows.map((row, idx) => (
-            <View key={`${item.id}-row-${idx}`} style={styles.innerCard}>
-              {!!row?.prompt ? (
-                <GlossaryText
-                  text={String(row.prompt)}
-                  styles={styles}
-                  glossary={glossary}
-                  onSelectGlossaryWord={onSelectGlossaryWord}
-                  activeGlossaryWordKey={activeGlossaryWordKey}
-                  variant="title"
-                />
-              ) : null}
-              {!!row?.line ? (
-                <GlossaryText
-                  text={String(row.line)}
-                  styles={styles}
-                  glossary={glossary}
-                  onSelectGlossaryWord={onSelectGlossaryWord}
-                  activeGlossaryWordKey={activeGlossaryWordKey}
-                />
-              ) : null}
-              {!!row?.text ? (
-                <GlossaryText
-                  text={String(row.text)}
-                  styles={styles}
-                  glossary={glossary}
-                  onSelectGlossaryWord={onSelectGlossaryWord}
-                  activeGlossaryWordKey={activeGlossaryWordKey}
-                />
-              ) : null}
-              {!!row?.audioUrl ? (
-                <LessonActionButton
-                  label="Play practice audio"
-                  onPress={() => { const resolvedAudioUrl = resolveBackendMediaUrl(row.audioUrl); if (!resolvedAudioUrl) return; void playAudio(resolvedAudioUrl); }}
-                  styles={styles}
-                  icon="play"
-                />
-              ) : null}
-            </View>
-          ))
-        )
+        <View style={styles.repeatGrid}>
+          {rows.map((row, idx) => {
+            const label = row?.primary ?? row?.prompt ?? row?.line ?? row?.text ?? "";
+            if (!label) return null;
+            const transcription = row?.transcription ?? row?.pronunciation ?? "";
+            const audioUrl = normalizeAudio(row);
+            const itemKey = `${item.id}-${idx}`;
+            const isPlaying = playingKey === itemKey;
+            return (
+              <Pressable
+                key={`${item.id}-repeat-${idx}`}
+                onPress={() => void handlePlay(row, idx)}
+                disabled={!audioUrl}
+                style={({ pressed }) => [styles.repeatCard, isPlaying ? styles.repeatCardPlaying : null, pressed ? styles.audioCardPressed : null, !audioUrl ? styles.repeatCardDisabled : null]}
+              >
+                <View style={styles.repeatCardTop}>
+                  <Text style={styles.repeatCardLabel}>{label}</Text>
+                  <Text style={[styles.repeatPlayIcon, !audioUrl ? styles.repeatPlayIconDisabled : null]}>{isPlaying ? "⏳" : "▶"}</Text>
+                </View>
+                {transcription ? <Text style={styles.repeatCardSubtext}>{transcription}</Text> : null}
+                {isPlaying ? <Text style={styles.repeatPlayingText}>Playing</Text> : null}
+              </Pressable>
+            );
+          })}
+        </View>
       ) : (
         <EmptyBlock message="No repeat exercise items available yet." styles={styles} />
       )}
