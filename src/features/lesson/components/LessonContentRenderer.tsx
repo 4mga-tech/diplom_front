@@ -1151,21 +1151,33 @@ function ExerciseWordBuildContentBlock({
             const letters = asArray<string>(question?.letters);
             const selectedLetters = answers[questionIndex] ?? [];
             const result = results[questionIndex];
+            const left = String(question?.left ?? "");
+            const right = String(question?.right ?? "");
+            const normalizedResult = String(question?.result ?? question?.correctAnswer ?? question?.answer ?? "").trim();
+            const fallbackResultFromRight = !normalizedResult && right ? right : "";
+            const visualResult = normalizedResult || fallbackResultFromRight;
+            const checkAnswerValue = normalizedResult || fallbackResultFromRight;
+            const feedbackAnswer = String(
+              question?.displayAnswer ??
+                normalizedResult ??
+                fallbackResultFromRight ??
+                "",
+            ).trim();
 
             return (
               <View key={`${item.id}-wb-${idx}`} style={styles.wordBuildMiniCard}>
-                {question?.left || question?.right || question?.result ? (
+                {left || right || visualResult ? (
                   <View style={styles.wordBuildFormulaRow}>
                     <View style={styles.wordBuildOperandChip}>
-                      <Text style={styles.wordBuildOperandText}>{question?.left ?? ""}</Text>
+                      <Text style={styles.wordBuildOperandText}>{left}</Text>
                     </View>
                     <Text style={styles.wordBuildOperatorText}>+</Text>
                     <View style={styles.wordBuildOperandChip}>
-                      <Text style={styles.wordBuildOperandText}>{question?.right ?? ""}</Text>
+                      <Text style={styles.wordBuildOperandText}>{right}</Text>
                     </View>
                     <Text style={styles.wordBuildOperatorText}>=</Text>
                     <View style={styles.wordBuildResultChip}>
-                      <Text style={styles.wordBuildResultText}>{question?.result ?? question?.answer ?? ""}</Text>
+                      <Text style={styles.wordBuildResultText}>{visualResult}</Text>
                     </View>
                   </View>
                 ) : (
@@ -1211,7 +1223,7 @@ function ExerciseWordBuildContentBlock({
 
                   <Pressable
                     onPress={() =>
-                      handleCheck(questionIndex, String(question?.answer ?? ""))
+                      handleCheck(questionIndex, checkAnswerValue)
                     }
                     style={styles.wordBuildPrimaryButton}
                   >
@@ -1222,7 +1234,7 @@ function ExerciseWordBuildContentBlock({
                 {result !== null && result !== undefined ? (
                   <Text style={result ? styles.correctText : styles.wrongText}>
                     {result
-                      ? `Correct! ${question?.displayAnswer ?? question?.answer}`
+                      ? feedbackAnswer ? `Correct! ${feedbackAnswer}` : "Correct!"
                       : "Try again"}
                   </Text>
                 ) : null}
