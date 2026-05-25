@@ -404,6 +404,16 @@ function ClassificationContentBlock({
 }: ContentBlockProps) {
   const groups = asArray<any>(content.groups);
 
+  const getGroupItems = (group: any) =>
+    asArray<any>(group?.items ?? group?.letters ?? group?.words)
+      .map((entry) =>
+        typeof entry === "string"
+          ? entry
+          : String(entry?.text ?? entry?.label ?? entry?.value ?? entry?.word ?? ""),
+      )
+      .map((value) => value.trim())
+      .filter(Boolean);
+
   return (
     <View style={styles.stack}>
       {!!content.summary ? (
@@ -416,9 +426,9 @@ function ClassificationContentBlock({
         />
       ) : null}
       {groups.length > 0 ? (
-        <View style={styles.repeatGrid}>
+        <View style={styles.classificationGrid}>
         {groups.map((group, idx) => (
-          <View key={`${item.id}-group-${idx}`} style={styles.vocabCard}>
+          <View key={`${item.id}-group-${idx}`} style={styles.classificationCard}>
             <Text style={styles.innerTitle}>{group?.title}</Text>
             {!!group?.description ? (
               <GlossaryText
@@ -430,14 +440,7 @@ function ClassificationContentBlock({
               />
             ) : null}
             <View style={styles.chipsWrap}>
-              {asArray<any>(group?.items)
-                .map((entry) =>
-                  typeof entry === "string"
-                    ? entry
-                    : String(entry?.text ?? entry?.word ?? entry?.label ?? ""),
-                )
-                .filter(Boolean)
-                .map((label, itemIndex) => (
+              {getGroupItems(group).map((label, itemIndex) => (
                   <View key={`${item.id}-group-${idx}-item-${itemIndex}`} style={styles.chip}>
                     <Text style={styles.chipText}>{label}</Text>
                   </View>
@@ -602,52 +605,56 @@ function VocabListContentBlock({
   onSelectGlossaryWord,
   activeGlossaryWordKey,
 }: ContentBlockProps) {
-  const items = asArray<any>(content.items ?? content.words ?? content.vocab);
+  const items = asArray<any>(content.items ?? content.words ?? content.vocabulary ?? content.vocab);
 
   if (items.length === 0) {
     return null;
   }
 
   return (
-    <View style={styles.compactGrid}>
-      {items.map((vocabItem, idx) => (
-        <View key={`${item.id}-vocab-${idx}`} style={styles.vocabCard}>
-          <GlossaryText
-            text={String(vocabItem?.word ?? "")}
-            styles={styles}
-            glossary={glossary}
-            onSelectGlossaryWord={onSelectGlossaryWord}
-            activeGlossaryWordKey={activeGlossaryWordKey}
-            variant="title"
-          />
-          <GlossaryText
-            text={String(vocabItem?.transcription ?? vocabItem?.pronunciation ?? "")}
-            styles={styles}
-            glossary={glossary}
-            onSelectGlossaryWord={onSelectGlossaryWord}
-            activeGlossaryWordKey={activeGlossaryWordKey}
-          />
-          <GlossaryText
-            text={String(vocabItem?.meaningEn ?? vocabItem?.meaning ?? "")}
-            styles={styles}
-            glossary={glossary}
-            onSelectGlossaryWord={onSelectGlossaryWord}
-            activeGlossaryWordKey={activeGlossaryWordKey}
-          />
-          {!!resolveBackendMediaUrl(vocabItem?.audioUrl) ? (
-            <LessonActionButton
-              label="▶"
-              onPress={() => {
-                const resolvedAudioUrl = resolveBackendMediaUrl(vocabItem?.audioUrl);
-                if (!resolvedAudioUrl) return;
-                void playAudio(resolvedAudioUrl);
-              }}
+    <View style={styles.vocabGrid}>
+      {items.map((vocabItem, idx) => {
+        const word = String(vocabItem?.text ?? vocabItem?.word ?? "").trim();
+        const transcription = String(vocabItem?.transcription ?? vocabItem?.pronunciation ?? "").trim();
+        const meaningEn = String(vocabItem?.meaningEn ?? vocabItem?.translation ?? vocabItem?.meaning ?? "").trim();
+        const resolvedAudioUrl = resolveBackendMediaUrl(vocabItem?.audioUrl);
+
+        if (!word && !transcription && !meaningEn) return null;
+
+        return (
+          <View key={`${item.id}-vocab-${idx}`} style={styles.vocabListCard}>
+          <View style={styles.rowBetween}>
+            <GlossaryText
+              text={word}
               styles={styles}
-              icon="play"
+              glossary={glossary}
+              onSelectGlossaryWord={onSelectGlossaryWord}
+              activeGlossaryWordKey={activeGlossaryWordKey}
+              variant="title"
             />
+            {resolvedAudioUrl ? (
+              <Pressable
+                onPress={() => {
+                  if (!resolvedAudioUrl) return;
+                  void playAudio(resolvedAudioUrl);
+                }}
+                style={({ pressed }) => [styles.vocabAudioButton, pressed ? styles.audioCardPressed : null]}
+                accessibilityRole="button"
+                accessibilityLabel={`Play ${word || "vocabulary audio"}`}
+              >
+                <Text style={styles.vocabAudioIcon}>▶</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          {transcription ? (
+            <Text style={styles.translitText}>{transcription}</Text>
           ) : null}
-        </View>
-      ))}
+          {meaningEn ? (
+            <Text style={styles.translationText}>{meaningEn}</Text>
+          ) : null}
+          </View>
+        );
+      })}
     </View>
   );
 }
