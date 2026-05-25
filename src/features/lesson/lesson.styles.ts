@@ -610,6 +610,40 @@ export const createLessonStyles = (theme: AppTheme) =>
       fontSize: 14,
       lineHeight: 20,
     },
+    grammarNoteCard: {
+      borderRadius: 12,
+      paddingHorizontal: theme.s(1),
+      paddingVertical: theme.s(0.8),
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(30,41,59,0.62)"
+          : "rgba(248,250,252,0.96)",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(71,85,105,0.5)"
+          : "rgba(148,163,184,0.22)",
+      gap: 4,
+    },
+    grammarNoteHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 8,
+    },
+    grammarNoteIcon: {
+      color: "#60A5FA",
+      fontSize: 12,
+      lineHeight: 18,
+      fontWeight: "900",
+      marginTop: 1,
+    },
+    grammarNoteSubtitle: {
+      marginLeft: 20,
+      color: theme.colors.muted,
+      fontSize: 12,
+      lineHeight: 17,
+      fontWeight: "600",
+    },
     chipsWrap: {
       flexDirection: "row",
       flexWrap: "wrap",

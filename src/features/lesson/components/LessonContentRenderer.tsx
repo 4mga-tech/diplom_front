@@ -508,25 +508,61 @@ function GrammarNoteContentBlock({
   onSelectGlossaryWord,
   activeGlossaryWordKey,
 }: ContentBlockProps) {
-  const notes = asArray<string>(content.notes);
+  const normalizeNote = (value: unknown) => {
+    if (typeof value === "string") {
+      const mn = value.trim();
+      return mn ? { mn, en: "" } : null;
+    }
 
-  if (notes.length === 0) {
-    return <EmptyBlock message="No grammar notes available yet." styles={styles} />;
+    if (value && typeof value === "object") {
+      const record = value as { mn?: unknown; en?: unknown };
+      const mn = typeof record.mn === "string" ? record.mn.trim() : "";
+      const en = typeof record.en === "string" ? record.en.trim() : "";
+
+      if (!mn && !en) {
+        return null;
+      }
+
+      return { mn, en };
+    }
+
+    return null;
+  };
+
+  const notes = asArray<unknown>(content.notes)
+    .map((note) => normalizeNote(note))
+    .filter((note): note is { mn: string; en: string } => Boolean(note));
+
+  const textMn = typeof content.textMn === "string" ? content.textMn.trim() : "";
+  const textEn = typeof content.textEn === "string" ? content.textEn.trim() : "";
+
+  if (notes.length === 0 && !textMn && !textEn) {
+    return null;
   }
 
+  const combinedNotes = [
+    ...notes,
+    ...(textMn || textEn ? [{ mn: textMn, en: textEn }] : []),
+  ];
+
   return (
-    <View style={styles.stack}>
-      {notes.map((note, idx) => (
-        <View key={`${item.id}-note-${idx}`} style={styles.noteRow}>
-          <Text style={styles.noteBullet}>-</Text>
-          <GlossaryText
-            text={note}
-            styles={styles}
-            glossary={glossary}
-            onSelectGlossaryWord={onSelectGlossaryWord}
-            activeGlossaryWordKey={activeGlossaryWordKey}
-            variant="note"
-          />
+    <View style={styles.stackTight}>
+      {combinedNotes.map((note, idx) => (
+        <View key={`${item.id}-note-${idx}`} style={styles.grammarNoteCard}>
+          <View style={styles.grammarNoteHeader}>
+            <Text style={styles.grammarNoteIcon}>✦</Text>
+            <GlossaryText
+              text={note.mn || note.en}
+              styles={styles}
+              glossary={glossary}
+              onSelectGlossaryWord={onSelectGlossaryWord}
+              activeGlossaryWordKey={activeGlossaryWordKey}
+              variant="note"
+            />
+          </View>
+          {note.en && note.mn ? (
+            <Text style={styles.grammarNoteSubtitle}>{note.en}</Text>
+          ) : null}
         </View>
       ))}
     </View>
