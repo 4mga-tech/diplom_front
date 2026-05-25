@@ -32,6 +32,7 @@ type Question = {
   type?: string;
   prompt: string;
   helper?: string;
+  promptEn?: string;
   options?: string[];
   correctOptionId?: string;
   correctAnswer?: string;
@@ -81,6 +82,12 @@ function normalizeQuestion(raw: any, index: number): Question {
       raw?.helper !== undefined && raw?.helper !== null
         ? String(raw.helper)
         : undefined,
+    promptEn:
+      raw?.promptEn !== undefined && raw?.promptEn !== null
+        ? String(raw.promptEn)
+        : raw?.helperEn !== undefined && raw?.helperEn !== null
+          ? String(raw.helperEn)
+          : undefined,
     options: Array.isArray(raw?.options)
       ? raw.options.map((option: any) =>
           typeof option === "string"
@@ -960,7 +967,13 @@ export default function QuizScreen() {
             {currentQuestion.prompt}
           </Text>
 
-          {currentQuestion.helper ? (
+          {currentQuestion.promptEn ? (
+            <Text
+              style={[styles.questionHelperText, { color: theme.colors.muted }]}
+            >
+              {currentQuestion.promptEn}
+            </Text>
+          ) : currentQuestion.helper ? (
             <Text
               style={[styles.questionHelperText, { color: theme.colors.muted }]}
             >

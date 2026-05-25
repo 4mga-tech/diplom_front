@@ -1112,6 +1112,44 @@ export const createLessonStyles = (theme: AppTheme) =>
         theme.mode === "dark" ? "rgba(30,41,59,0.24)" : "rgba(241,245,249,0.65)",
       gap: 6,
     },
+
+    wordBuildFormulaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      flexWrap: "wrap",
+    },
+    wordBuildOperandChip: {
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      backgroundColor: theme.mode === "dark" ? "rgba(125,211,252,0.18)" : "rgba(14,165,233,0.12)",
+      borderWidth: 1,
+      borderColor: theme.mode === "dark" ? "rgba(125,211,252,0.36)" : "rgba(14,165,233,0.25)",
+    },
+    wordBuildOperandText: {
+      color: theme.colors.text,
+      fontSize: 16,
+      fontWeight: "900",
+    },
+    wordBuildOperatorText: {
+      color: "#60A5FA",
+      fontSize: 16,
+      fontWeight: "900",
+    },
+    wordBuildResultChip: {
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      backgroundColor: theme.mode === "dark" ? "rgba(74,222,128,0.18)" : "rgba(34,197,94,0.12)",
+      borderWidth: 1,
+      borderColor: theme.mode === "dark" ? "rgba(74,222,128,0.4)" : "rgba(34,197,94,0.28)",
+    },
+    wordBuildResultText: {
+      color: theme.colors.text,
+      fontSize: 16,
+      fontWeight: "900",
+    },
     wordBuildLetters: {
       flexDirection: "row",
       flexWrap: "wrap",

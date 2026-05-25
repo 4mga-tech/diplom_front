@@ -56,6 +56,10 @@ function resolveBackendMediaUrl(url?: string | null) {
   return `${apiBaseUrl}${url.startsWith("/") ? url : `/${url}`}`;
 }
 
+
+function hasTextValue(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0;
+}
 function normalizeGlossaryWord(value: string) {
   return value
     .trim()
@@ -412,7 +416,8 @@ function ClassificationContentBlock({
         />
       ) : null}
       {groups.length > 0 ? (
-        groups.map((group, idx) => (
+        <View style={styles.repeatGrid}>
+        {groups.map((group, idx) => (
           <View key={`${item.id}-group-${idx}`} style={styles.innerCard}>
             <Text style={styles.innerTitle}>{group?.title}</Text>
             {!!group?.description ? (
@@ -424,15 +429,23 @@ function ClassificationContentBlock({
                 activeGlossaryWordKey={activeGlossaryWordKey}
               />
             ) : null}
-            <GlossaryText
-              text={Array.isArray(group?.items) ? group.items.map((entry: any) => typeof entry === "string" ? entry : (entry?.text ?? entry?.word ?? entry?.label ?? "")).filter(Boolean).join(", ") : ""}
-              styles={styles}
-              glossary={glossary}
-              onSelectGlossaryWord={onSelectGlossaryWord}
-              activeGlossaryWordKey={activeGlossaryWordKey}
-            />
+            <View style={styles.chipsWrap}>
+              {asArray<any>(group?.items)
+                .map((entry) =>
+                  typeof entry === "string"
+                    ? entry
+                    : String(entry?.text ?? entry?.word ?? entry?.label ?? ""),
+                )
+                .filter(Boolean)
+                .map((label, itemIndex) => (
+                  <View key={`${item.id}-group-${idx}-item-${itemIndex}`} style={styles.chip}>
+                    <Text style={styles.chipText}>{label}</Text>
+                  </View>
+                ))}
+            </View>
           </View>
-        ))
+        ))}
+        </View>
       ) : (
         <EmptyBlock message="No classification groups available yet." styles={styles} />
       )}
@@ -529,9 +542,9 @@ function GrammarNoteContentBlock({
     }
 
     if (value && typeof value === "object") {
-      const record = value as { mn?: unknown; en?: unknown };
-      const mn = typeof record.mn === "string" ? record.mn.trim() : "";
-      const en = typeof record.en === "string" ? record.en.trim() : "";
+      const record = value as { mn?: unknown; en?: unknown; textMn?: unknown; textEn?: unknown };
+      const mn = typeof (record.mn ?? record.textMn) === "string" ? String(record.mn ?? record.textMn).trim() : "";
+      const en = typeof (record.en ?? record.textEn) === "string" ? String(record.en ?? record.textEn).trim() : "";
 
       if (!mn && !en) {
         return null;
@@ -574,7 +587,7 @@ function GrammarNoteContentBlock({
               variant="note"
             />
           </View>
-          {note.en && note.mn ? (
+          {hasTextValue(note.en) ? (
             <Text style={styles.grammarNoteSubtitle}>{note.en}</Text>
           ) : null}
         </View>
@@ -591,7 +604,7 @@ function VocabListContentBlock({
   onSelectGlossaryWord,
   activeGlossaryWordKey,
 }: ContentBlockProps) {
-  const items = asArray<any>(content.items);
+  const items = asArray<any>(content.items ?? content.words ?? content.vocab);
 
   if (items.length === 0) {
     return <EmptyBlock message="No vocabulary items available yet." styles={styles} />;
@@ -1141,11 +1154,23 @@ function ExerciseWordBuildContentBlock({
 
             return (
               <View key={`${item.id}-wb-${idx}`} style={styles.wordBuildMiniCard}>
-                <Text style={styles.innerTitle}>
-                  {question?.left || question?.right || question?.result
-                    ? `${question?.left ?? ""} + ${question?.right ?? ""} = ${question?.result ?? question?.answer ?? ""}`
-                    : `Build the word: ${question?.meaningEn ?? ""}`}
-                </Text>
+                {question?.left || question?.right || question?.result ? (
+                  <View style={styles.wordBuildFormulaRow}>
+                    <View style={styles.wordBuildOperandChip}>
+                      <Text style={styles.wordBuildOperandText}>{question?.left ?? ""}</Text>
+                    </View>
+                    <Text style={styles.wordBuildOperatorText}>+</Text>
+                    <View style={styles.wordBuildOperandChip}>
+                      <Text style={styles.wordBuildOperandText}>{question?.right ?? ""}</Text>
+                    </View>
+                    <Text style={styles.wordBuildOperatorText}>=</Text>
+                    <View style={styles.wordBuildResultChip}>
+                      <Text style={styles.wordBuildResultText}>{question?.result ?? question?.answer ?? ""}</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <Text style={styles.innerTitle}>{`Build the word: ${question?.meaningEn ?? ""}`}</Text>
+                )}
                 {!!question?.transcription ? (
                   <Text style={styles.supportingText}>{question.transcription}</Text>
                 ) : null}
