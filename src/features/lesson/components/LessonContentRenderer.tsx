@@ -1081,41 +1081,18 @@ function ExerciseWordBuildContentBlock({
 }: ContentBlockProps) {
   const questions = asArray<any>(content.questions ?? content.items ?? content.rows ?? []);
   const example = content.example;
-  const [answers, setAnswers] = React.useState<Record<number, string[]>>({});
-  const [results, setResults] = React.useState<Record<number, boolean | null>>({});
-  const handlePickLetter = (questionIndex: number, letter: string) => {
-    setAnswers((current) => ({
-      ...current,
-      [questionIndex]: [...(current[questionIndex] ?? []), letter],
-    }));
+  const [playingKey, setPlayingKey] = React.useState<string | null>(null);
 
-    setResults((current) => ({
-      ...current,
-      [questionIndex]: null,
-    }));
-  };
-
-  const handleClear = (questionIndex: number) => {
-    setAnswers((current) => ({
-      ...current,
-      [questionIndex]: [],
-    }));
-
-    setResults((current) => ({
-      ...current,
-      [questionIndex]: null,
-    }));
-  };
-
-  const handleCheck = (questionIndex: number, answer: string) => {
-    const built = (answers[questionIndex] ?? []).join("").toUpperCase();
-    const correct = built === answer.toUpperCase();
-
-    setResults((current) => ({
-      ...current,
-      [questionIndex]: correct,
-    }));
-  };
+  const handlePlay = React.useCallback(async (audioUrl: string, key: string) => {
+    setPlayingKey(key);
+    try {
+      await playAudio(audioUrl);
+    } catch (error) {
+      console.error("Failed to play audio:", error);
+    } finally {
+      setPlayingKey((current) => (current === key ? null : current));
+    }
+  }, []);
   return (
     <View style={styles.stack}>
       <BilingualInstruction
@@ -1147,97 +1124,60 @@ function ExerciseWordBuildContentBlock({
       {questions.length > 0 ? (
         <View style={styles.stack}>
           {questions.map((question, idx) => {
-            const questionIndex = Number(question?.index ?? idx + 1);
-            const letters = asArray<string>(question?.letters);
-            const selectedLetters = answers[questionIndex] ?? [];
-            const result = results[questionIndex];
             const left = String(question?.left ?? "");
             const right = String(question?.right ?? "");
             const normalizedResult = String(question?.result ?? question?.correctAnswer ?? question?.answer ?? "").trim();
             const fallbackResultFromRight = !normalizedResult && right ? right : "";
             const visualResult = normalizedResult || fallbackResultFromRight;
-            const checkAnswerValue = normalizedResult || fallbackResultFromRight;
-            const feedbackAnswer = String(
-              question?.displayAnswer ??
-                normalizedResult ??
-                fallbackResultFromRight ??
-                "",
-            ).trim();
+            const transcription = String(question?.transcription ?? question?.pronunciation ?? "").trim();
+            const audioUrl = resolveBackendMediaUrl(question?.audioUrl);
+            const playKey = `${item.id}-word-build-${idx}`;
+            const isPlaying = playingKey === playKey;
 
             return (
-              <View key={`${item.id}-wb-${idx}`} style={styles.wordBuildMiniCard}>
-                {left || right || visualResult ? (
-                  <View style={styles.wordBuildFormulaRow}>
-                    <View style={styles.wordBuildOperandChip}>
-                      <Text style={styles.wordBuildOperandText}>{left}</Text>
-                    </View>
-                    <Text style={styles.wordBuildOperatorText}>+</Text>
-                    <View style={styles.wordBuildOperandChip}>
-                      <Text style={styles.wordBuildOperandText}>{right}</Text>
-                    </View>
-                    <Text style={styles.wordBuildOperatorText}>=</Text>
-                    <View style={styles.wordBuildResultChip}>
-                      <Text style={styles.wordBuildResultText}>{visualResult}</Text>
-                    </View>
+              <View key={`${item.id}-wb-${idx}`} style={[styles.wordBuildMiniCard, isPlaying ? styles.wordBuildMiniCardPlaying : null]}>
+                <View style={styles.wordBuildFormulaRow}>
+                  <View style={styles.wordBuildOperandChip}>
+                    <Text style={styles.wordBuildOperandText}>{left}</Text>
                   </View>
-                ) : (
-                  <Text style={styles.innerTitle}>{`Build the word: ${question?.meaningEn ?? ""}`}</Text>
-                )}
-                {!!question?.transcription ? (
-                  <Text style={styles.supportingText}>{question.transcription}</Text>
-                ) : null}
-                {!!resolveBackendMediaUrl(question?.audioUrl) ? (
-                  <LessonActionButton
-                    label="Play"
-                    onPress={() => { const resolvedAudioUrl = resolveBackendMediaUrl(question?.audioUrl); if (!resolvedAudioUrl) return; void playAudio(resolvedAudioUrl); }}
-                    styles={styles}
-                    icon="play"
-                  />
-                ) : null}
-
-                <View style={styles.wordBuildLetters}>
-                  {letters.map((letter, letterIndex) => (
-                    <Pressable
-                      key={`${letter}-${letterIndex}`}
-                      onPress={() => handlePickLetter(questionIndex, letter)}
-                      style={styles.letterPreviewChip}
-                    >
-                      <Text style={styles.letterPreviewText}>{letter}</Text>
-                    </Pressable>
-                  ))}
+                  <Text style={styles.wordBuildOperatorText}>+</Text>
+                  <View style={styles.wordBuildOperandChip}>
+                    <Text style={styles.wordBuildOperandText}>{right}</Text>
+                  </View>
+                  <Text style={styles.wordBuildOperatorText}>=</Text>
+                  <View style={styles.wordBuildResultChip}>
+                    <Text style={styles.wordBuildResultText}>{visualResult}</Text>
+                  </View>
                 </View>
-
-                <View style={styles.builtWordBox}>
-                  <Text style={styles.builtWordText}>
-                    {selectedLetters.length > 0 ? selectedLetters.join("") : "_ _ _"}
+                <Text style={styles.wordBuildArrow}>↓</Text>
+                {!!visualResult ? (
+                  <View style={styles.wordBuildResultCenter}>
+                    <Text style={styles.wordBuildResultCenterText}>{visualResult}</Text>
+                  </View>
+                ) : null}
+                {!!transcription ? (
+                  <Text style={styles.supportingText}>{transcription}</Text>
+                ) : null}
+                <Pressable
+                  onPress={() => {
+                    if (!audioUrl) return;
+                    void handlePlay(audioUrl, playKey);
+                  }}
+                  disabled={!audioUrl}
+                  style={({ pressed }) => [
+                    styles.wordBuildAudioButton,
+                    isPlaying ? styles.wordBuildAudioButtonPlaying : null,
+                    pressed ? styles.audioCardPressed : null,
+                    !audioUrl ? styles.repeatCardDisabled : null,
+                  ]}
+                >
+                  <Text style={[styles.repeatPlayIcon, !audioUrl ? styles.repeatPlayIconDisabled : null]}>
+                    {isPlaying ? "⏳" : "▶"}
                   </Text>
-                </View>
-
-                <View style={styles.wordBuildActions}>
-                  <Pressable
-                    onPress={() => handleClear(questionIndex)}
-                    style={styles.wordBuildSecondaryButton}
-                  >
-                    <Text style={styles.wordBuildSecondaryText}>Clear</Text>
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() =>
-                      handleCheck(questionIndex, checkAnswerValue)
-                    }
-                    style={styles.wordBuildPrimaryButton}
-                  >
-                    <Text style={styles.wordBuildPrimaryText}>Check</Text>
-                  </Pressable>
-                </View>
-
-                {result !== null && result !== undefined ? (
-                  <Text style={result ? styles.correctText : styles.wrongText}>
-                    {result
-                      ? feedbackAnswer ? `Correct! ${feedbackAnswer}` : "Correct!"
-                      : "Try again"}
+                  <Text style={styles.wordBuildAudioButtonText}>
+                    {audioUrl ? "Play sound" : "No audio"}
                   </Text>
-                ) : null}
+                </Pressable>
               </View>
             );
           })}
