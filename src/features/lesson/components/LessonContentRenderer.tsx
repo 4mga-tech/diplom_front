@@ -228,7 +228,7 @@ function TextContentBlock({
   return (
     <>
       <GlossaryText
-        text={content?.textMn || content?.text || "Lesson text will appear here."}
+        text={content?.textMn || content?.text || ""}
         styles={styles}
         glossary={glossary}
         onSelectGlossaryWord={onSelectGlossaryWord}
@@ -418,7 +418,7 @@ function ClassificationContentBlock({
       {groups.length > 0 ? (
         <View style={styles.repeatGrid}>
         {groups.map((group, idx) => (
-          <View key={`${item.id}-group-${idx}`} style={styles.innerCard}>
+          <View key={`${item.id}-group-${idx}`} style={styles.vocabCard}>
             <Text style={styles.innerTitle}>{group?.title}</Text>
             {!!group?.description ? (
               <GlossaryText
@@ -446,9 +446,7 @@ function ClassificationContentBlock({
           </View>
         ))}
         </View>
-      ) : (
-        <EmptyBlock message="No classification groups available yet." styles={styles} />
-      )}
+      ) : null}
     </View>
   );
 }
@@ -607,13 +605,13 @@ function VocabListContentBlock({
   const items = asArray<any>(content.items ?? content.words ?? content.vocab);
 
   if (items.length === 0) {
-    return <EmptyBlock message="No vocabulary items available yet." styles={styles} />;
+    return null;
   }
 
   return (
-    <View style={styles.stack}>
+    <View style={styles.compactGrid}>
       {items.map((vocabItem, idx) => (
-        <View key={`${item.id}-vocab-${idx}`} style={styles.innerCard}>
+        <View key={`${item.id}-vocab-${idx}`} style={styles.vocabCard}>
           <GlossaryText
             text={String(vocabItem?.word ?? "")}
             styles={styles}
@@ -638,7 +636,7 @@ function VocabListContentBlock({
           />
           {!!resolveBackendMediaUrl(vocabItem?.audioUrl) ? (
             <LessonActionButton
-              label="Play"
+              label="▶"
               onPress={() => {
                 const resolvedAudioUrl = resolveBackendMediaUrl(vocabItem?.audioUrl);
                 if (!resolvedAudioUrl) return;
@@ -667,6 +665,15 @@ function ExerciseRepeatContentBlock({
 
   const normalizeAudio = (row: any) => resolveBackendMediaUrl(row?.audioUrl) ?? (row?.audioKey ? getAudioUrl(row.audioKey) : (row?.primary ? getAudioUrl(`letters/${String(row.primary).toLowerCase()}.mp3`) : null));
 
+  const comparisonRows = asArray<any>(content.comparisons ?? content.pairs ?? [])
+    .map((pair) => ({
+      left: String(pair?.left ?? pair?.a ?? pair?.first ?? "").trim(),
+      leftSub: String(pair?.leftSub ?? pair?.leftTranscription ?? pair?.aSub ?? pair?.aTranscription ?? "").trim(),
+      right: String(pair?.right ?? pair?.b ?? pair?.second ?? "").trim(),
+      rightSub: String(pair?.rightSub ?? pair?.rightTranscription ?? pair?.bSub ?? pair?.bTranscription ?? "").trim(),
+    }))
+    .filter((pair) => pair.left && pair.right);
+
   const handlePlay = React.useCallback(async (row: any, idx: number) => {
     const audioUrl = normalizeAudio(row);
     if (!audioUrl) return;
@@ -691,6 +698,23 @@ function ExerciseRepeatContentBlock({
         onSelectGlossaryWord={onSelectGlossaryWord}
         activeGlossaryWordKey={activeGlossaryWordKey}
       />
+      {comparisonRows.length > 0 ? (
+        <View style={styles.compactGrid}>
+          {comparisonRows.map((pair, idx) => (
+            <View key={`${item.id}-cmp-${idx}`} style={styles.comparisonCard}>
+              <View style={styles.comparisonSide}>
+                <Text style={styles.repeatCardLabel}>{pair.left}</Text>
+                {pair.leftSub ? <Text style={styles.repeatCardSubtext}>{pair.leftSub}</Text> : null}
+              </View>
+              <View style={styles.comparisonDivider} />
+              <View style={styles.comparisonSide}>
+                <Text style={styles.repeatCardLabel}>{pair.right}</Text>
+                {pair.rightSub ? <Text style={styles.repeatCardSubtext}>{pair.rightSub}</Text> : null}
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : null}
       {rows.length > 0 ? (
         <View style={styles.repeatGrid}>
           {rows.map((row, idx) => {
@@ -717,9 +741,7 @@ function ExerciseRepeatContentBlock({
             );
           })}
         </View>
-      ) : (
-        <EmptyBlock message="No repeat exercise items available yet." styles={styles} />
-      )}
+      ) : null}
     </View>
   );
 }
@@ -821,7 +843,7 @@ function ExerciseWriteContentBlock({
       {groupedLetters.length > 0 ? (
         <View style={styles.stack}>
           {groupedLetters.map((group) => (
-            <View key={group.id} style={styles.innerCard}>
+            <View key={group.id} style={styles.vocabCard}>
               <Text style={styles.innerTitle}>{group.title}</Text>
               {group.description ? (
                 <BlockText styles={styles}>{group.description}</BlockText>
@@ -991,7 +1013,7 @@ function SyllableBuilderContentBlock({
         const results = asArray<string>(pattern?.results);
 
         return (
-          <View key={`${base}-${idx}`} style={styles.innerCard}>
+          <View key={`${base}-${idx}`} style={styles.vocabCard}>
             <Text style={styles.innerTitle}>{base} + vowel</Text>
 
             <View style={styles.syllableGrid}>
@@ -1104,7 +1126,7 @@ function ExerciseWordBuildContentBlock({
         activeGlossaryWordKey={activeGlossaryWordKey}
       />
       {example ? (
-        <View style={styles.innerCard}>
+        <View style={styles.vocabCard}>
           <Text style={styles.innerTitle}>Example</Text>
           <GlossaryText
             text={
@@ -1175,7 +1197,7 @@ function ExerciseWordBuildContentBlock({
                     {isPlaying ? "⏳" : "▶"}
                   </Text>
                   <Text style={styles.wordBuildAudioButtonText}>
-                    {audioUrl ? "Play sound" : "No audio"}
+                    "Play"
                   </Text>
                 </Pressable>
               </View>
@@ -1254,9 +1276,7 @@ function AudioContentBlock({
           styles={styles}
           icon="play"
         />
-      ) : (
-        <EmptyBlock message="Audio URL not available." styles={styles} />
-      )}
+      ) : null}
     </View>
   );
 }
