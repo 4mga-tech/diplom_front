@@ -35,6 +35,10 @@ type PracticeLetter = {
   lowercase?: string | null;
   printForm?: string | null;
   cursiveForm?: string | null;
+  call?: string | null;
+  transcription?: string | null;
+  pronunciation?: string | null;
+  sound?: string | null;
 };
 
 const TOKEN_PATTERN = /(\s+|[^\s]+)/g;
@@ -955,6 +959,10 @@ function normalizePracticeLetter(
     lowercase: lowercase ? String(lowercase) : null,
     printForm: printForm ? String(printForm) : null,
     cursiveForm: cursiveForm ? String(cursiveForm) : null,
+    call: raw?.call ? String(raw.call) : null,
+    transcription: raw?.transcription ? String(raw.transcription) : null,
+    pronunciation: raw?.pronunciation ? String(raw.pronunciation) : null,
+    sound: raw?.sound ? String(raw.sound) : null,
   };
 }
 

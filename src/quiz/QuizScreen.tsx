@@ -956,12 +956,12 @@ export default function QuizScreen() {
             },
           ]}
         >
-          <View style={styles.questionBadge}>
-            <Ionicons name="sparkles-outline" size={14} color="#A78BFA" />
-            <Text style={styles.questionBadgeText}>
-              {isChoiceQuestion ? "Choose one answer" : "Type your answer"}
-            </Text>
-          </View>
+          {!isChoiceQuestion ? (
+            <View style={styles.questionBadge}>
+              <Ionicons name="sparkles-outline" size={14} color="#A78BFA" />
+              <Text style={styles.questionBadgeText}>Type your answer</Text>
+            </View>
+          ) : null}
 
           <Text style={[styles.questionText, { color: theme.colors.text }]}>
             {currentQuestion.prompt}
@@ -1172,8 +1172,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 20,
+    paddingTop: 4,
+    paddingBottom: 12,
   },
   center: {
     flex: 1,
@@ -1213,8 +1213,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   header: {
-    gap: 10,
-    marginBottom: 12,
+    gap: 8,
+    marginBottom: 8,
   },
   headerMainRow: {
     flexDirection: "row",
@@ -1247,7 +1247,7 @@ const styles = StyleSheet.create({
   headerMetaText: {
     fontSize: 12,
     fontWeight: "700",
-    marginBottom: 10,
+    marginBottom: 6,
   },
   progressPill: {
     paddingHorizontal: 12,
@@ -1260,10 +1260,10 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   progressTrack: {
-    height: 10,
+    height: 8,
     borderRadius: 999,
     overflow: "hidden",
-    marginBottom: 14,
+    marginBottom: 10,
   },
   progressFill: {
     height: "100%",
@@ -1272,13 +1272,13 @@ const styles = StyleSheet.create({
   quizMetaRow: {
     flexDirection: "row",
     gap: 10,
-    marginBottom: 16,
+    marginBottom: 10,
   },
   quizMetaCard: {
     flex: 1,
     borderRadius: 14,
     paddingHorizontal: 13,
-    paddingVertical: 10,
+    paddingVertical: 8,
     backgroundColor: "rgba(37,99,235,0.08)",
     borderWidth: 1,
     borderColor: "rgba(59,130,246,0.14)",
@@ -1297,12 +1297,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   scroll: { flex: 1 },
-  scrollContent: { paddingBottom: 20 },
+  scrollContent: { paddingBottom: 10 },
   questionCard: {
     borderRadius: 24,
-    padding: 18,
+    padding: 14,
     borderWidth: 1,
-    gap: 14,
+    gap: 10,
   },
   questionBadge: {
     alignSelf: "flex-start",
@@ -1324,13 +1324,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.45,
   },
   questionText: {
-    fontSize: 21,
-    lineHeight: 29,
+    fontSize: 19,
+    lineHeight: 26,
     fontWeight: "900",
   },
   questionHelperText: {
     fontSize: 12,
-    lineHeight: 18,
+    lineHeight: 16,
     fontWeight: "600",
   },
   feedbackCard: {
@@ -1374,15 +1374,15 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   optionsWrap: {
-    gap: 10,
+    gap: 8,
   },
   optionButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    borderRadius: 16,
+    borderRadius: 14,
     paddingHorizontal: 14,
-    paddingVertical: 15,
+    paddingVertical: 10,
     borderWidth: 1,
   },
   optionButtonSelected: {
@@ -1438,9 +1438,9 @@ const styles = StyleSheet.create({
     color: "#FECACA",
   },
   optionText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
-    lineHeight: 22,
+    lineHeight: 20,
     flex: 1,
   },
   optionTextSelected: {
@@ -1461,12 +1461,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   footerActions: {
-    gap: 10,
-    marginTop: 8,
+    gap: 8,
+    marginTop: 6,
   },
   primaryButton: {
     borderRadius: 18,
-    paddingVertical: 17,
+    paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -1486,7 +1486,7 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     borderRadius: 18,
-    paddingVertical: 16,
+    paddingVertical: 13,
     paddingHorizontal: 20,
     alignItems: "center",
     justifyContent: "center",
