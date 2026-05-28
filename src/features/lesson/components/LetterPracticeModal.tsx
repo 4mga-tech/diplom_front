@@ -23,6 +23,10 @@ type LetterPracticeData = {
   printForm?: string | null;
   cursiveForm?: string | null;
   audioKey?: string;
+  call?: string | null;
+  transcription?: string | null;
+  pronunciation?: string | null;
+  sound?: string | null;
 };
 
 type Point = {
@@ -60,6 +64,7 @@ export default function LetterPracticeModal({
   const [strokes, setStrokes] = React.useState<Point[][]>([]);
   const [canvasFrame, setCanvasFrame] = React.useState<CanvasFrame | null>(null);
   const [isPlaying, setIsPlaying] = React.useState(false);
+  const [score, setScore] = React.useState<number | null>(null);
   const canvasRef = React.useRef<View | null>(null);
 
  const handlePlayAudio = React.useCallback(async () => {
@@ -93,7 +98,31 @@ export default function LetterPracticeModal({
 
   const handleReset = React.useCallback(() => {
     setStrokes([]);
+    setScore(null);
   }, []);
+
+  const computeTracingScore = React.useCallback(() => {
+    const pointsCount = strokes.reduce((acc, stroke) => acc + stroke.length, 0);
+    const strokeDistance = strokes.reduce((acc, stroke) => {
+      if (stroke.length < 2) return acc;
+      const distance = stroke.slice(1).reduce((sum, point, idx) => {
+        return sum + distanceBetweenPoints(stroke[idx], point);
+      }, 0);
+      return acc + distance;
+    }, 0);
+    const area = Math.max(1, (canvasFrame?.width ?? 0) * (canvasFrame?.height ?? 0));
+    const normalizedCoverage = strokeDistance / Math.sqrt(area);
+
+    if (pointsCount === 0) return 0;
+    if (pointsCount < 8 || normalizedCoverage < 1.2) return 30;
+    if (pointsCount < 20 || normalizedCoverage < 2.8) return 60;
+    if (pointsCount < 40 || normalizedCoverage < 5) return 80;
+    return Math.min(100, 82 + Math.round(Math.min(18, normalizedCoverage * 2.4)));
+  }, [canvasFrame?.height, canvasFrame?.width, strokes]);
+
+  const handleDone = React.useCallback(() => {
+    setScore(computeTracingScore());
+  }, [computeTracingScore]);
 
   const updateCanvasFrame = React.useCallback(() => {
     const node = canvasRef.current;
@@ -194,9 +223,13 @@ export default function LetterPracticeModal({
     return null;
   }
 
+  const callValue = letter.call ?? letter.transcription ?? letter.pronunciation ?? "—";
+  const soundValue = letter.sound ?? letter.transcription ?? letter.pronunciation ?? "—";
   const detailRows = [
+    { label: "Call", value: callValue },
+    { label: "Sound", value: soundValue },
     letter.uppercase && letter.lowercase
-      ? { label: "Upper / lower", value: `${letter.uppercase}  ${letter.lowercase}` }
+      ? { label: "Upper / Lower", value: `${letter.uppercase} ${letter.lowercase}` }
       : null,
     letter.printForm ? { label: "Print", value: letter.printForm } : null,
     letter.cursiveForm ? { label: "Cursive", value: letter.cursiveForm } : null,
@@ -347,6 +380,9 @@ export default function LetterPracticeModal({
             <Text pointerEvents="none" style={styles.canvasGuideLetter}>
               {letter.primary}
             </Text>
+            <Text pointerEvents="none" style={styles.guideArrowDiagonal}>↘</Text>
+            <Text pointerEvents="none" style={styles.guideArrowVertical}>↓</Text>
+            <Text pointerEvents="none" style={styles.guideArrowHorizontal}>→</Text>
             {strokes.map((stroke, strokeIndex) =>
               stroke.slice(1).map((point, pointIndex) => {
                 const start = stroke[pointIndex];
@@ -395,10 +431,29 @@ export default function LetterPracticeModal({
               </Text>
             </Pressable>
 
-            <Pressable style={styles.primaryButton} onPress={onClose}>
+            <Pressable style={styles.primaryButton} onPress={handleDone}>
               <Text style={styles.primaryButtonText}>Done</Text>
             </Pressable>
           </View>
+          {score !== null ? (
+            <View
+              style={[
+                styles.scoreCard,
+                {
+                  backgroundColor:
+                    theme.mode === "dark" ? "rgba(30,41,59,0.86)" : "rgba(241,245,249,0.96)",
+                  borderColor:
+                    theme.mode === "dark" ? "rgba(96,165,250,0.2)" : "rgba(59,130,246,0.14)",
+                },
+              ]}
+            >
+              <Text style={[styles.scoreLabel, { color: theme.colors.muted }]}>Tracing score</Text>
+              <Text style={[styles.scoreValue, { color: theme.colors.text }]}>{score}/100</Text>
+              <Text style={[styles.scoreFeedback, { color: theme.colors.text }]}>
+                {score >= 90 ? "Excellent" : score >= 70 ? "Good" : score >= 50 ? "Keep practicing" : "Try again"}
+              </Text>
+            </View>
+          ) : null}
         </Pressable>
       </Pressable>
     </Modal>
@@ -501,6 +556,30 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     color: "rgba(148,163,184,0.18)",
   },
+  guideArrowDiagonal: {
+    position: "absolute",
+    top: 34,
+    left: 28,
+    color: "rgba(148,163,184,0.45)",
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  guideArrowVertical: {
+    position: "absolute",
+    top: 58,
+    right: 34,
+    color: "rgba(148,163,184,0.45)",
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  guideArrowHorizontal: {
+    position: "absolute",
+    bottom: 38,
+    left: 40,
+    color: "rgba(148,163,184,0.45)",
+    fontSize: 14,
+    fontWeight: "900",
+  },
   segment: {
     position: "absolute",
     height: 6,
@@ -535,5 +614,26 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "900",
+  },
+  scoreCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 3,
+  },
+  scoreLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  scoreValue: {
+    fontSize: 22,
+    fontWeight: "900",
+  },
+  scoreFeedback: {
+    fontSize: 13,
+    fontWeight: "700",
   },
 });
