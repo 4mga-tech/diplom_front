@@ -15,6 +15,7 @@ type LessonContentRendererProps = {
   styles: LessonStyles;
   onOpenQuiz: () => void;
   isFinalExam?: boolean;
+  lessonId?: string;
 };
 
 type ContentBlockProps = LessonContentRendererProps & {
@@ -241,7 +242,7 @@ function TextContentBlock({
   );
 }
 
-function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps) {
+function AlphabetTableContentBlock({ item, content, styles, lessonId }: ContentBlockProps) {
   const letters = React.useMemo(
     () =>
       (asArray<any>(content.letters).length > 0
@@ -257,6 +258,10 @@ function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps)
   const [interactionCount, setInteractionCount] = React.useState(0);
   const [gameChoice, setGameChoice] = React.useState<string | null>(null);
   const insets = useSafeAreaInsets();
+  const countLabelEn = String(content?.countLabelEn ?? "").trim();
+  const countLabelMn = String(content?.countLabelMn ?? "").trim();
+  const hasCountLabel = Boolean(countLabelEn || countLabelMn);
+  const fallbackCountLabel = `${letters.length} letters`;
 
   if (letters.length === 0) {
     return <EmptyBlock message="No letters available yet." styles={styles} />;
@@ -298,7 +303,7 @@ function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps)
     <View style={styles.stack}>
       <View style={styles.vowelHeroCard}>
         <Text style={styles.vowelHeroTitle}>Meet the Mongolian vowels</Text>
-        <Text style={styles.vowelHeroSubtitle}>7 letters • Audio • Tracing</Text>
+        <Text style={styles.vowelHeroSubtitle}>{hasCountLabel ? [countLabelEn, countLabelMn].filter(Boolean).join(" • ") : fallbackCountLabel}</Text>
         <Animated.View style={{ transform: [{ translateY: heroFloat }] }}>
           <Text style={styles.vowelHeroLetters}>А Э И О У Ө Ү</Text>
         </Animated.View>
@@ -329,7 +334,7 @@ function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps)
           );
         })}
       </View>
-      {interactionCount >= 3 ? (
+      {interactionCount >= 3 && lessonId !== "b1-u1-l1" ? (
         <View style={styles.traceCtaCard}>
           <Text style={styles.traceCtaTitle}>Ready to trace?</Text>
           <LessonActionButton label="Start tracing" onPress={() => setDetailVisible(true)} styles={styles} icon="create" />
@@ -337,7 +342,7 @@ function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps)
       ) : null}
       {gameOptions.length >= 3 ? (
         <View style={styles.listenGameCard}>
-          <Text style={styles.innerTitle}>Which sound did you hear?</Text>
+          <Text style={styles.innerTitle}>{lessonId === "b1-u1-l1" ? "Tap the vowel you hear" : lessonId === "b1-u1-l2" ? "Choose the correct vowel group" : "Listen and choose"}</Text>
           <LessonActionButton
             label="Play sound"
             onPress={() => {
@@ -369,10 +374,25 @@ function AlphabetTableContentBlock({ item, content, styles }: ContentBlockProps)
                 {selectedLetter?.printUpper ?? selectedLetter?.upper ?? ""} {selectedLetter?.printLower ?? selectedLetter?.lower ?? ""}
               </Text>
               <Text style={styles.alphabetTileSubtext}>{selectedLetter?.transcription ?? selectedLetter?.pronunciation ?? ""}</Text>
-              <View style={styles.sheetInfoRow}><Text style={styles.sheetInfoLabel}>Call:</Text><Text style={styles.sheetInfoValue}>{selectedLetter?.latin ?? selectedLetter?.call ?? "—"}</Text></View>
+              <View style={styles.sheetInfoRow}><Text style={styles.sheetInfoLabel}>Call:</Text><Text style={styles.sheetInfoValue}>{selectedLetter?.call ?? selectedLetter?.transcription ?? "—"}</Text></View>
               <View style={styles.sheetInfoRow}><Text style={styles.sheetInfoLabel}>Sound:</Text><Text style={styles.sheetInfoValue}>{selectedLetter?.transcription ?? selectedLetter?.pronunciation ?? "—"}</Text></View>
               <View style={styles.sheetInfoRow}><Text style={styles.sheetInfoLabel}>Type:</Text><Text style={styles.sheetInfoValue}>{selectedLetter?.group ?? "Basic vowel"}</Text></View>
-              <Text style={styles.sheetExamplesText}>Examples: {selectedLetter?.examples ?? "аав, алим"}</Text>
+              <View style={styles.sheetInfoRow}><Text style={styles.sheetInfoLabel}>Romanization:</Text><Text style={styles.sheetInfoValue}>{selectedLetter?.transcription ?? "—"}</Text></View>
+              {asArray<any>(selectedLetter?.examples).length > 0 ? (
+                <View style={styles.stackTight}>
+                  <Text style={styles.sheetExamplesText}>Examples</Text>
+                  {asArray<any>(selectedLetter?.examples).map((example, idx) => {
+                    if (typeof example === "string") {
+                      const value = example.trim();
+                      return value ? <Text key={`${item.id}-example-${idx}`} style={styles.sheetMutedText}>{value}</Text> : null;
+                    }
+                    const text = String(example?.text ?? example?.word ?? "").trim();
+                    const meaningEn = String(example?.meaningEn ?? "").trim();
+                    if (!text && !meaningEn) return null;
+                    return <Text key={`${item.id}-example-${idx}`} style={styles.sheetMutedText}>{text}{meaningEn ? ` — ${meaningEn}` : ""}</Text>;
+                  })}
+                </View>
+              ) : null}
               {resolveBackendMediaUrl(selectedLetter?.audioUrl) ? null : <Text style={styles.sheetMutedText}>Audio unavailable</Text>}
               <View style={styles.row}>
                 <View style={styles.sheetButtonFlex}>
@@ -668,6 +688,8 @@ function ExerciseRepeatContentBlock({
   activeGlossaryWordKey,
 }: ContentBlockProps) {
   const rows = asArray<any>(content.items ?? content.rows ?? []);
+  const objectiveMn = String(content?.instructionMn ?? content?.textMn ?? "").trim();
+  const objectiveEn = String(content?.instructionEn ?? content?.textEn ?? "").trim();
   const [playingKey, setPlayingKey] = React.useState<string | null>(null);
 
   const normalizeAudio = (row: any) => resolveBackendMediaUrl(row?.audioUrl) ?? (row?.audioKey ? getAudioUrl(row.audioKey) : (row?.primary ? getAudioUrl(`letters/${String(row.primary).toLowerCase()}.mp3`) : null));
@@ -697,14 +719,12 @@ function ExerciseRepeatContentBlock({
 
   return (
     <View style={styles.stack}>
-      <BilingualInstruction
-        instructionMn={content?.instructionMn}
-        instructionEn={content?.instructionEn}
-        styles={styles}
-        glossary={glossary}
-        onSelectGlossaryWord={onSelectGlossaryWord}
-        activeGlossaryWordKey={activeGlossaryWordKey}
-      />
+      {objectiveMn || objectiveEn ? (
+        <View style={styles.stackTight}>
+          {objectiveMn ? <Text style={styles.innerTitle}>{objectiveMn}</Text> : null}
+          {objectiveEn ? <Text style={styles.supportingText}>{objectiveEn}</Text> : null}
+        </View>
+      ) : null}
       {comparisonRows.length > 0 ? (
         <View style={styles.compactGrid}>
           {comparisonRows.map((pair, idx) => (
@@ -727,7 +747,7 @@ function ExerciseRepeatContentBlock({
           {rows.map((row, idx) => {
             const label = row?.primary ?? row?.prompt ?? row?.line ?? row?.text ?? "";
             if (!label) return null;
-            const transcription = row?.transcription ?? row?.pronunciation ?? "";
+            const transcription = row?.call ?? row?.transcription ?? row?.pronunciation ?? "";
             const audioUrl = normalizeAudio(row);
             const itemKey = `${item.id}-${idx}`;
             const isPlaying = playingKey === itemKey;
@@ -1360,6 +1380,7 @@ export default function LessonContentRenderer({
   styles,
   onOpenQuiz,
   isFinalExam = false,
+  lessonId,
 }: LessonContentRendererProps) {
   const content = (item.content ?? {}) as any;
   const glossary = React.useMemo(
@@ -1427,6 +1448,7 @@ export default function LessonContentRenderer({
         item={item}
         content={content}
         styles={styles}
+        lessonId={lessonId}
         glossary={glossary}
         onSelectGlossaryWord={handleSelectGlossaryWord}
         activeGlossaryWordKey={activeGlossaryWordKey}
