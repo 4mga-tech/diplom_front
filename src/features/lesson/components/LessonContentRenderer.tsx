@@ -258,8 +258,15 @@ function AlphabetTableContentBlock({ item, content, styles, lessonId }: ContentB
   const [interactionCount, setInteractionCount] = React.useState(0);
   const [gameChoice, setGameChoice] = React.useState<string | null>(null);
   const insets = useSafeAreaInsets();
-  const countLabelEn = String(content?.countLabelEn ?? "").trim();
-  const countLabelMn = String(content?.countLabelMn ?? "").trim();
+  const { countLabelEn, countLabelMn } = React.useMemo(() => {
+    const currentCountLabelEn = typeof content?.countLabelEn === "string" ? content.countLabelEn.trim() : "";
+    const currentCountLabelMn = typeof content?.countLabelMn === "string" ? content.countLabelMn.trim() : "";
+
+    return {
+      countLabelEn: currentCountLabelEn,
+      countLabelMn: currentCountLabelMn,
+    };
+  }, [content?.countLabelEn, content?.countLabelMn, item?.id]);
   const hasCountLabel = Boolean(countLabelEn || countLabelMn);
   const fallbackCountLabel = `${letters.length} letters`;
 
