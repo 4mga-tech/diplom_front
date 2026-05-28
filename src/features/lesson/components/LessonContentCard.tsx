@@ -17,6 +17,7 @@ type Props = {
   item: LessonContentItem;
   styles: LessonStyles;
   onOpenQuiz: () => void;
+  lessonId?: string;
   isFinalExam?: boolean;
   isActive?: boolean;
   onPress?: () => void;
@@ -26,6 +27,7 @@ export default function LessonContentCard({
   item,
   styles,
   onOpenQuiz,
+  lessonId,
   isFinalExam = false,
   isActive = false,
   onPress,
@@ -80,6 +82,7 @@ export default function LessonContentCard({
             styles={styles}
             onOpenQuiz={onOpenQuiz}
             isFinalExam={isFinalExam}
+            lessonId={lessonId}
           />
         </View>
       </Pressable>

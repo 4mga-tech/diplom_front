@@ -303,6 +303,7 @@ export default function LessonScreenView({
               item={item}
               styles={styles}
               onOpenQuiz={onOpenQuiz}
+              lessonId={lesson.id}
               isFinalExam={isFinalExamLesson && item.type === "quiz_link"}
               isActive={item.id === activeSectionId}
               onPress={() => handleFocusSection(item.id)}
