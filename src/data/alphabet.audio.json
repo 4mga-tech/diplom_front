@@ -229,7 +229,7 @@
     "lowercase": "ь",
     "romanization": "soft_sign",
     "group": "sign_letter",
-    "audioKey": "letters/zuulun.mp3"
+    "audioKey": "letters/i.mp3"
   },
   {
     "id": "letter-ъ",
@@ -237,7 +237,7 @@
     "lowercase": "ъ",
     "romanization": "hard_sign",
     "group": "sign_letter",
-    "audioKey": "letters/hatuu.mp3"
+    "audioKey": "letters/i.mp3"
   },
   {
     "id": "letter-е",
