@@ -221,7 +221,7 @@
     "lowercase": "й",
     "romanization": "y",
     "group": "sign_letter",
-    "audioKey": "letters/hagas_i.mp3"
+    "audioKey": "letters/i.mp3"
   },
   {
     "id": "letter-ь",
@@ -277,6 +277,6 @@
     "lowercase": "ы",
     "romanization": "y",
     "group": "auxiliary_vowel",
-    "audioKey": "letters/er_i.mp3"
+    "audioKey": "letters/i.mp3"
   }
 ]
