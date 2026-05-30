@@ -117,7 +117,7 @@ export const createLessonStyles = (theme: AppTheme) =>
       lineHeight: 21,
     },
     scroll: { flex: 1 },
-    scrollContent: { paddingBottom: theme.s(4), gap: theme.s(1.5) },
+    scrollContent: { paddingBottom: theme.s(3), gap: theme.s(1.1) },
     heroCard: {
       borderRadius: 22,
       padding: theme.s(1.5),
@@ -411,7 +411,7 @@ export const createLessonStyles = (theme: AppTheme) =>
       borderRadius: 16,
       borderWidth: 1,
       padding: 0,
-      marginBottom: 8,
+      marginBottom: 6,
       backgroundColor:
         theme.mode === "dark" ? "rgba(15,23,42,0.62)" : "rgba(255,255,255,0.95)",
       borderColor:
@@ -439,8 +439,8 @@ export const createLessonStyles = (theme: AppTheme) =>
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: 12,
-      paddingTop: 10,
-      paddingBottom: 6,
+      paddingTop: 9,
+      paddingBottom: 5,
       gap: 10,
     },
     contentHeaderLeft: {
@@ -513,15 +513,15 @@ export const createLessonStyles = (theme: AppTheme) =>
     },
     contentBodyWrap: {
       paddingHorizontal: 12,
-      paddingBottom: 10,
-      paddingTop: 2,
+      paddingBottom: 9,
+      paddingTop: 1,
       gap: theme.s(0.85),
       borderTopWidth: 0,
       borderTopColor:
         theme.mode === "dark"
           ? "rgba(51,65,85,0.35)"
           : "rgba(148,163,184,0.12)",
-      marginTop: 6,
+      marginTop: 4,
 
     },
     contentBody: {
@@ -553,8 +553,8 @@ export const createLessonStyles = (theme: AppTheme) =>
       lineHeight: 19,
       fontWeight: "600",
     },
-    stack: { gap: 10 },
-    stackTight: { gap: 4 },
+    stack: { gap: 8 },
+    stackTight: { gap: 3 },
     innerCard: {
       borderRadius: 12,
       padding: 9,
@@ -578,19 +578,20 @@ export const createLessonStyles = (theme: AppTheme) =>
     vocabGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: 8,
+      gap: 7,
+      alignItems: "flex-start",
     },
     vocabListCard: {
       width: "48%",
       minWidth: 150,
       borderRadius: 12,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
+      paddingHorizontal: 9,
+      paddingVertical: 7,
       backgroundColor:
         theme.mode === "dark"
           ? "rgba(30,41,59,0.5)"
           : "rgba(241,245,249,0.95)",
-      gap: 3,
+      gap: 2,
       borderWidth: 1,
       borderColor:
         theme.mode === "dark"
@@ -618,14 +619,15 @@ export const createLessonStyles = (theme: AppTheme) =>
     classificationGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: 8,
+      gap: 7,
+      alignItems: "flex-start",
     },
     classificationCard: {
       width: "48%",
       minWidth: 160,
       borderRadius: 12,
-      paddingHorizontal: 10,
-      paddingVertical: 9,
+      paddingHorizontal: 9,
+      paddingVertical: 8,
       backgroundColor:
         theme.mode === "dark"
           ? "rgba(30,41,59,0.5)"
@@ -636,19 +638,19 @@ export const createLessonStyles = (theme: AppTheme) =>
           ? "rgba(71,85,105,0.45)"
           : "rgba(148,163,184,0.2)",
       gap: 6,
-      justifyContent: "space-between",
+      alignSelf: "flex-start",
     },
 
     vocabCard: {
       width: "48%",
       minWidth: 150,
       borderRadius: 12,
-      padding: 9,
+      padding: 8,
       backgroundColor:
         theme.mode === "dark"
           ? "rgba(30,41,59,0.5)"
           : "rgba(241,245,249,0.95)",
-      gap: 4,
+      gap: 3,
       borderWidth: 1,
       borderColor:
         theme.mode === "dark"
@@ -733,7 +735,8 @@ export const createLessonStyles = (theme: AppTheme) =>
     chipsWrap: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: 8,
+      gap: 6,
+      alignItems: "flex-start",
     },
     alphabetGrid: {
       flexDirection: "row",
@@ -975,18 +978,19 @@ export const createLessonStyles = (theme: AppTheme) =>
     repeatGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: 10,
+      gap: 7,
+      alignItems: "flex-start",
     },
     repeatCard: {
       width: "48%",
-      minHeight: 72,
       borderRadius: 14,
-      paddingHorizontal: 10,
-      paddingVertical: 9,
+      paddingHorizontal: 9,
+      paddingVertical: 8,
       backgroundColor: theme.mode === "dark" ? "rgba(30,41,59,0.82)" : "rgba(248,250,252,0.98)",
       borderWidth: 1,
       borderColor: theme.mode === "dark" ? "rgba(71,85,105,0.6)" : "rgba(148,163,184,0.22)",
-      gap: 6,
+      gap: 5,
+      alignSelf: "flex-start",
     },
     repeatCardTop: {
       flexDirection: "row",
@@ -996,8 +1000,10 @@ export const createLessonStyles = (theme: AppTheme) =>
     },
     repeatCardLabel: {
       color: theme.colors.text,
-      fontSize: 16,
+      fontSize: 14,
       fontWeight: "900",
+      lineHeight: 18,
+      flexShrink: 1,
     },
     repeatCardSubtext: {
       color: theme.colors.muted,
@@ -1079,7 +1085,7 @@ export const createLessonStyles = (theme: AppTheme) =>
       textAlign: "center",
     },
     chip: {
-      paddingHorizontal: 10,
+      paddingHorizontal: 9,
       paddingVertical: 5,
       borderRadius: 999,
       backgroundColor:
@@ -1341,43 +1347,95 @@ export const createLessonStyles = (theme: AppTheme) =>
       color: "#22C55E",
     },
     fillQuestionCard: {
-      borderRadius: 12,
-      padding: 10,
+      borderRadius: 14,
+      padding: 12,
       backgroundColor:
         theme.mode === "dark"
           ? "rgba(30,41,59,0.28)"
           : "rgba(241,245,249,0.72)",
-      gap: 8,
+      gap: 10,
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(71,85,105,0.42)"
+          : "rgba(148,163,184,0.18)",
     },
 
     fillPromptRow: {
       flexDirection: "row",
-      justifyContent: "space-between",
+      justifyContent: "center",
       alignItems: "center",
     },
 
+    fillPromptBlock: {
+      alignItems: "center",
+      gap: 5,
+    },
+
+    fillListenButton: {
+      alignSelf: "center",
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingHorizontal: 13,
+      paddingVertical: 7,
+      borderRadius: 999,
+      backgroundColor:
+        theme.mode === "dark"
+          ? "rgba(59,130,246,0.18)"
+          : "rgba(59,130,246,0.1)",
+      borderWidth: 1,
+      borderColor:
+        theme.mode === "dark"
+          ? "rgba(96,165,250,0.28)"
+          : "rgba(37,99,235,0.18)",
+    },
+
+    fillListenButtonDisabled: {
+      opacity: 0.72,
+    },
+
+    fillListenIcon: {
+      fontSize: 14,
+      lineHeight: 16,
+    },
+
+    fillListenText: {
+      color: theme.colors.text,
+      fontSize: 13,
+      fontWeight: "900",
+    },
+
     fillPrompt: {
-      fontSize: 24,
+      fontSize: 26,
       fontWeight: "900",
       color: theme.colors.text,
       letterSpacing: 1,
+      textAlign: "center",
     },
 
     fillMeaning: {
-      fontSize: 12,
-      opacity: 0.65,
+      fontSize: 13,
+      lineHeight: 18,
+      opacity: 0.72,
       color: theme.colors.text,
+      textAlign: "center",
+      fontWeight: "700",
     },
 
     fillOptionsRow: {
       flexDirection: "row",
       flexWrap: "wrap",
       gap: 8,
+      justifyContent: "center",
     },
 
     fillOptionChip: {
-      minWidth: 38,
-      height: 38,
+      minWidth: 52,
+      minHeight: 38,
+      paddingHorizontal: 14,
       borderRadius: 12,
       alignItems: "center",
       justifyContent: "center",
