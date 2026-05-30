@@ -65,6 +65,20 @@ function resolveBackendMediaUrl(url?: string | null) {
 function hasTextValue(value: unknown) {
   return typeof value === "string" && value.trim().length > 0;
 }
+
+function getFriendlyRepeatLabel(label: string) {
+  const normalized = label.trim().toLocaleLowerCase();
+
+  const friendlyLabels: Record<string, string> = {
+    "weak vowel": "Notice the weak vowel",
+    "clear vowel": "Clear pronunciation",
+    "h at start/end": "N at beginning or end",
+    "g in back/front word": "Compare G sound",
+  };
+
+  return friendlyLabels[normalized] ?? label;
+}
+
 function normalizeGlossaryWord(value: string) {
   return value
     .trim()
@@ -758,6 +772,7 @@ function ExerciseRepeatContentBlock({
           {rows.map((row, idx) => {
             const label = row?.primary ?? row?.prompt ?? row?.line ?? row?.text ?? "";
             if (!label) return null;
+            const displayLabel = getFriendlyRepeatLabel(String(label));
             const transcription = row?.call ?? row?.transcription ?? row?.pronunciation ?? "";
             const audioUrl = normalizeAudio(row);
             const itemKey = `${item.id}-${idx}`;
@@ -770,7 +785,7 @@ function ExerciseRepeatContentBlock({
                 style={({ pressed }) => [styles.repeatCard, isPlaying ? styles.repeatCardPlaying : null, pressed ? styles.audioCardPressed : null, !audioUrl ? styles.repeatCardDisabled : null]}
               >
                 <View style={styles.repeatCardTop}>
-                  <Text style={styles.repeatCardLabel}>{label}</Text>
+                  <Text style={styles.repeatCardLabel}>{displayLabel}</Text>
                   <Text style={[styles.repeatPlayIcon, !audioUrl ? styles.repeatPlayIconDisabled : null]}>{isPlaying ? "⏳" : "▶"}</Text>
                 </View>
                 {transcription ? <Text style={styles.repeatCardSubtext}>{transcription}</Text> : null}
@@ -973,6 +988,14 @@ function ExerciseFillContentBlock({
   const questions = asArray<any>(content.questions);
   const [selected, setSelected] = React.useState<Record<number, string>>({});
 
+  const handlePlayFillAudio = React.useCallback(async (audioUrl: string) => {
+    try {
+      await playAudio(audioUrl);
+    } catch (error) {
+      console.error("Failed to play audio:", error);
+    }
+  }, []);
+
   if (questions.length === 0) {
     return <EmptyBlock message="No fill exercises available yet." styles={styles} />;
   }
@@ -987,14 +1010,35 @@ function ExerciseFillContentBlock({
         const selectedOption = selected[idx];
         const isCorrect =
           selectedOption?.toUpperCase() === String(question?.answer ?? "").toUpperCase();
+        const audioUrl =
+          resolveBackendMediaUrl(question?.audioUrl) ??
+          (question?.audioKey ? getAudioUrl(question.audioKey) : null);
 
         return (
           <View key={`fill-${idx}`} style={styles.fillQuestionCard}>
-            <View style={styles.fillPromptRow}>
+            <Pressable
+              onPress={() => {
+                if (!audioUrl) return;
+                void handlePlayFillAudio(audioUrl);
+              }}
+              disabled={!audioUrl}
+              style={({ pressed }) => [
+                styles.fillListenButton,
+                pressed ? styles.audioCardPressed : null,
+                !audioUrl ? styles.fillListenButtonDisabled : null,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Listen to fill exercise audio"
+            >
+              <Text style={[styles.fillListenIcon, !audioUrl ? styles.repeatPlayIconDisabled : null]}>🔊</Text>
+              <Text style={styles.fillListenText}>Listen</Text>
+            </Pressable>
+
+            <View style={styles.fillPromptBlock}>
               <Text style={styles.fillPrompt}>{question?.prompt}</Text>
 
               {question?.meaningEn ? (
-                <Text style={styles.fillMeaning}>{question.meaningEn}</Text>
+                <Text style={styles.fillMeaning}>Meaning: {question.meaningEn}</Text>
               ) : null}
             </View>
 
@@ -1194,7 +1238,9 @@ function ExerciseWordBuildContentBlock({
             const fallbackResultFromRight = !normalizedResult && right ? right : "";
             const visualResult = normalizedResult || fallbackResultFromRight;
             const transcription = String(question?.transcription ?? question?.pronunciation ?? "").trim();
-            const audioUrl = resolveBackendMediaUrl(question?.audioUrl);
+            const audioUrl =
+          resolveBackendMediaUrl(question?.audioUrl) ??
+          (question?.audioKey ? getAudioUrl(question.audioKey) : null);
             const playKey = `${item.id}-word-build-${idx}`;
             const isPlaying = playingKey === playKey;
 
