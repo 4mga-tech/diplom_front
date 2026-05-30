@@ -1,5 +1,5 @@
-import { getAudioUrl, playAudio } from "@/lib/audio";
 import { api } from "@/lib/api";
+import { getAudioUrl, playAudio } from "@/lib/audio";
 import { LessonContentItem, LessonGlossaryItem } from "@/lib/learning";
 import GlossaryModal from "@/src/features/lesson/components/GlossaryModal";
 import LessonActionButton from "@/src/features/lesson/components/LessonActionButton";

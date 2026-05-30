@@ -636,6 +636,7 @@ export const createLessonStyles = (theme: AppTheme) =>
           ? "rgba(71,85,105,0.45)"
           : "rgba(148,163,184,0.2)",
       gap: 6,
+      justifyContent: "space-between",
     },
 
     vocabCard: {
@@ -1078,8 +1079,8 @@ export const createLessonStyles = (theme: AppTheme) =>
       textAlign: "center",
     },
     chip: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
       borderRadius: 999,
       backgroundColor:
         theme.mode === "dark"
